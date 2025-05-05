@@ -29,12 +29,12 @@ Somewhere there will be a source repository with this directory structure:
 ### manifest
 
 The manifest tracks the source repository and the rules and rulesets pulled from it.
-The manifest file `airizz.inf` lives in the repository root.
+The manifest file `ai-rizz.inf` lives in the repository root.
 
 The first line of the manifest is the source repo's git clone url, and the directory (target directory) in this repository that the script operates in. They are separated by a tab character.
 Subsequent lines are coordinates in the repository, e.g.
 
-`airizz.inf`
+`ai-rizz.inf`
 
 ```
 https://github.com/texarkanine/.cursor-rules.git	.cursor/rules/
@@ -52,9 +52,9 @@ rulesets/giant
 * in `commit` mode, rules will be copied to and committed to the repository
 * in `local` mode
     * `.git/info/exclude` will be amended to include `target_directory/`
-    * `airizz.inf` will be added to `.git/info/exclude`
+    * `ai-rizz.inf` will be added to `.git/info/exclude`
 In both modes, the following setup must take place:
-    * manifest `airizz.inf` will be created in the repository root
+    * manifest `ai-rizz.inf` will be created in the repository root
     * `source_repo` & `target_directory` must be written to the manifest.
 
 ### `ai-rizz deinit [-y]`
@@ -98,7 +98,7 @@ Remove all rules associated with one or more rulesets from `target_directory/sha
 
 Update the local copy of the source repository, then copy all rules specified by the manifest into `target_directory/shared`.
 
-* If there is no `airizz.inf` manifest in the repository root, this is an error.
+* If there is no `ai-rizz.inf` manifest in the repository root, this is an error.
 * This may be happening on a new machine, so it may be necessary to clone the source_repo into the right directory in the user's home first; see "implementation notes"
 * if any manifest entries don't exist in the remote repo:
     * prints a warning
@@ -113,7 +113,7 @@ On `init` and `sync`, if needed:
 On `list` and `sync`:
 * the source_repo will be updated (`git pull`)
 
-The "mode" of operation can be determined by whether the local repository has an entry for airizz in `.git/info/exclude`; if it does, it's `local` mode. Otherwise, it's `commit` mode.
+The "mode" of operation can be determined by whether the local repository has an entry for ai-rizz in `.git/info/exclude`; if it does, it's `local` mode. Otherwise, it's `commit` mode.
 
 ## design requirements
 

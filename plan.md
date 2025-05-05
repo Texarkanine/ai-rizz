@@ -227,7 +227,7 @@
 ## Implementation Details
 
 ### Directory Structure
-- Manifest (`airizz.inf`) lives in repository root
+- Manifest (`ai-rizz.inf`) lives in repository root
 - All source files copied to `target_directory/shared`
 - Source repository cloned to `$HOME/.config/ai-rizz/`
 

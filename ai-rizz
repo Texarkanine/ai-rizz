@@ -1,0 +1,689 @@
+#!/bin/sh
+# ai-rizz - A CLI tool to manage rules and rulesets
+# POSIX compliant shell script
+
+set -e  # Exit on error
+
+# Global variables
+MANIFEST_FILE="ai-rizz.inf"
+SHARED_DIR="shared"
+CONFIG_DIR="$HOME/.config/ai-rizz"
+TEMP_DIR="/tmp/ai-rizz"
+
+# Utilities
+# =========
+
+# Print error to stderr and exit
+error() {
+  echo "Error: $1" >&2
+  exit "${2:-1}"
+}
+
+# Print warning to stderr
+warn() {
+  echo "Warning: $1" >&2
+}
+
+# Read and validate manifest file
+# Sets: SOURCE_REPO, TARGET_DIR, MANIFEST_ENTRIES
+read_manifest() {
+  if [ ! -f "$MANIFEST_FILE" ]; then
+    error "Manifest file '$MANIFEST_FILE' not found"
+  fi
+  
+  # Read first line to get source repo and target dir
+  read -r first_line < "$MANIFEST_FILE"
+  
+  # Check if it has the correct format (tab-separated)
+  if ! echo "$first_line" | grep -q "	"; then
+    error "Invalid manifest format: First line must be 'source_repo<tab>target_dir'"
+  fi
+  
+  # Extract the source repo and target dir
+  SOURCE_REPO=$(echo "$first_line" | cut -f1)
+  TARGET_DIR=$(echo "$first_line" | cut -f2)
+  
+  # Read the rest of the manifest file
+  MANIFEST_ENTRIES=""
+  while IFS= read -r line; do
+    if [ -n "$line" ] && [ "$line" != "$first_line" ]; then
+      MANIFEST_ENTRIES="$MANIFEST_ENTRIES
+$line"
+    fi
+  done < "$MANIFEST_FILE"
+  
+  # Trim leading newline
+  MANIFEST_ENTRIES=$(echo "$MANIFEST_ENTRIES" | sed '/./,$!d')
+  
+  return 0
+}
+
+# Write manifest file
+write_manifest() {
+  if [ -z "$SOURCE_REPO" ] || [ -z "$TARGET_DIR" ]; then
+    error "SOURCE_REPO and TARGET_DIR must be set before writing manifest"
+  fi
+  
+  # Write the first line
+  echo "$SOURCE_REPO	$TARGET_DIR" > "$MANIFEST_FILE"
+  
+  # Write the rest of the entries
+  if [ -n "$MANIFEST_ENTRIES" ]; then
+    echo "$MANIFEST_ENTRIES" >> "$MANIFEST_FILE"
+  fi
+  
+  return 0
+}
+
+# Add entry to manifest
+add_manifest_entry() {
+  entry="$1"
+  
+  # Check if entry already exists
+  if echo "$MANIFEST_ENTRIES" | grep -q "^$entry$"; then
+    return 0  # Already exists, nothing to do
+  fi
+  
+  # Add the entry
+  if [ -z "$MANIFEST_ENTRIES" ]; then
+    MANIFEST_ENTRIES="$entry"
+  else
+    MANIFEST_ENTRIES="$MANIFEST_ENTRIES
+$entry"
+  fi
+  
+  return 0
+}
+
+# Remove entry from manifest
+remove_manifest_entry() {
+  entry="$1"
+  
+  # Remove the entry
+  MANIFEST_ENTRIES=$(echo "$MANIFEST_ENTRIES" | grep -v "^$entry$")
+  
+  return 0
+}
+
+# Clone or update a git repository
+git_sync() {
+  repo_url="$1"
+  
+  # Ensure config directory exists
+  mkdir -p "$CONFIG_DIR"
+  
+  # Clone/update permanent repository
+  if [ ! -d "$CONFIG_DIR/repo" ]; then
+    git clone "$repo_url" "$CONFIG_DIR/repo" || error "Failed to clone repository: $repo_url"
+  else
+    (cd "$CONFIG_DIR/repo" && git pull) || error "Failed to update repository: $repo_url"
+  fi
+  
+  return 0
+}
+
+# Detect if we're in local mode
+is_local_mode() {
+  # Check if .git directory exists
+  if [ ! -d ".git" ]; then
+    error "Not in a git repository"
+  fi
+  
+  # Check if target directory is in .git/info/exclude
+  if [ -f ".git/info/exclude" ] && grep -q "$TARGET_DIR" ".git/info/exclude"; then
+    return 0  # true, local mode
+  fi
+  
+  return 1  # false, commit mode
+}
+
+# Update .git/info/exclude
+update_git_exclude() {
+  path="$1"
+  action="$2"  # "add" or "remove"
+  
+  # Create .git/info directory if it doesn't exist
+  mkdir -p ".git/info"
+  
+  # Create exclude file if it doesn't exist
+  touch ".git/info/exclude"
+  
+  case "$action" in
+    add)
+      if ! grep -q "^$path$" ".git/info/exclude"; then
+        echo "$path" >> ".git/info/exclude"
+      fi
+      ;;
+    remove)
+      # Create a temporary file
+      tmp_file=$(mktemp)
+      # Filter out the path
+      grep -v "^$path$" ".git/info/exclude" > "$tmp_file"
+      # Replace the original file
+      cat "$tmp_file" > ".git/info/exclude"
+      # Remove the temporary file
+      rm -f "$tmp_file"
+      ;;
+    *)
+      error "Invalid action: $action. Must be 'add' or 'remove'"
+      ;;
+  esac
+  
+  return 0
+}
+
+# Commands
+# ========
+
+# Initialize the repository
+cmd_init() {
+  source_repo=""
+  target_dir=""
+  mode=""
+  
+  # Parse arguments
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -d)
+        target_dir="$2"
+        shift 2
+        ;;
+      --local|-l)
+        mode="local"
+        shift
+        ;;
+      --commit|-c)
+        mode="commit"
+        shift
+        ;;
+      *)
+        if [ -z "$source_repo" ]; then
+          source_repo="$1"
+          shift
+        else
+          error "Unknown argument: $1"
+        fi
+        ;;
+    esac
+  done
+  
+  # Prompt for source repo if not provided
+  if [ -z "$source_repo" ]; then
+    printf "Source repository URL: "
+    read -r source_repo
+    if [ -z "$source_repo" ]; then
+      error "Source repository URL is required"
+    fi
+  fi
+  
+  # Prompt for target directory if not provided
+  if [ -z "$target_dir" ]; then
+    printf "Target directory [.cursor/rules]: "
+    read -r target_dir
+    if [ -z "$target_dir" ]; then
+      target_dir=".cursor/rules"
+    fi
+  fi
+  
+  # Prompt for mode if not provided
+  if [ -z "$mode" ]; then
+    printf "Mode [local/commit]: "
+    read -r mode
+    if [ -z "$mode" ]; then
+      mode="local"
+    fi
+  fi
+  
+  # Validate mode
+  case "$mode" in
+    local|commit)
+      ;;
+    *)
+      error "Invalid mode: $mode. Must be 'local' or 'commit'"
+      ;;
+  esac
+  
+  # Set global variables
+  SOURCE_REPO="$source_repo"
+  TARGET_DIR="$target_dir"
+  MANIFEST_ENTRIES=""
+  
+  # Create target directory
+  mkdir -p "$TARGET_DIR/$SHARED_DIR"
+  
+  # Set up local mode if needed
+  if [ "$mode" = "local" ]; then
+    update_git_exclude "$TARGET_DIR" "add"
+    update_git_exclude "$MANIFEST_FILE" "add"
+  fi
+  
+  # Write manifest
+  write_manifest
+  
+  # Clone source repository
+  git_sync "$SOURCE_REPO"
+  
+  echo "Initialized ai-rizz with source: $SOURCE_REPO, target: $TARGET_DIR, mode: $mode"
+  return 0
+}
+
+# Deinitialize the repository
+cmd_deinit() {
+  force=false
+  
+  # Parse arguments
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -y)
+        force=true
+        shift
+        ;;
+      *)
+        error "Unknown argument: $1"
+        ;;
+    esac
+  done
+  
+  # Read manifest
+  read_manifest
+  
+  # Confirm deletion
+  if ! $force; then
+    echo "This will delete: $TARGET_DIR"
+    printf "Are you sure? [y/N] "
+    read -r confirm
+    if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+      echo "Canceled"
+      return 0
+    fi
+  fi
+  
+  # Remove from .git/info/exclude if in local mode
+  if is_local_mode; then
+    update_git_exclude "$TARGET_DIR" "remove"
+    update_git_exclude "$MANIFEST_FILE" "remove"
+  fi
+  
+  # Remove target directory
+  rm -rf "$TARGET_DIR"
+  rm -f "$MANIFEST_FILE"
+  
+  echo "Removed ai-rizz configuration"
+  return 0
+}
+
+# List available rules and rulesets
+cmd_list() {
+  # Read manifest
+  read_manifest
+  
+  # Update source repository
+  git_sync "$SOURCE_REPO"
+  
+  # List available rules
+  echo "Available rules:"
+  find "$TEMP_DIR/rules" -name "*.mdc" | sed "s|$TEMP_DIR/||"
+  
+  # List available rulesets
+  echo "Available rulesets:"
+  find "$TEMP_DIR/rulesets" -mindepth 1 -maxdepth 1 -type d | sed "s|$TEMP_DIR/||"
+  
+  # List installed rules and rulesets
+  echo "Installed:"
+  if [ -n "$MANIFEST_ENTRIES" ]; then
+    echo "$MANIFEST_ENTRIES"
+  else
+    echo "None"
+  fi
+  
+  # Remove invalid entries
+  new_entries=""
+  for entry in $MANIFEST_ENTRIES; do
+    if [ -e "$TEMP_DIR/$entry" ]; then
+      if [ -z "$new_entries" ]; then
+        new_entries="$entry"
+      else
+        new_entries="$new_entries
+$entry"
+      fi
+    else
+      warn "Entry not found in source repository: $entry"
+    fi
+  done
+  
+  # Update manifest if entries changed
+  if [ "$new_entries" != "$MANIFEST_ENTRIES" ]; then
+    MANIFEST_ENTRIES="$new_entries"
+    write_manifest
+    echo "Manifest updated"
+  fi
+  
+  return 0
+}
+
+# Add rule(s) to the repository
+cmd_add_rule() {
+  # Read manifest
+  read_manifest
+  
+  # Update source repository
+  git_sync "$SOURCE_REPO"
+  
+  # Process each rule
+  for rule in "$@"; do
+    rule_path="rules/$rule"
+    
+    # Check if rule exists
+    if [ ! -f "$TEMP_DIR/$rule_path" ]; then
+      warn "Rule not found: $rule_path"
+      continue
+    fi
+    
+    # Add to manifest
+    add_manifest_entry "$rule_path"
+    
+    # Copy rule
+    mkdir -p "$(dirname "$TARGET_DIR/$SHARED_DIR/$rule_path")"
+    cp -f "$TEMP_DIR/$rule_path" "$TARGET_DIR/$SHARED_DIR/$rule_path"
+    
+    echo "Added rule: $rule_path"
+  done
+  
+  # Write manifest
+  write_manifest
+  
+  return 0
+}
+
+# Add ruleset(s) to the repository
+cmd_add_ruleset() {
+  # Read manifest
+  read_manifest
+  
+  # Update source repository
+  git_sync "$SOURCE_REPO"
+  
+  # Process each ruleset
+  for ruleset in "$@"; do
+    ruleset_path="rulesets/$ruleset"
+    
+    # Check if ruleset exists
+    if [ ! -d "$TEMP_DIR/$ruleset_path" ]; then
+      warn "Ruleset not found: $ruleset_path"
+      continue
+    fi
+    
+    # Add to manifest
+    add_manifest_entry "$ruleset_path"
+    
+    # Find all rules in the ruleset
+    find "$TEMP_DIR/$ruleset_path" -name "*.mdc" | while read -r rule_link; do
+      # Get the target of the symlink
+      rule_name=$(basename "$rule_link")
+      
+      # Get the rule path
+      rule_path="rules/$rule_name"
+      
+      # Copy rule
+      mkdir -p "$(dirname "$TARGET_DIR/$SHARED_DIR/$rule_path")"
+      cp -f "$TEMP_DIR/$rule_path" "$TARGET_DIR/$SHARED_DIR/$rule_path"
+    done
+    
+    echo "Added ruleset: $ruleset_path"
+  done
+  
+  # Write manifest
+  write_manifest
+  
+  return 0
+}
+
+# Remove rule(s) from the repository
+cmd_remove_rule() {
+  # Read manifest
+  read_manifest
+  
+  # Process each rule
+  for rule in "$@"; do
+    rule_path="rules/$rule"
+    
+    # Remove from manifest
+    remove_manifest_entry "$rule_path"
+    
+    # Remove rule
+    rm -f "$TARGET_DIR/$SHARED_DIR/$rule_path"
+    
+    echo "Removed rule: $rule_path"
+  done
+  
+  # Write manifest
+  write_manifest
+  
+  return 0
+}
+
+# Remove ruleset(s) from the repository
+cmd_remove_ruleset() {
+  # Read manifest
+  read_manifest
+  
+  # Update source repository
+  git_sync "$SOURCE_REPO"
+  
+  # Process each ruleset
+  for ruleset in "$@"; do
+    ruleset_path="rulesets/$ruleset"
+    
+    # Remove from manifest
+    remove_manifest_entry "$ruleset_path"
+    
+    # Find all rules in the ruleset
+    find "$TEMP_DIR/$ruleset_path" -name "*.mdc" 2>/dev/null | while read -r rule_link; do
+      rule_name=$(basename "$rule_link")
+      rule_path="rules/$rule_name"
+      
+      # Check if rule is used by other rulesets
+      used_elsewhere=false
+      for other_ruleset in $MANIFEST_ENTRIES; do
+        if echo "$other_ruleset" | grep -q "^rulesets/" && [ "$other_ruleset" != "$ruleset_path" ]; then
+          if find "$TEMP_DIR/$other_ruleset" -name "$rule_name" | grep -q .; then
+            used_elsewhere=true
+            break
+          fi
+        fi
+      done
+      
+      # Remove rule if not used elsewhere
+      if ! $used_elsewhere; then
+        rm -f "$TARGET_DIR/$SHARED_DIR/$rule_path"
+        echo "Removed rule: $rule_path"
+      fi
+    done
+    
+    echo "Removed ruleset: $ruleset_path"
+  done
+  
+  # Write manifest
+  write_manifest
+  
+  return 0
+}
+
+# Sync the repository
+cmd_sync() {
+  # Read manifest
+  read_manifest
+  
+  # Update source repository
+  git_sync "$SOURCE_REPO"
+  
+  # Create shared directory
+  mkdir -p "$TARGET_DIR/$SHARED_DIR"
+  
+  # Clean up invalid entries
+  new_entries=""
+  for entry in $MANIFEST_ENTRIES; do
+    if [ -e "$TEMP_DIR/$entry" ]; then
+      if [ -z "$new_entries" ]; then
+        new_entries="$entry"
+      else
+        new_entries="$new_entries
+$entry"
+      fi
+    else
+      warn "Entry not found in source repository: $entry"
+    fi
+  done
+  
+  # Update manifest if entries changed
+  if [ "$new_entries" != "$MANIFEST_ENTRIES" ]; then
+    MANIFEST_ENTRIES="$new_entries"
+    write_manifest
+    echo "Manifest updated"
+  fi
+  
+  # Sync rules
+  for entry in $MANIFEST_ENTRIES; do
+    if echo "$entry" | grep -q "^rules/"; then
+      # Copy rule
+      mkdir -p "$(dirname "$TARGET_DIR/$SHARED_DIR/$entry")"
+      cp -f "$TEMP_DIR/$entry" "$TARGET_DIR/$SHARED_DIR/$entry"
+      echo "Synced rule: $entry"
+    elif echo "$entry" | grep -q "^rulesets/"; then
+      # Find all rules in the ruleset
+      find "$TEMP_DIR/$entry" -name "*.mdc" | while read -r rule_link; do
+        # Get the target of the symlink
+        rule_name=$(basename "$rule_link")
+        
+        # Get the rule path
+        rule_path="rules/$rule_name"
+        
+        # Copy rule
+        mkdir -p "$(dirname "$TARGET_DIR/$SHARED_DIR/$rule_path")"
+        cp -f "$TEMP_DIR/$rule_path" "$TARGET_DIR/$SHARED_DIR/$rule_path"
+      done
+      echo "Synced ruleset: $entry"
+    fi
+  done
+  
+  echo "Sync complete"
+  return 0
+}
+
+# Help command
+cmd_help() {
+  cat <<EOF
+Usage: ai-rizz <command> [command-specific options]
+
+Available commands:
+  init [<source_repo>]     Initialize the repository
+  deinit                   Deinitialize the repository
+  list                     List available rules and rulesets
+  add rule <rule>...       Add rule(s) to the repository
+  add ruleset <ruleset>... Add ruleset(s) to the repository
+  remove rule <rule>...    Remove rule(s) from the repository
+  remove ruleset <ruleset>... Remove ruleset(s) from the repository
+  sync                     Sync the repository
+  help                     Show this help
+
+Command-specific options:
+  init options:
+    -d <target_dir>        Target directory (default: .cursor/rules)
+    --local, -l            Use local mode (ignore files)
+    --commit, -c           Use commit mode (commit files)
+
+  deinit options:
+    -y                     Skip confirmation prompts
+EOF
+  return 0
+}
+
+# Main
+# ====
+
+# Only run main code if script is executed, not sourced
+if [ "${0##*/}" = "ai-rizz" ]; then
+  # Parse command
+  if [ $# -eq 0 ]; then
+    cmd_help
+    exit 0
+  fi
+
+  command=$1
+  shift
+
+  case "$command" in
+    init)
+      cmd_init "$@"
+      ;;
+    deinit)
+      cmd_deinit "$@"
+      ;;
+    list)
+      cmd_list "$@"
+      ;;
+    add)
+      if [ $# -eq 0 ]; then
+        error "Missing type: 'rule' or 'ruleset'"
+      fi
+      
+      type=$1
+      shift
+      
+      case "$type" in
+        rule)
+          if [ $# -eq 0 ]; then
+            error "Missing rule name"
+          fi
+          cmd_add_rule "$@"
+          ;;
+        ruleset)
+          if [ $# -eq 0 ]; then
+            error "Missing ruleset name"
+          fi
+          cmd_add_ruleset "$@"
+          ;;
+        *)
+          error "Invalid type: $type. Must be 'rule' or 'ruleset'"
+          ;;
+      esac
+      ;;
+    remove)
+      if [ $# -eq 0 ]; then
+        error "Missing type: 'rule' or 'ruleset'"
+      fi
+      
+      type=$1
+      shift
+      
+      case "$type" in
+        rule)
+          if [ $# -eq 0 ]; then
+            error "Missing rule name"
+          fi
+          cmd_remove_rule "$@"
+          ;;
+        ruleset)
+          if [ $# -eq 0 ]; then
+            error "Missing ruleset name"
+          fi
+          cmd_remove_ruleset "$@"
+          ;;
+        *)
+          error "Invalid type: $type. Must be 'rule' or 'ruleset'"
+          ;;
+      esac
+      ;;
+    sync)
+      cmd_sync "$@"
+      ;;
+    help)
+      cmd_help "$@"
+      ;;
+    *)
+      error "Unknown command: $command. Run 'ai-rizz help' for usage"
+      ;;
+  esac
+fi
+
+exit 0 

@@ -183,6 +183,24 @@ Removes the target directory and manifest file.
 
 ## Developer Guide
 
+### Manifest File Schema
+
+The `ai-rizz.inf` manifest file uses a simple text-based format:
+
+```
+<source_repo>[TAB]<target_dir>
+rules/rule1.mdc
+rules/rule2.mdc
+rulesets/ruleset1
+```
+
+- The first line contains the source repository URL and target directory, separated by a tab character
+- Subsequent lines list installed rules and rulesets (one per line)
+- Rule entries begin with `rules/` followed by the rule filename
+- Ruleset entries begin with `rulesets/` followed by the ruleset name
+
+This manifest tracks which rules and rulesets are installed, and where they should be placed.
+
 ### Makefile
 
 The project includes a simple Makefile for installation and uninstallation. The Makefile supports:
@@ -190,7 +208,3 @@ The project includes a simple Makefile for installation and uninstallation. The 
 - Installation with customizable prefix: `make PREFIX=/custom/path install`
 - Uninstallation: `make uninstall`
 - Help: `make help`
-
-### License
-
-MIT 

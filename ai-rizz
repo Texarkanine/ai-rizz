@@ -8,7 +8,11 @@ set -e  # Exit on error
 MANIFEST_FILE="ai-rizz.inf"
 SHARED_DIR="shared"
 CONFIG_DIR="$HOME/.config/ai-rizz"
-TEMP_DIR="/tmp/ai-rizz"
+REPO_DIR="$CONFIG_DIR/repo"
+
+# Display formatting variables
+INSTALLED_GLYPH="●"
+UNINSTALLED_GLYPH="○"
 
 # Utilities
 # =========
@@ -292,6 +296,22 @@ cmd_init() {
   return 0
 }
 
+# Recursively remove empty parent directories
+cleanup_empty_parents() {
+  dir="$1"
+  # Check if directory exists and is empty
+  if [ -d "$dir" ] && [ -z "$(ls -A "$dir")" ]; then
+    parent_dir=$(dirname "$dir")
+    echo "Removing empty directory: $dir"
+    rmdir "$dir"
+    
+    # Stop at filesystem root, home directory, or current directory
+    if [ "$parent_dir" != "/" ] && [ "$parent_dir" != "$HOME" ] && [ "$parent_dir" != "." ]; then
+      cleanup_empty_parents "$parent_dir"
+    fi
+  fi
+}
+
 # Deinitialize the repository
 cmd_deinit() {
   force=false
@@ -312,6 +332,9 @@ cmd_deinit() {
   # Read manifest
   read_manifest
   
+  # Store original target directory for cleanup
+  ORIGINAL_TARGET_DIR="$TARGET_DIR"
+  
   # Confirm deletion
   if ! $force; then
     echo "This will delete: $TARGET_DIR"
@@ -329,9 +352,15 @@ cmd_deinit() {
     update_git_exclude "$MANIFEST_FILE" "remove"
   fi
   
-  # Remove target directory
+  # Remove target directory and manifest file
   rm -rf "$TARGET_DIR"
   rm -f "$MANIFEST_FILE"
+  
+  # Clean up empty parent directories
+  parent_dir=$(dirname "$ORIGINAL_TARGET_DIR")
+  if [ "$parent_dir" != "." ] && [ "$parent_dir" != "/" ]; then
+    cleanup_empty_parents "$parent_dir"
+  fi
   
   echo "Removed ai-rizz configuration"
   return 0
@@ -345,26 +374,66 @@ cmd_list() {
   # Update source repository
   git_sync "$SOURCE_REPO"
   
-  # List available rules
+  # Helper function to check if an item is installed
+  is_installed() {
+    local item="$1"
+    echo "$MANIFEST_ENTRIES" | grep -q "^$item$"
+    return $?
+  }
+  
+  # Display rules
   echo "Available rules:"
-  find "$TEMP_DIR/rules" -name "*.mdc" | sed "s|$TEMP_DIR/||"
-  
-  # List available rulesets
-  echo "Available rulesets:"
-  find "$TEMP_DIR/rulesets" -mindepth 1 -maxdepth 1 -type d | sed "s|$TEMP_DIR/||"
-  
-  # List installed rules and rulesets
-  echo "Installed:"
-  if [ -n "$MANIFEST_ENTRIES" ]; then
-    echo "$MANIFEST_ENTRIES"
+  rules=$(find "$REPO_DIR/rules" -name "*.mdc" | sort 2>/dev/null)
+  if [ -z "$rules" ]; then
+    echo "  No rules found"
   else
-    echo "None"
+    for rule in $rules; do
+      rule_name=$(basename "$rule")
+      rule_path="rules/$rule_name"
+      if is_installed "$rule_path"; then
+        printf "  %s %s\n" "$INSTALLED_GLYPH" "$rule_name"
+      else
+        printf "  %s %s\n" "$UNINSTALLED_GLYPH" "$rule_name"
+      fi
+    done
+  fi
+  echo ""
+  
+  # Display rulesets
+  echo "Available rulesets:"
+  rulesets=$(find "$REPO_DIR/rulesets" -mindepth 1 -maxdepth 1 -type d | sort 2>/dev/null)
+  if [ -z "$rulesets" ]; then
+    echo "  No rulesets found"
+  else
+    for ruleset in $rulesets; do
+      ruleset_name=$(basename "$ruleset")
+      ruleset_path="rulesets/$ruleset_name"
+      
+      # Display ruleset with installation status
+      if is_installed "$ruleset_path"; then
+        printf "  %s %s\n" "$INSTALLED_GLYPH" "$ruleset_name"
+      else
+        printf "  %s %s\n" "$UNINSTALLED_GLYPH" "$ruleset_name"
+      fi
+      
+      # Use tree to display ruleset contents
+      if [ -d "$ruleset" ]; then
+        # Check if tree command exists
+        if command -v tree >/dev/null 2>&1; then
+          (cd "$ruleset" && tree -L 1 --noreport) | tail -n +2 | sed 's/^/    /'
+        else
+          # Fallback if tree is not available
+          find "$ruleset" -maxdepth 1 -name "*.mdc" -exec basename {} \; | sort | sed 's/^/    ├── /'
+          echo "    Warning: Install 'tree' for better display"
+        fi
+      fi
+    done
   fi
   
-  # Remove invalid entries
+  # Cleanup invalid entries (silently)
   new_entries=""
   for entry in $MANIFEST_ENTRIES; do
-    if [ -e "$TEMP_DIR/$entry" ]; then
+    if [ -e "$REPO_DIR/$entry" ]; then
       if [ -z "$new_entries" ]; then
         new_entries="$entry"
       else
@@ -399,7 +468,7 @@ cmd_add_rule() {
     rule_path="rules/$rule"
     
     # Check if rule exists
-    if [ ! -f "$TEMP_DIR/$rule_path" ]; then
+    if [ ! -f "$REPO_DIR/$rule_path" ]; then
       warn "Rule not found: $rule_path"
       continue
     fi
@@ -407,9 +476,9 @@ cmd_add_rule() {
     # Add to manifest
     add_manifest_entry "$rule_path"
     
-    # Copy rule
-    mkdir -p "$(dirname "$TARGET_DIR/$SHARED_DIR/$rule_path")"
-    cp -f "$TEMP_DIR/$rule_path" "$TARGET_DIR/$SHARED_DIR/$rule_path"
+    # Copy rule - directly to shared dir
+    mkdir -p "$TARGET_DIR/$SHARED_DIR"
+    cp -f "$REPO_DIR/$rule_path" "$TARGET_DIR/$SHARED_DIR/$(basename "$rule_path")"
     
     echo "Added rule: $rule_path"
   done
@@ -433,7 +502,7 @@ cmd_add_ruleset() {
     ruleset_path="rulesets/$ruleset"
     
     # Check if ruleset exists
-    if [ ! -d "$TEMP_DIR/$ruleset_path" ]; then
+    if [ ! -d "$REPO_DIR/$ruleset_path" ]; then
       warn "Ruleset not found: $ruleset_path"
       continue
     fi
@@ -442,16 +511,14 @@ cmd_add_ruleset() {
     add_manifest_entry "$ruleset_path"
     
     # Find all rules in the ruleset
-    find "$TEMP_DIR/$ruleset_path" -name "*.mdc" | while read -r rule_link; do
-      # Get the target of the symlink
+    find "$REPO_DIR/$ruleset_path" -name "*.mdc" | while read -r rule_link; do
+      # Get rule name and source path
       rule_name=$(basename "$rule_link")
+      rule_source="$REPO_DIR/rules/$rule_name"
       
-      # Get the rule path
-      rule_path="rules/$rule_name"
-      
-      # Copy rule
-      mkdir -p "$(dirname "$TARGET_DIR/$SHARED_DIR/$rule_path")"
-      cp -f "$TEMP_DIR/$rule_path" "$TARGET_DIR/$SHARED_DIR/$rule_path"
+      # Copy rule - directly to shared dir
+      mkdir -p "$TARGET_DIR/$SHARED_DIR"
+      cp -f "$rule_source" "$TARGET_DIR/$SHARED_DIR/$rule_name"
     done
     
     echo "Added ruleset: $ruleset_path"
@@ -475,8 +542,8 @@ cmd_remove_rule() {
     # Remove from manifest
     remove_manifest_entry "$rule_path"
     
-    # Remove rule
-    rm -f "$TARGET_DIR/$SHARED_DIR/$rule_path"
+    # Remove rule from shared dir directly
+    rm -f "$TARGET_DIR/$SHARED_DIR/$(basename "$rule_path")"
     
     echo "Removed rule: $rule_path"
   done
@@ -503,7 +570,7 @@ cmd_remove_ruleset() {
     remove_manifest_entry "$ruleset_path"
     
     # Find all rules in the ruleset
-    find "$TEMP_DIR/$ruleset_path" -name "*.mdc" 2>/dev/null | while read -r rule_link; do
+    find "$REPO_DIR/$ruleset_path" -name "*.mdc" 2>/dev/null | while read -r rule_link; do
       rule_name=$(basename "$rule_link")
       rule_path="rules/$rule_name"
       
@@ -511,7 +578,7 @@ cmd_remove_ruleset() {
       used_elsewhere=false
       for other_ruleset in $MANIFEST_ENTRIES; do
         if echo "$other_ruleset" | grep -q "^rulesets/" && [ "$other_ruleset" != "$ruleset_path" ]; then
-          if find "$TEMP_DIR/$other_ruleset" -name "$rule_name" | grep -q .; then
+          if find "$REPO_DIR/$other_ruleset" -name "$rule_name" | grep -q .; then
             used_elsewhere=true
             break
           fi
@@ -520,7 +587,7 @@ cmd_remove_ruleset() {
       
       # Remove rule if not used elsewhere
       if ! $used_elsewhere; then
-        rm -f "$TARGET_DIR/$SHARED_DIR/$rule_path"
+        rm -f "$TARGET_DIR/$SHARED_DIR/$rule_name"
         echo "Removed rule: $rule_path"
       fi
     done
@@ -548,7 +615,7 @@ cmd_sync() {
   # Clean up invalid entries
   new_entries=""
   for entry in $MANIFEST_ENTRIES; do
-    if [ -e "$TEMP_DIR/$entry" ]; then
+    if [ -e "$REPO_DIR/$entry" ]; then
       if [ -z "$new_entries" ]; then
         new_entries="$entry"
       else
@@ -570,22 +637,20 @@ $entry"
   # Sync rules
   for entry in $MANIFEST_ENTRIES; do
     if echo "$entry" | grep -q "^rules/"; then
-      # Copy rule
-      mkdir -p "$(dirname "$TARGET_DIR/$SHARED_DIR/$entry")"
-      cp -f "$TEMP_DIR/$entry" "$TARGET_DIR/$SHARED_DIR/$entry"
+      # Copy rule directly to shared dir
+      mkdir -p "$TARGET_DIR/$SHARED_DIR"
+      cp -f "$REPO_DIR/$entry" "$TARGET_DIR/$SHARED_DIR/$(basename "$entry")"
       echo "Synced rule: $entry"
     elif echo "$entry" | grep -q "^rulesets/"; then
       # Find all rules in the ruleset
-      find "$TEMP_DIR/$entry" -name "*.mdc" | while read -r rule_link; do
-        # Get the target of the symlink
+      find "$REPO_DIR/$entry" -name "*.mdc" | while read -r rule_link; do
+        # Get rule name and source path
         rule_name=$(basename "$rule_link")
+        rule_source="$REPO_DIR/rules/$rule_name"
         
-        # Get the rule path
-        rule_path="rules/$rule_name"
-        
-        # Copy rule
-        mkdir -p "$(dirname "$TARGET_DIR/$SHARED_DIR/$rule_path")"
-        cp -f "$TEMP_DIR/$rule_path" "$TARGET_DIR/$SHARED_DIR/$rule_path"
+        # Copy rule directly to shared dir
+        mkdir -p "$TARGET_DIR/$SHARED_DIR"
+        cp -f "$rule_source" "$TARGET_DIR/$SHARED_DIR/$rule_name"
       done
       echo "Synced ruleset: $entry"
     fi

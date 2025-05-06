@@ -12,6 +12,7 @@ Prerequisites:
 - git
 - POSIX-compatible shell (bash, dash, zsh, etc.)
 - Core Unix utilities (find, grep, cat, mktemp, etc.)
+- tree (for displaying directory structures)
 
 Installation:
 ```

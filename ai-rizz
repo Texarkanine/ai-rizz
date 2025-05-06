@@ -180,6 +180,26 @@ cmd_init() {
   source_repo=""
   target_dir=""
   mode=""
+  init_success=false
+  
+  # Setup cleanup function for error handling
+  init_cleanup() {
+    if [ "$init_success" = "false" ]; then
+      echo "Error during initialization, cleaning up..." >&2
+      # Remove target directory if created
+      [ -n "$TARGET_DIR" ] && [ -d "$TARGET_DIR" ] && rm -rf "$TARGET_DIR"
+      # Remove manifest file if created
+      [ -f "$MANIFEST_FILE" ] && rm -f "$MANIFEST_FILE"
+      # Remove git exclude entries if added
+      if [ "$mode" = "local" ] && [ -n "$TARGET_DIR" ]; then
+        update_git_exclude "$TARGET_DIR" "remove" 2>/dev/null || true
+        update_git_exclude "$MANIFEST_FILE" "remove" 2>/dev/null || true
+      fi
+    fi
+  }
+  
+  # Add trap to call cleanup on exit
+  trap init_cleanup EXIT
   
   # Parse arguments
   while [ $# -gt 0 ]; do
@@ -261,7 +281,12 @@ cmd_init() {
   write_manifest
   
   # Clone source repository
-  git_sync "$SOURCE_REPO"
+  if ! git_sync "$SOURCE_REPO"; then
+    return 1  # This will trigger the cleanup on exit
+  fi
+  
+  # Initialization completed successfully
+  init_success=true
   
   echo "Initialized ai-rizz with source: $SOURCE_REPO, target: $TARGET_DIR, mode: $mode"
   return 0

@@ -205,12 +205,12 @@ This manifest tracks which rules and rulesets are installed, and where they shou
 
 The project uses [shunit2](https://github.com/kward/shunit2) for unit and integration testing:
 
-- **Test Structure**:
+#### Test Structure
   - `tests/common.sh`: Common test utilities and helper functions
   - `tests/run_tests.sh`: Test runner script that finds and executes all tests
   - `tests/unit/`: Contains unit tests for individual functions
 
-- **Running Tests**:
+#### Running Tests
   ```
   # Run all tests
   make test
@@ -219,11 +219,12 @@ The project uses [shunit2](https://github.com/kward/shunit2) for unit and integr
   sh tests/unit/sync_shunit.test.sh
   ```
 
-- **Writing New Tests**:
-  1. Create a new test file in the appropriate directory
-  2. Source the common test utilities: `. "$(dirname "$0")/../common.sh"`
-  3. Source the actual implementation: `source_ai_rizz`
-  4. Write test functions prefixed with `test_` (e.g., `test_sync_cleanup()`)
+#### Writing New Tests
+
+1. Create a new test file in the appropriate directory
+2. Source the common test utilities: `. "$(dirname "$0")/../common.sh"`
+3. Source the actual implementation: `source_ai_rizz`
+4. Write test functions prefixed with `test_` (e.g., `test_sync_cleanup()`)
   5. Use shunit2 assertions like `assert_file_exists`, `assert_file_not_exists`, `assert_equals`
   6. Include the shunit2 framework at the end: `. "$(dirname "$0")/../../shunit2"`
 

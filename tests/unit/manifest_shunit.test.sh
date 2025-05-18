@@ -5,6 +5,9 @@
 # shellcheck disable=SC1091
 . "$(dirname "$0")/../common.sh"
 
+# Source the actual implementation from ai-rizz
+source_ai_rizz
+
 # Test functions
 # -------------
 

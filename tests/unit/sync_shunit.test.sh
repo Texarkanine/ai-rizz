@@ -5,6 +5,9 @@
 # shellcheck disable=SC1091
 . "$(dirname "$0")/../common.sh"
 
+# Source the actual implementation from ai-rizz
+source_ai_rizz
+
 # Main test functions
 # ------------------
 
@@ -148,126 +151,6 @@ test_sync_edge_cases() {
   # Verify manifest was updated
   read_manifest
   assert_equals "" "$MANIFEST_ENTRIES" "Manifest should be updated to remove invalid entries"
-}
-
-# Define our implementation of the functions being tested
-# These will be overridden if the real implementation is sourced
-
-# cmd_sync implementation 
-cmd_sync() {
-  # Read manifest
-  read_manifest
-  
-  # Create shared directory
-  mkdir -p "$TARGET_DIR/$SHARED_DIR"
-  
-  # First, scan all rules in the shared directory
-  for rule_file in "$TARGET_DIR/$SHARED_DIR"/*.mdc; do
-    if [ -f "$rule_file" ]; then
-      rule_name=$(basename "$rule_file")
-      rule_needed=false
-      
-      # Check if rule is directly in manifest
-      if echo "$MANIFEST_ENTRIES" | grep -q "^rules/$rule_name$"; then
-        rule_needed=true
-      else
-        # Check if rule is in any of the rulesets in manifest
-        for ruleset in $(echo "$MANIFEST_ENTRIES" | grep "^rulesets/" || true); do
-          if [ -f "$REPO_DIR/$ruleset/$rule_name" ]; then
-            rule_needed=true
-            break
-          fi
-        done
-      fi
-      
-      # Remove rule if not needed
-      if ! $rule_needed; then
-        rm -f "$rule_file"
-        echo "Removed orphaned rule: $rule_name"
-      fi
-    fi
-  done
-  
-  # Clean up invalid entries
-  new_entries=""
-  for entry in $MANIFEST_ENTRIES; do
-    if [ -e "$REPO_DIR/$entry" ]; then
-      if [ -z "$new_entries" ]; then
-        new_entries="$entry"
-      else
-        new_entries="$new_entries
-$entry"
-      fi
-    fi
-  done
-  
-  # Update manifest if entries changed
-  if [ "$new_entries" != "$MANIFEST_ENTRIES" ]; then
-    MANIFEST_ENTRIES="$new_entries"
-    write_manifest
-  fi
-  
-  # Sync rules
-  for entry in $MANIFEST_ENTRIES; do
-    if echo "$entry" | grep -q "^rules/"; then
-      # Copy rule directly to shared dir
-      cp -f "$REPO_DIR/$entry" "$TARGET_DIR/$SHARED_DIR/$(basename "$entry")"
-    elif echo "$entry" | grep -q "^rulesets/"; then
-      # Find all rules in the ruleset
-      for rule_link in "$REPO_DIR/$entry"/*.mdc; do
-        if [ -f "$rule_link" ]; then
-          # Get rule name and source path
-          rule_name=$(basename "$rule_link")
-          rule_source="$REPO_DIR/rules/$rule_name"
-          
-          # Copy rule directly to shared dir
-          cp -f "$rule_source" "$TARGET_DIR/$SHARED_DIR/$rule_name"
-        fi
-      done
-    fi
-  done
-  
-  return 0
-}
-
-# cmd_remove_rule implementation
-cmd_remove_rule() {
-  # Process each rule
-  for rule in "$@"; do
-    rule_path="rules/$rule"
-    
-    # Remove from manifest
-    read_manifest
-    remove_manifest_entry "$rule_path"
-    write_manifest
-    
-    echo "Removed rule: $rule_path"
-  done
-  
-  # Sync to ensure proper cleanup
-  cmd_sync
-  
-  return 0
-}
-
-# cmd_remove_ruleset implementation
-cmd_remove_ruleset() {
-  # Process each ruleset
-  for ruleset in "$@"; do
-    ruleset_path="rulesets/$ruleset"
-    
-    # Remove from manifest
-    read_manifest
-    remove_manifest_entry "$ruleset_path"
-    write_manifest
-    
-    echo "Removed ruleset: $ruleset_path"
-  done
-  
-  # Sync to ensure proper cleanup
-  cmd_sync
-  
-  return 0
 }
 
 # Load and run shunit2

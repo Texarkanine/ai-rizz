@@ -141,15 +141,43 @@ assert_equals() {
   assertEquals "$3" "$1" "$2"
 }
 
-# Source the ai-rizz script - only use this in test files that need to test the actual implementation
+# Source the ai-rizz script - use this in test files to test the actual implementation
 source_ai_rizz() {
-  # Find the correct path to ai-rizz
-  AI_RIZZ_PATH="${AI_RIZZ_PATH:-../../ai-rizz}"
+  # Save original global variables that we need to restore after sourcing
+  _TEST_MANIFEST_FILE="$MANIFEST_FILE"
+  _TEST_SOURCE_REPO="$SOURCE_REPO"
+  _TEST_TARGET_DIR="$TARGET_DIR"
+  _TEST_REPO_DIR="$REPO_DIR"
   
-  # Override functions that interact with the real system
+  # Mock functions that interact with the real system
   git_sync() { return 0; }
   
-  # Source the script
+  # Find path to ai-rizz script using best available method
+  # 1. Use AI_RIZZ_PATH from environment if provided
+  # 2. Try project root paths (run_tests.sh runs tests from project root)
+  # 3. Try relative paths from test directory
+  if [ -n "$AI_RIZZ_PATH" ] && [ -f "$AI_RIZZ_PATH" ]; then
+    :  # AI_RIZZ_PATH is already set and valid
+  elif [ -f "./ai-rizz" ]; then
+    AI_RIZZ_PATH="./ai-rizz"
+  elif [ -f "$(dirname "$0")/../ai-rizz" ]; then
+    AI_RIZZ_PATH="$(dirname "$0")/../ai-rizz"
+  elif [ -f "$(dirname "$0")/../../ai-rizz" ]; then
+    AI_RIZZ_PATH="$(dirname "$0")/../../ai-rizz"
+  else
+    echo "ERROR: Cannot find ai-rizz script" >&2
+    return 1
+  fi
+  
+  echo "Sourcing ai-rizz from: $AI_RIZZ_PATH" >&2
+  
+  # Source the script to get the real implementations
   # shellcheck disable=SC1090
   . "$AI_RIZZ_PATH"
+  
+  # Restore test environment variables
+  MANIFEST_FILE="$_TEST_MANIFEST_FILE"
+  SOURCE_REPO="$_TEST_SOURCE_REPO"
+  TARGET_DIR="$_TEST_TARGET_DIR"
+  REPO_DIR="$_TEST_REPO_DIR"
 } 

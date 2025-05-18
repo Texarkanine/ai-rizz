@@ -1,2 +1,4 @@
 https://github.com/texarkanine/.cursor-rules.git	.cursor/rules
 rulesets/meta
+rulesets/niko
+rules/shell-tdd.mdc

@@ -420,7 +420,7 @@ cmd_list() {
       if [ -d "$ruleset" ]; then
         # Check if tree command exists
         if command -v tree >/dev/null 2>&1; then
-          (cd "$ruleset" && tree -L 1 --noreport) | tail -n +2 | sed 's/^/    /'
+          (cd "$ruleset" && tree -L 1 --noreport) | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'
         else
           # Fallback if tree is not available
           find "$ruleset" -maxdepth 1 -name "*.mdc" -exec basename {} \; | sort | sed 's/^/    ├── /'
@@ -465,6 +465,12 @@ cmd_add_rule() {
   
   # Process each rule
   for rule in "$@"; do
+    # Add .mdc extension if not present
+    case "$rule" in
+      *".mdc") ;;  # Already has extension
+      *) rule="${rule}.mdc" ;;  # Add extension
+    esac
+    
     rule_path="rules/$rule"
     
     # Check if rule exists
@@ -537,6 +543,12 @@ cmd_remove_rule() {
   
   # Process each rule
   for rule in "$@"; do
+    # Add .mdc extension if not present
+    case "$rule" in
+      *".mdc") ;;  # Already has extension
+      *) rule="${rule}.mdc" ;;  # Add extension
+    esac
+    
     rule_path="rules/$rule"
     
     # Remove from manifest
@@ -674,9 +686,9 @@ Available commands:
   init [<source_repo>]     Initialize the repository
   deinit                   Deinitialize the repository
   list                     List available rules and rulesets
-  add rule <rule>...       Add rule(s) to the repository
+  add rule <rule>...       Add rule(s) to the repository (.mdc extension optional)
   add ruleset <ruleset>... Add ruleset(s) to the repository
-  remove rule <rule>...    Remove rule(s) from the repository
+  remove rule <rule>...    Remove rule(s) from the repository (.mdc extension optional)
   remove ruleset <ruleset>... Remove ruleset(s) from the repository
   sync                     Sync the repository
   help                     Show this help
@@ -780,5 +792,3 @@ if [ "${0##*/}" = "ai-rizz" ]; then
       ;;
   esac
 fi
-
-exit 0 

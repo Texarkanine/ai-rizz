@@ -1,8 +1,9 @@
 # Simple Makefile for ai-rizz
 
 # Installation directories
-PREFIX ?= /usr/local
+PREFIX ?= $(HOME)/.local
 BINDIR ?= $(PREFIX)/bin
+BASH_COMPLETION_DIR ?= $(PREFIX)/share/bash-completion/completions
 
 .PHONY: install uninstall help test
 
@@ -12,16 +13,25 @@ help:
 	@echo "Use 'make test' to run tests"
 	@echo ""
 	@echo "You can override installation directory with:"
-	@echo "  make PREFIX=~/local install    # installs to ~/local/bin" 
+	@echo "  make PREFIX=/usr/local install    # installs system-wide (requires sudo)" 
 
 install:
+	@# Create directories if they don't exist
 	mkdir -p $(BINDIR)
-	ln -sf $(CURDIR)/ai-rizz $(BINDIR)/ai-rizz
+	mkdir -p $(BASH_COMPLETION_DIR)
+	@# Install the script
+	cp -f ai-rizz $(BINDIR)/ai-rizz
+	chmod +x $(BINDIR)/ai-rizz
+	@# Install completion
+	cp -f completion.bash $(BASH_COMPLETION_DIR)/ai-rizz
 	@echo "ai-rizz has been installed to $(BINDIR)/ai-rizz"
+	@echo "Bash completion has been installed to $(BASH_COMPLETION_DIR)/ai-rizz"
 
 uninstall:
 	rm -f $(BINDIR)/ai-rizz
+	rm -f $(BASH_COMPLETION_DIR)/ai-rizz
 	@echo "ai-rizz has been uninstalled from $(BINDIR)"
+	@echo "Bash completion has been uninstalled from $(BASH_COMPLETION_DIR)"
 
 test:
 	@sh tests/run_tests.sh

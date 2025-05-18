@@ -33,6 +33,13 @@ setUp() {
   ln -sf "$REPO_DIR/rules/rule2.mdc" "$REPO_DIR/rulesets/ruleset2/rule2.mdc"
   ln -sf "$REPO_DIR/rules/rule3.mdc" "$REPO_DIR/rulesets/ruleset2/rule3.mdc"
   
+  # Initialize test_repo as a git repository
+  cd "$REPO_DIR" || fail "Failed to change to repo directory"
+  git init . >/dev/null 2>&1
+  git add . >/dev/null 2>&1
+  git commit -m "Initial commit" >/dev/null 2>&1
+  cd "$TEST_DIR" || fail "Failed to change back to test directory"
+  
   # Create target directory
   mkdir -p "$TARGET_DIR/$SHARED_DIR"
   

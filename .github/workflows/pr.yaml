@@ -28,10 +28,6 @@ jobs:
         run: |
           git config --global user.email "test@example.com"
           git config --global user.name "Test User"
-          # Make sure tmpdir exists and has right permissions
-          mkdir -p /tmp
-          chmod 777 /tmp
-          # Ensure config directory exists
           mkdir -p "$HOME/.config/ai-rizz"
       
       - name: Run test suite

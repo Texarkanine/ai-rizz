@@ -58,10 +58,7 @@ tearDown() {
 
 # Mock git_sync function for testing
 git_sync() {
-  # Log what operation would be performed but don't actually do it
-  echo "Mock git operation: git clone/pull $1 -> $2"
-  
-  # Always return success
+  # Return success silently
   return 0
 }
 
@@ -160,18 +157,11 @@ source_ai_rizz() {
   _TEST_TARGET_DIR="$TARGET_DIR"
   _TEST_REPO_DIR="$REPO_DIR"
   
-  # Mock git operations 
-  # Define the mock before sourcing the script to ensure it's used
-  git_sync() { 
-    echo "Mock git operation: git clone/pull $1 -> $2" 
-    return 0
-  }
+  # Mock git operations silently
+  git_sync() { return 0; }
   
-  # Override git command with dummy function that always succeeds
-  git() {
-    echo "Mock git command: git $*"
-    return 0
-  }
+  # Override git command with silent function that always succeeds
+  git() { return 0; }
   
   # Find path to ai-rizz script using best available method
   # 1. Use AI_RIZZ_PATH from environment if provided

@@ -201,6 +201,50 @@ rulesets/ruleset1
 
 This manifest tracks which rules and rulesets are installed, and where they should be placed.
 
+### Testing
+
+The project uses [shunit2](https://github.com/kward/shunit2) for unit and integration testing:
+
+- **Test Structure**:
+  - `tests/common.sh`: Common test utilities and helper functions
+  - `tests/unit/`: Contains unit tests for individual functions
+  - `tests/integration/`: Contains integration tests for command workflows
+
+- **Running Tests**:
+  ```
+  # Run all tests
+  make test
+  
+  # Run specific test file
+  sh tests/unit/sync_shunit.test.sh
+  ```
+
+- **Writing New Tests**:
+  1. Create a new test file in the appropriate directory
+  2. Source the common test utilities: `. "$(dirname "$0")/../common.sh"`
+  3. Write test functions prefixed with `test_` (e.g., `test_sync_cleanup()`)
+  4. Use shunit2 assertions like `assert_file_exists`, `assert_file_not_exists`, `assert_equals`
+  5. Include the shunit2 framework at the end: `. "$(dirname "$0")/../../shunit2"`
+
+Test files follow the naming convention `*.test.sh` and use shunit2 assertions to validate functionality.
+
+Example test function:
+```sh
+test_example() {
+  # Setup test conditions
+  setup_test_environment
+  
+  # Run the function being tested
+  some_function
+  
+  # Assert expected outcomes
+  assert_file_exists "/path/to/expected/file"
+  assert_equals "expected" "actual" "Values should match"
+}
+```
+
+All significant code changes should include corresponding test updates or additions.
+
 ### Makefile
 
 The project includes a simple Makefile for installation and uninstallation. The Makefile supports:

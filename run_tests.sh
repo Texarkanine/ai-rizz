@@ -12,12 +12,12 @@ find_tests() {
 # Run a test file
 run_test() {
   test_file="$1"
-  echo "Running test: $test_file"
+  echo "==== Running test: $test_file ===="
   if sh "$test_file"; then
-    echo "PASS: $test_file"
+    echo "==== PASS: $test_file ===="
     return 0
   else
-    echo "FAIL: $test_file"
+    echo "==== FAIL: $test_file ===="
     return 1
   fi
 }

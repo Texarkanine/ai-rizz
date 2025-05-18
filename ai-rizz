@@ -542,14 +542,14 @@ cmd_remove_rule() {
     # Remove from manifest
     remove_manifest_entry "$rule_path"
     
-    # Remove rule from shared dir directly
-    rm -f "$TARGET_DIR/$SHARED_DIR/$(basename "$rule_path")"
-    
     echo "Removed rule: $rule_path"
   done
   
   # Write manifest
   write_manifest
+  
+  # Sync to ensure proper cleanup
+  cmd_sync
   
   return 0
 }
@@ -559,9 +559,6 @@ cmd_remove_ruleset() {
   # Read manifest
   read_manifest
   
-  # Update source repository
-  git_sync "$SOURCE_REPO"
-  
   # Process each ruleset
   for ruleset in "$@"; do
     ruleset_path="rulesets/$ruleset"
@@ -569,34 +566,14 @@ cmd_remove_ruleset() {
     # Remove from manifest
     remove_manifest_entry "$ruleset_path"
     
-    # Find all rules in the ruleset
-    find "$REPO_DIR/$ruleset_path" -name "*.mdc" 2>/dev/null | while read -r rule_link; do
-      rule_name=$(basename "$rule_link")
-      rule_path="rules/$rule_name"
-      
-      # Check if rule is used by other rulesets
-      used_elsewhere=false
-      for other_ruleset in $MANIFEST_ENTRIES; do
-        if echo "$other_ruleset" | grep -q "^rulesets/" && [ "$other_ruleset" != "$ruleset_path" ]; then
-          if find "$REPO_DIR/$other_ruleset" -name "$rule_name" | grep -q .; then
-            used_elsewhere=true
-            break
-          fi
-        fi
-      done
-      
-      # Remove rule if not used elsewhere
-      if ! $used_elsewhere; then
-        rm -f "$TARGET_DIR/$SHARED_DIR/$rule_name"
-        echo "Removed rule: $rule_path"
-      fi
-    done
-    
     echo "Removed ruleset: $ruleset_path"
   done
   
   # Write manifest
   write_manifest
+  
+  # Sync to ensure proper cleanup
+  cmd_sync
   
   return 0
 }
@@ -611,6 +588,33 @@ cmd_sync() {
   
   # Create shared directory
   mkdir -p "$TARGET_DIR/$SHARED_DIR"
+  
+  # First, scan all rules in the shared directory
+  for rule_file in "$TARGET_DIR/$SHARED_DIR"/*.mdc; do
+    if [ -f "$rule_file" ]; then
+      rule_name=$(basename "$rule_file")
+      rule_needed=false
+      
+      # Check if rule is directly in manifest
+      if echo "$MANIFEST_ENTRIES" | grep -q "^rules/$rule_name$"; then
+        rule_needed=true
+      else
+        # Check if rule is in any of the rulesets in manifest
+        for ruleset in $(echo "$MANIFEST_ENTRIES" | grep "^rulesets/" || true); do
+          if [ -f "$REPO_DIR/$ruleset/$rule_name" ]; then
+            rule_needed=true
+            break
+          fi
+        done
+      fi
+      
+      # Remove rule if not needed
+      if ! $rule_needed; then
+        rm -f "$rule_file"
+        echo "Removed orphaned rule: $rule_name"
+      fi
+    fi
+  done
   
   # Clean up invalid entries
   new_entries=""
@@ -651,6 +655,7 @@ $entry"
         # Copy rule directly to shared dir
         mkdir -p "$TARGET_DIR/$SHARED_DIR"
         cp -f "$rule_source" "$TARGET_DIR/$SHARED_DIR/$rule_name"
+        echo "Synced rule from ruleset: $entry/$rule_name"
       done
       echo "Synced ruleset: $entry"
     fi

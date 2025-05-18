@@ -24,5 +24,4 @@ uninstall:
 	@echo "ai-rizz has been uninstalled from $(BINDIR)"
 
 test:
-	@echo "Running all tests..."
-	@for test in tests/unit/*.test.sh; do sh $$test; done
+	@sh run_tests.sh

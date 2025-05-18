@@ -207,6 +207,7 @@ The project uses [shunit2](https://github.com/kward/shunit2) for unit and integr
 
 - **Test Structure**:
   - `tests/common.sh`: Common test utilities and helper functions
+  - `tests/run_tests.sh`: Test runner script that finds and executes all tests
   - `tests/unit/`: Contains unit tests for individual functions
   - `tests/integration/`: Contains integration tests for command workflows
 
@@ -222,26 +223,35 @@ The project uses [shunit2](https://github.com/kward/shunit2) for unit and integr
 - **Writing New Tests**:
   1. Create a new test file in the appropriate directory
   2. Source the common test utilities: `. "$(dirname "$0")/../common.sh"`
-  3. Write test functions prefixed with `test_` (e.g., `test_sync_cleanup()`)
-  4. Use shunit2 assertions like `assert_file_exists`, `assert_file_not_exists`, `assert_equals`
-  5. Include the shunit2 framework at the end: `. "$(dirname "$0")/../../shunit2"`
+  3. Source the actual implementation: `source_ai_rizz`
+  4. Write test functions prefixed with `test_` (e.g., `test_sync_cleanup()`)
+  5. Use shunit2 assertions like `assert_file_exists`, `assert_file_not_exists`, `assert_equals`
+  6. Include the shunit2 framework at the end: `. "$(dirname "$0")/../../shunit2"`
 
-Test files follow the naming convention `*.test.sh` and use shunit2 assertions to validate functionality.
+- **Important Testing Guidelines**:
+  - **Always test the actual implementation**: Use `source_ai_rizz` to load the real code
+  - **Never duplicate functions** being tested in your test files
+  - **Mock only external dependencies** like `git_sync` that interact with real systems
+  - **Use integration tests** with shell tracing to verify you're testing the actual implementation
 
 Example test function:
 ```sh
 test_example() {
   # Setup test conditions
-  setup_test_environment
   
-  # Run the function being tested
-  some_function
+  # Run the actual function (not a duplicate) 
+  cmd_sync
   
   # Assert expected outcomes
   assert_file_exists "/path/to/expected/file"
   assert_equals "expected" "actual" "Values should match"
 }
 ```
+
+To verify you're testing the actual implementation, you can:
+1. Use shell tracing with `set -x` to see which functions are being called
+2. Add intentional bugs to the real implementation to ensure tests fail
+3. Ensure mocks only replace external dependencies, not core functionality
 
 All significant code changes should include corresponding test updates or additions.
 

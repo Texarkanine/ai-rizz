@@ -25,4 +25,4 @@ _ai_rizz_completion() {
     esac
 }
 
-complete -F _ai_rizz_completion ai-rizz 
+complete -F _ai_rizz_completion ai-rizz

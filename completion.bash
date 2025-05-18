@@ -25,4 +25,8 @@ _ai_rizz_completion() {
     esac
 }
 
+<<<<<<< HEAD
 complete -F _ai_rizz_completion ai-rizz
+=======
+complete -F _ai_rizz_completion ai-rizz 
+>>>>>>> 11b0ecc (feat: add bash completion and user-local installation)

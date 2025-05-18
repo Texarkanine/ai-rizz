@@ -241,11 +241,3 @@ test_example() {
   assert_equals "expected" "actual" "Values should match"
 }
 ```
-
-### Makefile
-
-The project includes a simple Makefile for installation and uninstallation. The Makefile supports:
-
-- Installation with customizable prefix: `make PREFIX=/custom/path install`
-- Uninstallation: `make uninstall`
-- Help: `make help`

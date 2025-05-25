@@ -40,6 +40,8 @@ After each sub-phase, run `make test` to measure concrete progress.
 ### Test Compatibility 
 ✅ **No test modifications needed**. Tests already expect new behavior patterns.
 
+**Test Strategy**: Migration tests should manually call `initialize_ai_rizz()` to test migration logic directly, rather than relying on command functions that may prompt for input. This separates migration logic testing from CLI interface testing.
+
 ## Phase 2.1: Mode Detection & Global Variable System
 
 ### Global Variable Updates

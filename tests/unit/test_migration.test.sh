@@ -15,8 +15,8 @@ test_migrate_legacy_local_mode() {
     # Setup: Legacy local mode (ai-rizz.inf in git exclude)
     setup_legacy_local_repo
     
-    # Test: Any command should trigger migration
-    cmd_list
+    # Test: Manual initialization should trigger migration
+    initialize_ai_rizz
     
     # Expected: Migrated to new local mode structure
     assert_file_not_exists "$COMMIT_MANIFEST_FILE"
@@ -33,8 +33,8 @@ test_migrate_legacy_commit_mode() {
     # Setup: Legacy commit mode (ai-rizz.inf not in git exclude)
     setup_legacy_commit_repo
     
-    # Test: Any command should preserve commit mode
-    cmd_list
+    # Test: Manual initialization should preserve commit mode
+    initialize_ai_rizz
     
     # Expected: No migration needed, remains commit mode
     assert_file_exists "$COMMIT_MANIFEST_FILE"
@@ -52,7 +52,7 @@ test_detect_legacy_local_mode() {
 
 test_no_migration_needed_new_format() {
     # Setup: New format (both modes)
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit
     
     # Test: No migration should be needed
@@ -66,7 +66,7 @@ test_migration_preserves_all_rules() {
     cp "$REPO_DIR/rules/rule2.mdc" "$TARGET_DIR/$SHARED_DIR/"
     
     # Test: Migration preserves all rules
-    cmd_list
+    initialize_ai_rizz
     
     # Expected: All rules preserved in local mode
     assert_file_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
@@ -85,7 +85,7 @@ test_migration_preserves_rulesets() {
     cp "$REPO_DIR/rules/rule2.mdc" "$TARGET_DIR/$SHARED_DIR/"  # ruleset1 includes rule2
     
     # Test: Migration preserves rulesets
-    cmd_list
+    initialize_ai_rizz
     
     # Expected: Ruleset preserved in local mode
     local_content=$(cat "$LOCAL_MANIFEST_FILE")
@@ -107,7 +107,7 @@ test_migration_updates_directory_structure() {
     cp "$REPO_DIR/rules/rule3.mdc" "$TARGET_DIR/$SHARED_DIR/"
     
     # Test: Migration should move all files to local directory
-    cmd_list
+    initialize_ai_rizz
     
     # Expected: All files moved from shared to local
     assert_file_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
@@ -134,7 +134,7 @@ test_migration_preserves_manifest_header() {
     echo "$custom_target/$SHARED_DIR" >> .git/info/exclude
     
     # Test: Migration should preserve custom target directory
-    cmd_list
+    initialize_ai_rizz
     
     # Expected: New manifest should have same header
     local_header=$(head -n1 "$LOCAL_MANIFEST_FILE")
@@ -151,7 +151,7 @@ test_migration_git_exclude_cleanup() {
     echo "another_ignored_file" >> .git/info/exclude
     
     # Test: Migration should update git excludes correctly
-    cmd_list
+    initialize_ai_rizz
     
     # Expected: Legacy excludes removed, new excludes added
     assert_git_exclude_not_contains "$COMMIT_MANIFEST_FILE"
@@ -169,7 +169,7 @@ test_migration_triggered_by_any_command() {
     setup_legacy_local_repo
     
     # Test: Different commands should all trigger migration
-    cmd_sync  # Should trigger migration
+    initialize_ai_rizz
     
     # Expected: Migration completed
     assert_file_exists "$LOCAL_MANIFEST_FILE"
@@ -181,11 +181,11 @@ test_migration_idempotent() {
     setup_legacy_local_repo
     
     # Test: Multiple commands should not re-migrate
-    cmd_list
+    initialize_ai_rizz
     first_mtime=$(stat -f "%m" "$LOCAL_MANIFEST_FILE" 2>/dev/null || stat -c "%Y" "$LOCAL_MANIFEST_FILE")
     
     sleep 1
-    cmd_list  # Should not re-migrate
+    initialize_ai_rizz  # Should not re-migrate
     
     second_mtime=$(stat -f "%m" "$LOCAL_MANIFEST_FILE" 2>/dev/null || stat -c "%Y" "$LOCAL_MANIFEST_FILE")
     assertEquals "Should not re-migrate" "$first_mtime" "$second_mtime"
@@ -196,7 +196,7 @@ test_no_migration_commit_mode() {
     setup_legacy_commit_repo
     
     # Test: Should not trigger migration
-    cmd_list
+    initialize_ai_rizz
     
     # Expected: Remains in original state
     assert_file_exists "$COMMIT_MANIFEST_FILE"
@@ -210,13 +210,10 @@ test_migration_handles_missing_files() {
     echo "rules/nonexistent.mdc" >> "$COMMIT_MANIFEST_FILE"
     
     # Test: Migration should handle missing files gracefully
-    output=$(cmd_list 2>&1 || echo "ERROR_OCCURRED")
+    initialize_ai_rizz
     
     # Expected: Migration completes despite missing file
     assert_file_exists "$LOCAL_MANIFEST_FILE"
-    
-    # Should warn about missing file
-    echo "$output" | grep -q "not found\|warning" || true  # May warn
 }
 
 test_migration_with_empty_manifest() {
@@ -227,7 +224,7 @@ test_migration_with_empty_manifest() {
     echo "$TARGET_DIR/$SHARED_DIR" >> .git/info/exclude
     
     # Test: Migration should handle empty manifest
-    cmd_list
+    initialize_ai_rizz
     
     # Expected: Migration completes with empty local manifest
     assert_file_exists "$LOCAL_MANIFEST_FILE"
@@ -243,10 +240,10 @@ test_migration_error_recovery() {
     chmod 444 "$TARGET_DIR"
     
     # Test: Migration should handle errors gracefully
-    output=$(cmd_list 2>&1 || echo "ERROR_OCCURRED")
+    initialize_ai_rizz
     
     # Expected: Should not leave system in broken state
-    echo "$output" | grep -q "error\|permission\|failed" || true
+    assert_file_exists "$LOCAL_MANIFEST_FILE"
     
     # Restore permissions for cleanup
     chmod 755 "$TARGET_DIR"

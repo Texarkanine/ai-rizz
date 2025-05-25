@@ -37,12 +37,12 @@ alwaysApply: false # Optional: Set to true to always include this rule
 
 * **`description`**: A concise, semantic description. Start with phrases like "Guidelines for..." or "Instructions on..." This likely helps Cursor automatically select the most relevant rule when multiple match.
 * **`globs`**: File pattern(s) that trigger this rule's automatic activation. Be specific.
- * Examples:
- _ `src/components/**/_.tsx,src/components/**/_.jsx,` (React components)
- _ `src/server/api/**/_.ts` (Server API routes)
- _ `_.json,_.yaml,_.yml` (Configuration files)
- _ `src/utils/!(test).ts` (Utility files, excluding tests)
- _ `package.json,pnpm-lock.yaml` (Specific root files)
+    Examples:
+    * `src/components/**/_.tsx,src/components/**/_.jsx` (React components)
+    * `src/server/api/**/_.ts` (Server API routes)
+    * `_.json,_.yaml,_.yml` (Configuration files)
+    * `src/utils/!(test).ts` (Utility files, excluding tests)
+    * `package.json,pnpm-lock.yaml` (Specific root files)
 * **`alwaysApply`** (Optional, defaults to `false`): If `true`, the rule is included in context regardless of the files being referenced.
 
 ### 2. Content Sections (Recommended Structure)
@@ -136,7 +136,7 @@ Choose your rule's matcher type based on its purpose and scope. The choice affec
 ---
 description: <description>
 globs: 
-alwaysAttach: true
+alwaysApply: true
 ---
 ```
 
@@ -153,7 +153,7 @@ alwaysAttach: true
 ---
 description: <description>
 globs: **/*.js,**/*.ts
-alwaysAttach: false
+alwaysApply: false
 ---
 ```
 
@@ -170,7 +170,7 @@ alwaysAttach: false
 ---
 description: Guidance for <outcome> when doing <task>
 globs:
-alwaysAttach: false
+alwaysApply: false
 ---
 ```
 
@@ -184,9 +184,9 @@ alwaysAttach: false
 
 ```yaml
 ---
-description: # MUST be empty
-globs: # MUST be  for activation
-alwaysApply: false # MUST be false
+description:
+globs:
+alwaysApply: false
 ---
 ```
 

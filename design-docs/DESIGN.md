@@ -259,20 +259,22 @@ ai-rizz add rule my-rule --local
 - [x] **HUMAN REVIEW CHECKPOINT**: Approve README before test development
 
 ### Phase 1: Unit Test Development
-- [ ] **HUMAN REVIEW CHECKPOINT**: Draft comprehensive unit tests based on README
-- [ ] Write unit tests for progressive initialization  
-- [ ] Write unit tests for lazy initialization logic
-- [ ] Write unit tests for smart mode selection in add operations
-- [ ] Write unit tests for sync-after-modification behavior
-- [ ] Write unit tests for migration scenarios
-- [ ] **Expected**: Tests FAIL against current system
-- [ ] **Required**: Human approval before implementation begins
+- [x] **HUMAN REVIEW CHECKPOINT**: Draft comprehensive unit tests based on README
+- [x] Write unit tests for progressive initialization  
+- [x] Write unit tests for lazy initialization logic
+- [x] Write unit tests for smart mode selection in add operations
+- [x] Write unit tests for sync-after-modification behavior
+- [x] Write unit tests for migration scenarios
+- [x] **Expected**: Tests FAIL against current system
+- [x] **Required**: Human approval before implementation begins
 
 ### Phase 2: Core Infrastructure
 - [ ] Mode detection utilities
 - [ ] Lazy initialization logic
 - [ ] Progressive manifest handling
 - [ ] Mode-selective git exclude management
+- [ ] Enhanced `sync` command for multi-mode
+- [ ] Backward compatibility migration
 
 ### Phase 3: Command Updates
 - [ ] Update `init` command for single-mode setup
@@ -284,8 +286,6 @@ ai-rizz add rule my-rule --local
 ### Phase 4: Advanced Features
 - [ ] Conflict resolution logic
 - [ ] Mode migration functionality
-- [ ] Enhanced `sync` command for multi-mode
-- [ ] Backward compatibility migration
 
 ### Phase 5: Polish & Testing
 - [ ] Update help text and usage documentation
@@ -295,6 +295,12 @@ ai-rizz add rule my-rule --local
 - [ ] Documentation updates
 
 ## Data Structures
+
+### Architecture Principles
+
+- **Read-only Globals**: Global variables are set once during initialization and read-only afterward
+- **No Global State Pollution**: Functions return data via stdout/return codes, not by setting global variables
+- **Clean Function Interfaces**: Functions have clear inputs/outputs without side effects on global state
 
 ### Global Variables (New/Modified)
 
@@ -307,9 +313,7 @@ LOCAL_MANIFEST_FILE="ai-rizz.local.inf"
 SHARED_DIR="shared"
 LOCAL_DIR="local"
 
-# Status tracking (only for existing manifests)
-COMMIT_ENTRIES=""
-LOCAL_ENTRIES=""
+# Status tracking (cached during initialization, read-only afterward)
 COMMIT_SOURCE_REPO=""
 LOCAL_SOURCE_REPO=""
 COMMIT_TARGET_DIR=""
@@ -331,23 +335,26 @@ UNINSTALLED_GLYPH="○"    # Not installed
 # Detect which modes are initialized
 detect_initialized_modes()
 
-# Read manifests (only existing ones)
-read_available_manifests()
+# Cache manifest metadata (replaces read_available_manifests)
+cache_manifest_metadata()
 
 # Lazy initialize missing mode
 lazy_init_mode()
 
-# Mode-aware manifest operations
-read_manifest_if_exists()
-write_manifest_mode()
+# Mode-aware manifest operations (return data via stdout, not globals)
+read_manifest_metadata()        # Returns "source_repo\ttarget_dir" via stdout
+read_manifest_entries()         # Returns entries via stdout, one per line  
+write_manifest_with_entries()   # Writes metadata + entries from stdin
+add_manifest_entry()            # Adds single entry to manifest file
+remove_manifest_entry()         # Removes single entry from manifest file
 
-# Get rule/ruleset status based on available modes
+# Get rule/ruleset status based on available modes (Phase 3)
 get_install_status()
 
-# Move rule/ruleset between modes
+# Move rule/ruleset between modes (Phase 3)
 migrate_rule_mode()
 
-# Detect and resolve conflicts (silent cleanup)
+# Detect and resolve conflicts (Phase 3)
 resolve_conflicts()
 
 # Detect legacy repository and migrate

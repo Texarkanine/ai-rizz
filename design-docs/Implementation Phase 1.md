@@ -729,71 +729,123 @@ test_graceful_corrupted_manifest() {
 
 ### Step 10: Test Execution and Validation
 
-#### 10.1 Test Runner Setup
+#### 10.1 Test Integration with Makefile
 
-Create comprehensive test runner script:
+The phase1 tests are integrated into the existing test infrastructure:
 
-```bash
-#!/bin/sh
-# tests/run_phase1_tests.sh
+- **Test files renamed**: All test files use `.test.sh` suffix to be automatically discovered by `make test`
+- **Interactive prompts handled**: Tests account for interactive behavior using stdin redirection
+- **Run via make**: Execute tests with `make test` - no separate test runner needed
 
-echo "Running Phase 1 Unit Tests for Progressive Initialization"
-echo "========================================================="
-echo "Note: Some tests are expected to FAIL against current implementation"
-echo
-
-test_files="
-test_progressive_init.sh
-test_lazy_initialization.sh
-test_mode_detection.sh
-test_mode_operations.sh
-test_conflict_resolution.sh
-test_migration.sh
-test_error_handling.sh
-test_deinit_modes.sh
-"
-
-passed=0
-failed=0
-total=0
-
-for test_file in $test_files; do
-    echo "Running tests/unit/$test_file..."
-    if sh "tests/unit/$test_file"; then
-        passed=$((passed + 1))
-        echo "✓ PASSED"
-    else
-        failed=$((failed + 1))
-        echo "✗ FAILED (Expected for Phase 1)"
-    fi
-    total=$((total + 1))
-    echo
-done
-
-echo "========================================================="
-echo "Test Results: $passed passed, $failed failed, $total total"
-echo "Failed tests represent new behavior not yet implemented."
-echo "This is expected and validates test completeness."
+**Test file naming convention**:
+```
+tests/unit/test_progressive_init.test.sh
+tests/unit/test_lazy_initialization.test.sh
+tests/unit/test_mode_detection.test.sh
+tests/unit/test_mode_operations.test.sh
+tests/unit/test_conflict_resolution.test.sh
+tests/unit/test_migration.test.sh
+tests/unit/test_error_handling.test.sh
+tests/unit/test_deinit_modes.test.sh
 ```
 
-#### 10.2 Expected Failure Analysis
+**Interactive prompt testing**: Tests define target behavior without accommodating current implementation:
+- Tests call commands with new flags/behavior as specified in design
+- Tests expect specific return codes and output patterns 
+- **Timeout mechanism**: Tests that hang on current implementation (waiting for interactive input) will timeout after 5 seconds and fail
+- This approach ensures tests validate target behavior, not current limitations
+
+#### 10.2 Implement Test Timeout Mechanism
+
+Add timeout support to test runner to handle tests that hang on current implementation:
+
+**File**: `tests/run_tests.sh`
+
+Add prerequisite checking and modify the `run_test()` function to add a 5-second timeout:
+
+```bash
+# Check test prerequisites
+check_prerequisites() {
+  missing=""
+  
+  # Check for timeout command (required for test timeouts)
+  if ! command -v timeout >/dev/null 2>&1; then
+    missing="$missing timeout"
+  fi
+  
+  # Check for git command (required for test setup)
+  if ! command -v git >/dev/null 2>&1; then
+    missing="$missing git"
+  fi
+  
+  if [ -n "$missing" ]; then
+    echo "ERROR: Missing required test prerequisites:$missing" >&2
+    echo "Please install the missing commands and try again." >&2
+    exit 1
+  fi
+}
+
+# Run a test file with timeout
+run_test() {
+  test_file="$1"
+  echo "==== Running test: ${test_file#$PROJECT_ROOT/tests/} ===="
+  
+  # Run from project root for consistency
+  cd "$PROJECT_ROOT" || exit 1
+  
+  # Set path to ai-rizz script to ensure all tests can find it
+  AI_RIZZ_PATH="$PROJECT_ROOT/ai-rizz"
+  export AI_RIZZ_PATH
+  
+  # Use timeout (prerequisite checked at startup)
+  if timeout 5s sh "$test_file"; then
+    echo "==== PASS: ${test_file#$PROJECT_ROOT/tests/} ===="
+    return 0
+  else
+    exit_code=$?
+    if [ $exit_code -eq 124 ]; then
+      echo "==== TIMEOUT: ${test_file#$PROJECT_ROOT/tests/} (hung waiting for input) ===="
+    else
+      echo "==== FAIL: ${test_file#$PROJECT_ROOT/tests/} ===="
+    fi
+    return 1
+  fi
+}
+
+# In main section, call check_prerequisites before running tests:
+check_prerequisites
+```
+
+#### 10.3 Expected Failure Analysis
 
 Document which tests should fail and why:
 
-1. **Progressive Init Tests**: Will fail because current `cmd_init` doesn't support `--local`/`--commit` flags
+1. **Progressive Init Tests**: Will fail because current `cmd_init` doesn't support `--local`/`--commit` flags (may timeout waiting for input)
 2. **Lazy Initialization Tests**: Will fail because current system doesn't auto-create modes
 3. **Three-State Glyph Tests**: Will fail because current system only has two states
 4. **Mode Migration Tests**: Will fail because current system doesn't support mode migration
 5. **Dual-Mode Tests**: Will fail because current system is single-mode only
 
-#### 10.3 Test Validation Criteria
+**Timeout Failures**: Tests that hang waiting for interactive input from current implementation will timeout after 5 seconds, which counts as expected failure validating that new behavior is needed.
+
+#### 10.4 Test Validation Criteria
 
 **Success Criteria for Phase 1**:
-- All test files execute without shell syntax errors
-- Tests actually invoke ai-rizz commands (not just mock functions)  
-- Expected failures occur (validates we're testing real behavior changes)
-- Test coverage includes all major new features from design
-- Tests are deterministic and use proper temp directory isolation
+- All test files execute without shell syntax errors ✅
+- Tests actually invoke ai-rizz commands (not just mock functions) ✅
+- Expected failures occur (validates we're testing real behavior changes) ✅
+  - Timeouts when current implementation prompts for input ✅
+  - Assertion failures when behavior doesn't match target design ✅
+- Test coverage includes all major new features from design ✅
+- Tests are deterministic and use proper temp directory isolation ✅
+- Timeout mechanism prevents tests from hanging indefinitely ✅
+
+**Test Execution Results**:
+- 8 test files created and integrated into `make test`
+- All tests properly timeout (5s) when hanging on current implementation prompts
+- Some tests show assertion failures for specific unimplemented behavior (expected)
+- Clear feedback provided: `TIMEOUT: (hung waiting for input)` vs `FAIL: assertion errors`
+- Test results: 0/8 passed (expected - validates comprehensive coverage of new behavior)
 
 ### Step 11: Clean Up Legacy Tests
 
@@ -806,6 +858,8 @@ rm tests/unit/manifest_shunit.test.sh
 ```
 
 **Important**: This ensures that after Phase 1 completion, we only have tests that validate the new progressive initialization behavior. The old tests would create confusion and potentially false passes/fails during Phase 2+ development.
+
+**Note**: All new phase1 tests use `.test.sh` suffix and are integrated into `make test` command.
 
 ## Success Metrics
 

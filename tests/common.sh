@@ -8,6 +8,18 @@ TARGET_DIR="test_target"
 SHARED_DIR="shared"
 CONFIG_DIR="$HOME/.config/ai-rizz"
 
+# New manifest file constants for dual-mode testing
+COMMIT_MANIFEST_FILE="ai-rizz.inf"
+LOCAL_MANIFEST_FILE="ai-rizz.local.inf"
+
+# New directory constants  
+LOCAL_DIR="local"
+
+# New glyph constants for testing
+COMMITTED_GLYPH="●"
+LOCAL_GLYPH="◐"
+UNINSTALLED_GLYPH="○"
+
 # Create a temporary test directory and set up test environment
 setUp() {
   # Create a temporary test directory
@@ -42,6 +54,15 @@ setUp() {
   
   # Create target directory
   mkdir -p "$TARGET_DIR/$SHARED_DIR"
+  
+  # Initialize current directory as git repo for testing
+  git init . >/dev/null 2>&1
+  git config user.email "test@example.com" >/dev/null 2>&1
+  git config user.name "Test User" >/dev/null 2>&1
+  
+  # Create initial git structure
+  mkdir -p .git/info
+  touch .git/info/exclude
   
   # Initialize manifest with source repo and target dir
   echo "$SOURCE_REPO	$TARGET_DIR" > "$MANIFEST_FILE"
@@ -147,6 +168,55 @@ assert_file_not_exists() {
 # Utility function to check if a string equals expected value
 assert_equals() {
   assertEquals "$3" "$1" "$2"
+}
+
+# Mode detection utilities
+assert_local_mode_exists() {
+    assertTrue "Local manifest should exist" "[ -f '$LOCAL_MANIFEST_FILE' ]"
+    assertTrue "Local directory should exist" "[ -d '$TARGET_DIR/$LOCAL_DIR' ]"
+}
+
+assert_commit_mode_exists() {
+    assertTrue "Commit manifest should exist" "[ -f '$COMMIT_MANIFEST_FILE' ]"  
+    assertTrue "Commit directory should exist" "[ -d '$TARGET_DIR/$SHARED_DIR' ]"
+}
+
+assert_no_modes_exist() {
+    assertFalse "Local manifest should not exist" "[ -f '$LOCAL_MANIFEST_FILE' ]"
+    assertFalse "Commit manifest should not exist" "[ -f '$COMMIT_MANIFEST_FILE' ]"
+}
+
+# Git exclude testing utilities
+assert_git_exclude_contains() {
+    assertTrue "Git exclude should contain $1" "grep -q '^$1$' .git/info/exclude"
+}
+
+assert_git_exclude_not_contains() {
+    assertFalse "Git exclude should not contain $1" "grep -q '^$1$' .git/info/exclude"
+}
+
+# Legacy repository setup for migration testing
+setup_legacy_local_repo() {
+    # Create old-style local mode setup
+    echo "$SOURCE_REPO	$TARGET_DIR" > "$COMMIT_MANIFEST_FILE"
+    echo "rules/rule1.mdc" >> "$COMMIT_MANIFEST_FILE"
+    mkdir -p "$TARGET_DIR/$SHARED_DIR"
+    cp "$REPO_DIR/rules/rule1.mdc" "$TARGET_DIR/$SHARED_DIR/"
+    
+    # Add to git exclude to simulate legacy local mode
+    mkdir -p .git/info
+    echo "$COMMIT_MANIFEST_FILE" > .git/info/exclude
+    echo "$TARGET_DIR/$SHARED_DIR" >> .git/info/exclude
+}
+
+setup_legacy_commit_repo() {
+    # Create old-style commit mode setup  
+    echo "$SOURCE_REPO	$TARGET_DIR" > "$COMMIT_MANIFEST_FILE"
+    echo "rules/rule1.mdc" >> "$COMMIT_MANIFEST_FILE"
+    mkdir -p "$TARGET_DIR/$SHARED_DIR"
+    cp "$REPO_DIR/rules/rule1.mdc" "$TARGET_DIR/$SHARED_DIR/"
+    
+    # No git exclude entries = commit mode
 }
 
 # Source the ai-rizz script - use this in test files to test the actual implementation

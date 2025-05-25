@@ -32,7 +32,7 @@ find_tests() {
   find "$PROJECT_ROOT/tests" -name "*.test.sh" | sort
 }
 
-# Run a test file
+# Run a test file with timeout
 run_test() {
   test_file="$1"
   echo "==== Running test: ${test_file#$PROJECT_ROOT/tests/} ===="
@@ -44,12 +44,36 @@ run_test() {
   AI_RIZZ_PATH="$PROJECT_ROOT/ai-rizz"
   export AI_RIZZ_PATH
   
-  if sh "$test_file"; then
+  # Use timeout (prerequisite checked at startup)
+  if timeout 5s sh "$test_file"; then
     echo "==== PASS: ${test_file#$PROJECT_ROOT/tests/} ===="
     return 0
   else
-    echo "==== FAIL: ${test_file#$PROJECT_ROOT/tests/} ===="
+    exit_code=$?
+    if [ $exit_code -eq 124 ]; then
+      echo "==== TIMEOUT: ${test_file#$PROJECT_ROOT/tests/} (hung waiting for input) ===="
+    else
+      echo "==== FAIL: ${test_file#$PROJECT_ROOT/tests/} ===="
+    fi
     return 1
+  fi
+}
+
+# Check test prerequisites
+check_prerequisites() {
+  local missing=""
+  local prereqs="timeout git"  # Space-separated list of required commands
+  
+  for cmd in $prereqs; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      missing="$missing $cmd"
+    fi
+  done
+  
+  if [ -n "$missing" ]; then
+    echo "ERROR: Missing required test prerequisites:$missing" >&2
+    echo "Please install the missing commands and try again." >&2
+    exit 1
   fi
 }
 
@@ -57,6 +81,9 @@ run_test() {
 # Find the project root directory
 PROJECT_ROOT="$(get_project_root)"
 echo "Running ai-rizz tests from: $PROJECT_ROOT"
+
+# Check prerequisites first
+check_prerequisites
 
 # Verify ai-rizz script exists
 if [ ! -f "$PROJECT_ROOT/ai-rizz" ]; then

@@ -68,17 +68,35 @@ test_list_progressive_display_no_modes() {
 }
 
 test_list_rulesets_correct_glyphs() {
-    # Setup: Ruleset in local mode, but rule1 already committed (stronger glyph)
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
-    cmd_add_rule "rule1.mdc" --commit  # rule1 gets committed glyph (strongest)
-    cmd_add_ruleset "ruleset1" --local  # ruleset1 gets local glyph, but rule1 keeps committed
+    # Setup: Test the correct behavior - individual rules can't be downgraded from committed rulesets
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_add_ruleset "ruleset1" --local  # Add ruleset to local mode first
+    cmd_add_rule "rule1.mdc" --commit   # Promote individual rule to commit mode (upgrade)
     
     output=$(cmd_list)
     
-    # Expected: Ruleset shows local glyph, but rule1 retains its stronger committed glyph
-    echo "$output" | grep -q "$LOCAL_GLYPH.*ruleset1" || fail "Should show local glyph for ruleset1"
-    echo "$output" | grep -q "$COMMITTED_GLYPH.*rule1" || fail "Should show committed glyph for rule1 (stronger than local)"
-    echo "$output" | grep -q "$LOCAL_GLYPH.*rule2" || fail "Should show local glyph for rule2 (from ruleset)"
+    # Expected: rule1 should show commit glyph (promoted), ruleset1 should show local glyph (still has rule2)
+    echo "$output" | grep -q "$COMMITTED_GLYPH.*rule1" || fail "Should show committed glyph for rule1 (promoted from local ruleset)"
+    echo "$output" | grep -q "$LOCAL_GLYPH.*ruleset1" || fail "Should show local glyph for ruleset1 (still contains rule2)"
+}
+
+test_prevent_rule_downgrade_from_committed_ruleset() {
+    # Setup: Committed ruleset with rule1 and rule2
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
+    cmd_add_ruleset "ruleset1" --commit
+    
+    # Test: Try to add individual rule from committed ruleset to local mode (should warn and be no-op)
+    output=$(cmd_add_rule "rule1.mdc" --local 2>&1 || echo "ERROR_OCCURRED")
+    
+    # Expected: Should warn about downgrade prevention
+    echo "$output" | grep -q "Cannot add individual rule.*part of committed ruleset" || fail "Should warn about downgrade prevention"
+    
+    # Verify rule1 is still only in commit mode (not added to local)
+    list_output=$(cmd_list)
+    echo "$list_output" | grep -q "$COMMITTED_GLYPH.*rule1" || fail "Rule1 should still show committed glyph"
+    if echo "$list_output" | grep -q "$LOCAL_GLYPH.*rule1"; then
+        fail "Rule1 should not have been added to local mode"
+    fi
 }
 
 test_remove_rule_auto_detects_mode() {

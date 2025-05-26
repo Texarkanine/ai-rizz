@@ -159,14 +159,11 @@ test_error_concurrent_modification() {
 }
 
 test_error_network_timeout() {
-    # Setup: Repo with network-dependent source
-    cmd_init "https://github.com/nonexistent/timeout-test.git" -d "$TARGET_DIR" --local
+    # Test: Init with network-dependent source that times out
+    output=$(timeout 1 cmd_init "https://github.com/nonexistent/timeout-test.git" -d "$TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
     
-    # Test: Sync with network timeout (timeout prerequisite checked at startup)
-    output=$(timeout 1 cmd_sync 2>&1 || echo "ERROR_OCCURRED")
-    
-    # Expected: Should handle timeout gracefully
-    echo "$output" | grep -q "timeout\|network\|failed" || true  # May not always timeout
+    # Expected: Should handle timeout gracefully (either timeout or repository unavailable error)
+    echo "$output" | grep -q "timeout\|network\|failed\|unavailable\|ERROR_OCCURRED" || fail "Should handle network issues gracefully"
 }
 
 test_graceful_partial_rule_sync() {

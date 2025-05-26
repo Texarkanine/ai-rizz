@@ -632,7 +632,8 @@ get_files_from_manifest() {
 }
 
 # Remove any local manifest entries that would deploy the given filename
-# For rulesets, this will remove the entire ruleset and add back individual rules for non-conflicting files
+# Remove local entries that would deploy the same file as commit mode
+# This handles the "upgrade" case (local → commit) by removing conflicting local entries
 remove_local_entries_deploying_file() {
     filename="${1}"
     
@@ -657,11 +658,22 @@ remove_local_entries_deploying_file() {
                 elif [ -d "${source_path}" ]; then
                     # Directory (ruleset) - check if it contains the file
                     if find "${source_path}" -name "${filename}" -type f -o -name "${filename}" -type l | grep -q .; then
-                        # Remove the entire ruleset entry
-                        remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${entry}"
+                        # For rulesets containing a conflicting file, we need to check if the
+                        # individual rule is also being added to commit mode as a standalone rule.
+                        # If so, this is an "upgrade" scenario and we should NOT remove the entire
+                        # local ruleset - it should remain for other rules it contains.
                         
-                        # Add back individual rules from this ruleset that don't conflict
-                        restore_non_conflicting_rules_from_ruleset "${entry}"
+                        # Check if the commit manifest has the individual rule (not the ruleset)
+                        rule_path="rules/${filename}"
+                        if [ -f "${COMMIT_MANIFEST_FILE}" ] && read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${rule_path}$"; then
+                            # This is an upgrade scenario - individual rule promoted to commit
+                            # Keep the local ruleset for other rules it contains
+                            # The conflict will be resolved by the glyph display logic
+                            continue
+                        else
+                            # This is a true conflict - remove the entire local ruleset
+                            remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${entry}"
+                        fi
                     fi
                 fi
             fi
@@ -672,47 +684,7 @@ remove_local_entries_deploying_file() {
     fi
 }
 
-# Restore individual rules from a ruleset that don't conflict with commit manifest
-restore_non_conflicting_rules_from_ruleset() {
-    ruleset_entry="${1}"
-    
-    # Get all files that commit manifest would deploy
-    commit_files=$(get_files_from_manifest "${COMMIT_MANIFEST_FILE}" 2>/dev/null || true)
-    
-    # Get all files in this ruleset
-    ruleset_path="${REPO_DIR}/${ruleset_entry}"
-    
-    if [ -d "${ruleset_path}" ]; then
-        # Use temporary file to avoid subshell issues
-        temp_rules=$(mktemp)
-        find "${ruleset_path}" -name "*.mdc" -type f -o -name "*.mdc" -type l > "${temp_rules}"
-        
-        while IFS= read -r rule_file; do
-            if [ -n "${rule_file}" ]; then
-                rule_filename=$(basename "${rule_file}")
-                
-                # Check if this rule conflicts with commit manifest
-                rule_conflicts=false
-                if [ -n "${commit_files}" ]; then
-                    # Use grep to check for conflict
-                    if echo "${commit_files}" | grep -q "^${rule_filename}$"; then
-                        rule_conflicts=true
-                    fi
-                fi
-                
-                # If no conflict, add this rule individually to local manifest
-                if [ "${rule_conflicts}" = "false" ]; then
-                    # Convert absolute path back to relative path from repo root
-                    relative_path=$(echo "${rule_file}" | sed "s|^${REPO_DIR}/||")
-                    add_manifest_entry_to_file "${LOCAL_MANIFEST_FILE}" "${relative_path}"
-                fi
-            fi
-        done < "${temp_rules}"
-        
-        # Clean up temporary file
-        rm -f "${temp_rules}"
-    fi
-}
+
 
 # Detect and resolve conflicts (Phase 4)
 # Committed mode wins, local entries silently removed
@@ -1346,6 +1318,30 @@ cmd_add_rule() {
         if [ ! -f "$REPO_DIR/$rule_path" ]; then
             warn "Rule not found: $rule_path"
             continue
+        fi
+        
+        # Check for downgrade conflicts: prevent adding individual rules to local mode 
+        # when they're part of a committed ruleset
+        if [ "$mode" = "local" ] && [ "$HAS_COMMIT_MODE" = "true" ]; then
+            # Check if this rule is part of any committed ruleset
+            rule_filename=$(basename "$rule_path")
+            commit_entries=$(read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null || true)
+            
+            if [ -n "$commit_entries" ]; then
+                # Check each committed entry to see if it's a ruleset containing this rule
+                echo "$commit_entries" | while IFS= read -r entry; do
+                    if [ -n "$entry" ]; then
+                        entry_path="$REPO_DIR/$entry"
+                        if [ -d "$entry_path" ]; then
+                            # This is a ruleset - check if it contains our rule
+                            if find "$entry_path" -name "$rule_filename" -type f -o -name "$rule_filename" -type l | grep -q .; then
+                                warn "Cannot add individual rule '$rule' to local mode: it's part of committed ruleset '$entry'. Use 'ai-rizz add-ruleset $(basename "$entry") --local' to move the entire ruleset."
+                                continue 2  # Skip to next rule in outer loop
+                            fi
+                        fi
+                    fi
+                done
+            fi
         fi
         
         # Check if rule exists in opposite mode (conflict resolution)

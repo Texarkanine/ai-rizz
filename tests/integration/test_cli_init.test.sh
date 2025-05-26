@@ -1,0 +1,179 @@
+#!/bin/sh
+#
+# test_cli_init.test.sh - Integration tests for ai-rizz init command
+#
+# Tests the public CLI interface for the init command by executing ai-rizz
+# directly and verifying the resulting system state. Validates progressive
+# initialization behavior, mode selection logic, directory structure creation,
+# git exclude management, and error handling for various initialization
+# scenarios including dual mode setup and re-initialization.
+#
+# Dependencies: shunit2, integration test utilities
+# Usage: sh test_cli_init.test.sh
+
+# Load common test utilities
+# shellcheck disable=SC1091
+. "$(dirname "$0")/../common.sh"
+
+# Integration test setup and teardown
+setUp() {
+    setup_integration_test
+}
+
+tearDown() {
+    teardown_integration_test
+}
+
+# Test: ai-rizz init <repo> --local
+# Expected: Creates local mode structure with proper git excludes
+test_init_local_mode_creates_proper_structure() {
+    # Execute init command
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    assertEquals "Init local mode should succeed" 0 $?
+    
+    # Verify local mode structure created
+    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.inf' ]"
+    assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
+    
+    # Verify commit mode not created
+    assertFalse "Commit manifest should not exist" "[ -f 'ai-rizz.inf' ]"
+    assertFalse "Shared directory should not exist" "[ -d '.cursor/rules/shared' ]"
+    
+    # Verify git excludes
+    assert_git_excludes "ai-rizz.local.inf"
+    assert_git_excludes ".cursor/rules/local"
+    
+    # Verify manifest header
+    local first_line
+    first_line=$(head -n1 ai-rizz.local.inf)
+    assertEquals "Local manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules" "$first_line"
+}
+
+# Test: ai-rizz init <repo> --commit
+# Expected: Creates commit mode structure without git excludes
+test_init_commit_mode_creates_proper_structure() {
+    # Execute init command
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --commit
+    assertEquals "Init commit mode should succeed" 0 $?
+    
+    # Verify commit mode structure created
+    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.inf' ]"
+    assertTrue "Shared directory should exist" "[ -d '.cursor/rules/shared' ]"
+    
+    # Verify local mode not created
+    assertFalse "Local manifest should not exist" "[ -f 'ai-rizz.local.inf' ]"
+    assertFalse "Local directory should not exist" "[ -d '.cursor/rules/local' ]"
+    
+    # Verify no git excludes for commit mode
+    assert_git_tracks "ai-rizz.inf"
+    assert_git_tracks ".cursor/rules/shared"
+    
+    # Verify manifest header
+    local first_line
+    first_line=$(head -n1 ai-rizz.inf)
+    assertEquals "Commit manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules" "$first_line"
+}
+
+# Test: ai-rizz init <repo> (no mode flag)
+# Expected: Should prompt for mode selection or show error
+test_init_requires_mode_selection() {
+    # Execute init without mode flag, provide empty input to prompt
+    local output
+    output=$(echo "" | run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules 2>&1 || echo "ERROR_OCCURRED")
+    
+    # Should either show mode selection prompt or require mode flag
+    if echo "$output" | grep -q "ERROR_OCCURRED"; then
+        # Command failed - should show helpful error about mode selection
+        assert_output_contains "$output" "mode"
+    else
+        # Command showed prompt - should contain mode selection text
+        assert_output_contains "$output" "mode\|local\|commit\|choose\|select"
+    fi
+}
+
+# Test: ai-rizz init <repo> -d custom/path --local
+# Expected: Uses custom target directory
+test_init_custom_target_directory() {
+    local custom_dir="custom/rules"
+    
+    # Execute init with custom directory
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d "$custom_dir" --local
+    assertEquals "Init with custom directory should succeed" 0 $?
+    
+    # Verify custom directory structure
+    assertTrue "Custom local directory should exist" "[ -d '$custom_dir/local' ]"
+    assert_git_excludes "$custom_dir/local"
+    
+    # Verify manifest uses custom directory
+    local first_line
+    first_line=$(head -n1 ai-rizz.local.inf)
+    assertEquals "Manifest should use custom directory" "file://$MOCK_REPO_DIR	$custom_dir" "$first_line"
+}
+
+# Test: ai-rizz init invalid://repo --local
+# Expected: Should handle invalid repository gracefully
+test_init_invalid_repository_url() {
+    # Execute init with invalid repository
+    local output
+    output=$(run_ai_rizz init "invalid://nonexistent" -d .cursor/rules --local 2>&1 || echo "COMMAND_FAILED")
+    
+    # Command should fail gracefully
+    assert_output_contains "$output" "COMMAND_FAILED"
+    
+    # Should not create any files on failure
+    assertFalse "Should not create manifest on failure" "[ -f 'ai-rizz.local.inf' ]"
+    assertFalse "Should not create directory on failure" "[ -d '.cursor/rules/local' ]"
+}
+
+# Test: ai-rizz init <repo> --local (twice)
+# Expected: Second init should be idempotent
+test_init_twice_same_mode_idempotent() {
+    # First init
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    assertEquals "First init should succeed" 0 $?
+    
+    # Verify initial state
+    assertTrue "Local manifest should exist after first init" "[ -f 'ai-rizz.local.inf' ]"
+    assertTrue "Local directory should exist after first init" "[ -d '.cursor/rules/local' ]"
+    
+    # Second init with same mode
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    assertEquals "Second init should succeed (idempotent)" 0 $?
+    
+    # Verify state unchanged
+    assertTrue "Local manifest should still exist" "[ -f 'ai-rizz.local.inf' ]"
+    assertTrue "Local directory should still exist" "[ -d '.cursor/rules/local' ]"
+    assertFalse "Commit mode should not be created" "[ -f 'ai-rizz.inf' ]"
+    
+    # Verify git excludes still correct
+    assert_git_excludes "ai-rizz.local.inf"
+    assert_git_excludes ".cursor/rules/local"
+}
+
+# Test: ai-rizz init with different modes
+# Expected: Should create dual mode setup
+test_init_different_modes_creates_dual_mode() {
+    # First init with local mode
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    assertEquals "Local init should succeed" 0 $?
+    
+    # Second init with commit mode
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --commit
+    assertEquals "Commit init should succeed" 0 $?
+    
+    # Verify both modes exist
+    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.inf' ]"
+    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.inf' ]"
+    assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
+    assertTrue "Shared directory should exist" "[ -d '.cursor/rules/shared' ]"
+    
+    # Verify git excludes correct for dual mode
+    assert_git_excludes "ai-rizz.local.inf"
+    assert_git_excludes ".cursor/rules/local"
+    assert_git_tracks "ai-rizz.inf"
+    assert_git_tracks ".cursor/rules/shared"
+}
+
+# Load and run shunit2
+# shellcheck disable=SC1090
+. "$(dirname "$0")/../../shunit2" 

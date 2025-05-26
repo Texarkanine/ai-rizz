@@ -1700,6 +1700,64 @@ cmd_list() {
 	return 0
 }
 
+# Check for rule downgrade conflicts
+#
+# Prevents adding individual rules to local mode when they're part of 
+# committed rulesets. This maintains ruleset integrity by ensuring
+# complete rulesets stay together.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   REPO_DIR - Repository directory
+#
+# Arguments:
+#   $1 - Rule name (with .mdc extension)
+#   $2 - Target mode (local/commit)
+#
+# Outputs:
+#   Stderr: Warning message if conflict detected
+#
+# Returns:
+#   0 if no conflict (rule can be added)
+#   1 if conflict detected (rule should be skipped)
+#
+check_rule_downgrade_conflict() {
+	crdc_rule="$1"
+	crdc_mode="$2"
+	
+	# Only check for downgrade conflicts (local mode with commit mode active)
+	if [ "$crdc_mode" = "local" ] && [ "$HAS_COMMIT_MODE" = "true" ]; then
+		# Check if this rule is part of any committed ruleset
+		rule_filename=$(basename "rules/$crdc_rule")
+		commit_entries=$(read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null || true)
+		
+		if [ -n "$commit_entries" ]; then
+			# Use a temporary file to avoid subshell issues with pipes
+			temp_file=$(mktemp)
+			echo "$commit_entries" > "$temp_file"
+			
+			while IFS= read -r entry; do
+				if [ -n "$entry" ]; then
+					entry_path="$REPO_DIR/$entry"
+					if [ -d "$entry_path" ]; then
+						# This is a ruleset - check if it contains our rule
+						if find "$entry_path" -name "$rule_filename" -type f -o -name "$rule_filename" -type l | grep -q .; then
+							warn "Cannot add individual rule '$crdc_rule' to local mode: it's part of committed ruleset '$entry'. Use 'ai-rizz add-ruleset $(basename "$entry") --local' to move the entire ruleset."
+							rm -f "$temp_file"
+							return 1
+						fi
+					fi
+				fi
+			done < "$temp_file"
+			
+			rm -f "$temp_file"
+		fi
+	fi
+	
+	return 0
+}
+
 # Add rule(s) to the repository (progressive mode-aware)
 #
 # Adds individual rules to specified mode, handling lazy initialization,
@@ -1820,28 +1878,9 @@ cmd_add_rule() {
 	        continue
 	    fi
 	    
-	    # Check for downgrade conflicts: prevent adding individual rules to local mode 
-	    # when they're part of a committed ruleset
-	    if [ "${car_mode}" = "local" ] && [ "${HAS_COMMIT_MODE}" = "true" ]; then
-	        # Check if this rule is part of any committed ruleset
-	        rule_filename=$(basename "${car_rule_path}")
-	        commit_entries=$(read_manifest_entries "${COMMIT_MANIFEST_FILE}" 2>/dev/null || true)
-	        
-	        if [ -n "${commit_entries}" ]; then
-	            # Check each committed entry to see if it's a ruleset containing this rule
-	            echo "${commit_entries}" | while IFS= read -r entry; do
-	                if [ -n "${entry}" ]; then
-	                    entry_path="${REPO_DIR}/${entry}"
-	                    if [ -d "${entry_path}" ]; then
-	                        # This is a ruleset - check if it contains our rule
-	                        if find "${entry_path}" -name "${rule_filename}" -type f -o -name "${rule_filename}" -type l | grep -q .; then
-	                            warn "Cannot add individual rule '${car_rule}' to local mode: it's part of committed ruleset '${entry}'. Use 'ai-rizz add-ruleset $(basename "${entry}") --local' to move the entire ruleset."
-	                            continue 2  # Skip to next rule in outer loop
-	                        fi
-	                    fi
-	                fi
-	            done
-	        fi
+	    # Check for downgrade conflicts first
+	    if ! check_rule_downgrade_conflict "${car_rule}" "${car_mode}"; then
+	        continue  # Skip this rule, conflict detected
 	    fi
 	    
 	    # Check if rule exists in opposite mode (conflict resolution)

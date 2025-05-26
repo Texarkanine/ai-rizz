@@ -18,8 +18,26 @@ LOCAL_DIR="local"
 CONFIG_DIR="$HOME/.config/ai-rizz"
 DEFAULT_TARGET_DIR=".cursor/rules"
 
-# Repository Directory Functions
-# ==============================
+# Mode state (set once during initialization, read-only afterward)
+HAS_COMMIT_MODE=false
+HAS_LOCAL_MODE=false
+
+# Cached manifest metadata (set during initialization for efficiency)
+COMMIT_SOURCE_REPO=""
+LOCAL_SOURCE_REPO=""
+COMMIT_TARGET_DIR=""
+LOCAL_TARGET_DIR=""
+
+# Repository directory (set during initialization)
+REPO_DIR=""
+
+# Display formatting variables  
+COMMITTED_GLYPH="●"
+UNINSTALLED_GLYPH="○"
+LOCAL_GLYPH="◐"
+
+# Utilities
+# =========
 
 # Get repository directory for the current project
 #
@@ -44,29 +62,6 @@ get_repo_dir() {
 	fi
 	echo "${CONFIG_DIR}/repos/${grd_project_name}/repo"
 }
-
-
-
-# Mode state (set once during initialization, read-only afterward)
-HAS_COMMIT_MODE=false
-HAS_LOCAL_MODE=false
-
-# Cached manifest metadata (set during initialization for efficiency)
-COMMIT_SOURCE_REPO=""
-LOCAL_SOURCE_REPO=""
-COMMIT_TARGET_DIR=""
-LOCAL_TARGET_DIR=""
-
-# Repository directory (set during initialization)
-REPO_DIR=""
-
-# Display formatting variables  
-COMMITTED_GLYPH="●"
-UNINSTALLED_GLYPH="○"
-LOCAL_GLYPH="◐"
-
-# Utilities
-# =========
 
 # Print error message to stderr and exit with specified code
 #

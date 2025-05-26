@@ -607,8 +607,8 @@ get_files_from_manifest() {
     # Get the source repo from manifest metadata
     source_repo=$(read_manifest_metadata "${manifest_file}" | cut -f1)
     
-    # Get the appropriate repository directory for this manifest
-    repo_dir=$(get_repo_dir_for_manifest "${manifest_file}")
+    # Use the global repository directory
+    repo_dir="${REPO_DIR}"
     
     # Get all entries from the manifest
     entries=$(read_manifest_entries "${manifest_file}" 2>/dev/null || true)
@@ -641,8 +641,8 @@ remove_local_entries_deploying_file() {
     # Get all local entries
     local_entries=$(read_manifest_entries "${LOCAL_MANIFEST_FILE}" 2>/dev/null || true)
     
-    # Get the repository directory
-    local_repo_dir=$(get_repo_dir)
+    # Use the global repository directory
+    local_repo_dir="${REPO_DIR}"
     
     if [ -n "${local_entries}" ]; then
         # Use a temporary file to avoid subshell issues
@@ -684,8 +684,8 @@ restore_non_conflicting_rules_from_ruleset() {
     # Get all files that commit manifest would deploy
     commit_files=$(get_files_from_manifest "${COMMIT_MANIFEST_FILE}" 2>/dev/null || true)
     
-    # Get the repository directory
-    local_repo_dir=$(get_repo_dir)
+    # Use the global repository directory
+    local_repo_dir="${REPO_DIR}"
     
     # Get all files in this ruleset
     ruleset_path="${local_repo_dir}/${ruleset_entry}"

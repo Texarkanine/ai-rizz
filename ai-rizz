@@ -30,13 +30,13 @@ DEFAULT_TARGET_DIR=".cursor/rules"
 #   0 on success
 #
 get_repo_dir() {
-    # Use git root directory name as project name, fallback to current directory
-    if git_root=$(git rev-parse --show-toplevel 2>/dev/null); then
-        project_name=$(basename "${git_root}")
-    else
-        project_name=$(basename "$(pwd)")
-    fi
-    echo "${CONFIG_DIR}/repos/${project_name}/repo"
+	# Use git root directory name as project name, fallback to current directory
+	if git_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+	    project_name=$(basename "${git_root}")
+	else
+	    project_name=$(basename "$(pwd)")
+	fi
+	echo "${CONFIG_DIR}/repos/${project_name}/repo"
 }
 
 
@@ -121,21 +121,21 @@ warn() {
 #   1 if file doesn't exist or on error (via error() function)
 #
 read_manifest_metadata() {
-    manifest_file="$1"
-    
-    if [ ! -f "$manifest_file" ]; then
-        return 1
-    fi
-    
-    # Read first line
-    read -r first_line < "$manifest_file"
-    
-    # Validate format
-    if ! echo "$first_line" | grep -q "	"; then
-        error "Invalid manifest format in $manifest_file: First line must be 'source_repo<tab>target_dir'"
-    fi
-    
-    echo "$first_line"
+	manifest_file="$1"
+	
+	if [ ! -f "$manifest_file" ]; then
+	    return 1
+	fi
+	
+	# Read first line
+	read -r first_line < "$manifest_file"
+	
+	# Validate format
+	if ! echo "$first_line" | grep -q "	"; then
+	    error "Invalid manifest format in $manifest_file: First line must be 'source_repo<tab>target_dir'"
+	fi
+	
+	echo "$first_line"
 }
 
 # Read manifest entries from specified file
@@ -154,14 +154,14 @@ read_manifest_metadata() {
 #   1 if file doesn't exist
 #
 read_manifest_entries() {
-    manifest_file="$1"
-    
-    if [ ! -f "$manifest_file" ]; then
-        return 1
-    fi
-    
-    # Skip first line (metadata), return rest (handle empty manifests gracefully)
-    tail -n +2 "$manifest_file" | grep -v '^$' || true
+	manifest_file="$1"
+	
+	if [ ! -f "$manifest_file" ]; then
+	    return 1
+	fi
+	
+	# Skip first line (metadata), return rest (handle empty manifests gracefully)
+	tail -n +2 "$manifest_file" | grep -v '^$' || true
 }
 
 # Write manifest file with metadata header and entries from stdin
@@ -181,19 +181,19 @@ read_manifest_entries() {
 #   0 on success
 #
 write_manifest_with_entries() {
-    manifest_file="$1"
-    source_repo="$2"
-    target_dir="$3"
-    
-    # Write header
-    echo "$source_repo	$target_dir" > "$manifest_file"
-    
-    # Read from stdin and append if there's content
-    while IFS= read -r line; do
-        if [ -n "$line" ]; then
-            echo "$line" >> "$manifest_file"
-        fi
-    done
+	manifest_file="$1"
+	source_repo="$2"
+	target_dir="$3"
+	
+	# Write header
+	echo "$source_repo	$target_dir" > "$manifest_file"
+	
+	# Read from stdin and append if there's content
+	while IFS= read -r line; do
+	    if [ -n "$line" ]; then
+	        echo "$line" >> "$manifest_file"
+	    fi
+	done
 }
 
 # Add entry to specified manifest file
@@ -213,20 +213,20 @@ write_manifest_with_entries() {
 #   1 on error (via error() function)
 #
 add_manifest_entry_to_file() {
-    target_manifest_file="$1"
-    entry="$2"
-    
-    # Check if entry already exists
-    if [ -f "$target_manifest_file" ]; then
-        if read_manifest_entries "$target_manifest_file" | grep -q "^$entry$"; then
-            return 0  # Already exists
-        fi
-    fi
-    
-    # Add the entry with error handling
-    if ! echo "$entry" >> "$target_manifest_file" 2>/dev/null; then
-        error "Cannot write to manifest file: $target_manifest_file (permission denied or read-only)"
-    fi
+	target_manifest_file="$1"
+	entry="$2"
+	
+	# Check if entry already exists
+	if [ -f "$target_manifest_file" ]; then
+	    if read_manifest_entries "$target_manifest_file" | grep -q "^$entry$"; then
+	        return 0  # Already exists
+	    fi
+	fi
+	
+	# Add the entry with error handling
+	if ! echo "$entry" >> "$target_manifest_file" 2>/dev/null; then
+	    error "Cannot write to manifest file: $target_manifest_file (permission denied or read-only)"
+	fi
 }
 
 # Remove entry from specified manifest file
@@ -246,32 +246,32 @@ add_manifest_entry_to_file() {
 #   1 on error (via error() function)
 #
 remove_manifest_entry_from_file() {
-    local_manifest_file="$1"
-    entry="$2"
-    
-    if [ ! -f "$local_manifest_file" ]; then
-        return 0  # Nothing to remove
-    fi
-    
-    # Get metadata
-    metadata=$(read_manifest_metadata "$local_manifest_file") || {
-        error "Failed to read manifest metadata from $local_manifest_file"
-    }
-    
-    # Get entries excluding the one to remove
-    entries=$(read_manifest_entries "$local_manifest_file" | grep -v "^$entry$" || true)
-    
-    # Rewrite manifest
-    source_repo=$(echo "$metadata" | cut -f1)
-    target_dir=$(echo "$metadata" | cut -f2)
-    
-    # Write header first
-    echo "$source_repo	$target_dir" > "$local_manifest_file"
-    
-    # Append entries if any exist (avoid hanging cat with empty input)
-    if [ -n "$entries" ]; then
-        echo "$entries" >> "$local_manifest_file"
-    fi
+	local_manifest_file="$1"
+	entry="$2"
+	
+	if [ ! -f "$local_manifest_file" ]; then
+	    return 0  # Nothing to remove
+	fi
+	
+	# Get metadata
+	metadata=$(read_manifest_metadata "$local_manifest_file") || {
+	    error "Failed to read manifest metadata from $local_manifest_file"
+	}
+	
+	# Get entries excluding the one to remove
+	entries=$(read_manifest_entries "$local_manifest_file" | grep -v "^$entry$" || true)
+	
+	# Rewrite manifest
+	source_repo=$(echo "$metadata" | cut -f1)
+	target_dir=$(echo "$metadata" | cut -f2)
+	
+	# Write header first
+	echo "$source_repo	$target_dir" > "$local_manifest_file"
+	
+	# Append entries if any exist (avoid hanging cat with empty input)
+	if [ -n "$entries" ]; then
+	    echo "$entries" >> "$local_manifest_file"
+	fi
 }
 
 # Get metadata from any available manifest file for lazy initialization
@@ -291,20 +291,20 @@ remove_manifest_entry_from_file() {
 #   1 if no manifests available
 #
 get_any_manifest_metadata() {
-    # Try commit manifest first
-    if [ -f "$COMMIT_MANIFEST_FILE" ]; then
-        read_manifest_metadata "$COMMIT_MANIFEST_FILE"
-        return $?
-    fi
-    
-    # Try local manifest
-    if [ -f "$LOCAL_MANIFEST_FILE" ]; then
-        read_manifest_metadata "$LOCAL_MANIFEST_FILE"
-        return $?
-    fi
-    
-    # No manifests available
-    return 1
+	# Try commit manifest first
+	if [ -f "$COMMIT_MANIFEST_FILE" ]; then
+	    read_manifest_metadata "$COMMIT_MANIFEST_FILE"
+	    return $?
+	fi
+	
+	# Try local manifest
+	if [ -f "$LOCAL_MANIFEST_FILE" ]; then
+	    read_manifest_metadata "$LOCAL_MANIFEST_FILE"
+	    return $?
+	fi
+	
+	# No manifests available
+	return 1
 }
 
 # Clone or update the rules repository cache
@@ -337,15 +337,15 @@ git_sync() {
   
   # Clone/update project repository
   if [ ! -d "${REPO_DIR}" ]; then
-    if ! git clone "${repo_url}" "${REPO_DIR}" 2>/dev/null; then
-      warn "Failed to clone repository: ${repo_url} (repository unavailable or invalid URL)"
-      return 1
-    fi
+	if ! git clone "${repo_url}" "${REPO_DIR}" 2>/dev/null; then
+	  warn "Failed to clone repository: ${repo_url} (repository unavailable or invalid URL)"
+	  return 1
+	fi
   else
-    if ! (cd "${REPO_DIR}" && git pull 2>/dev/null); then
-      warn "Failed to update repository: ${repo_url} (repository unavailable or network issue)"
-      return 1
-    fi
+	if ! (cd "${REPO_DIR}" && git pull 2>/dev/null); then
+	  warn "Failed to update repository: ${repo_url} (repository unavailable or network issue)"
+	  return 1
+	fi
   fi
   
   return 0
@@ -375,35 +375,35 @@ git_sync() {
 #   1 on error (via error() function)
 #
 update_git_exclude() {
-    path="$1"
-    action="$2"  # "add" or "remove"
-    
-    # Create .git/info directory if it doesn't exist
-    mkdir -p ".git/info"
-    
-    # Create exclude file if it doesn't exist  
-    touch ".git/info/exclude"
-    
-    case "$action" in
-        add)
-            if ! grep -q "^$path$" ".git/info/exclude"; then
-                echo "$path" >> ".git/info/exclude"
-            fi
-            ;;
-        remove)
-            # Create a temporary file
-            tmp_file=$(mktemp)
-            # Filter out the path
-            grep -v "^$path$" ".git/info/exclude" > "$tmp_file" || true
-            # Replace the original file
-            cat "$tmp_file" > ".git/info/exclude"
-            # Remove the temporary file
-            rm -f "$tmp_file"
-            ;;
-        *)
-            error "Invalid action: $action. Must be 'add' or 'remove'"
-            ;;
-    esac
+	path="$1"
+	action="$2"  # "add" or "remove"
+	
+	# Create .git/info directory if it doesn't exist
+	mkdir -p ".git/info"
+	
+	# Create exclude file if it doesn't exist  
+	touch ".git/info/exclude"
+	
+	case "$action" in
+	    add)
+	        if ! grep -q "^$path$" ".git/info/exclude"; then
+	            echo "$path" >> ".git/info/exclude"
+	        fi
+	        ;;
+	    remove)
+	        # Create a temporary file
+	        tmp_file=$(mktemp)
+	        # Filter out the path
+	        grep -v "^$path$" ".git/info/exclude" > "$tmp_file" || true
+	        # Replace the original file
+	        cat "$tmp_file" > ".git/info/exclude"
+	        # Remove the temporary file
+	        rm -f "$tmp_file"
+	        ;;
+	    *)
+	        error "Invalid action: $action. Must be 'add' or 'remove'"
+	        ;;
+	esac
 }
 
 # Setup git excludes for local mode
@@ -422,10 +422,10 @@ update_git_exclude() {
 #   0 on success
 #
 setup_local_mode_excludes() {
-    target_dir="$1"
-    
-    update_git_exclude "$LOCAL_MANIFEST_FILE" "add"
-    update_git_exclude "$target_dir/$LOCAL_DIR" "add"
+	target_dir="$1"
+	
+	update_git_exclude "$LOCAL_MANIFEST_FILE" "add"
+	update_git_exclude "$target_dir/$LOCAL_DIR" "add"
 }
 
 # Remove all local mode excludes
@@ -444,10 +444,10 @@ setup_local_mode_excludes() {
 #   0 on success
 #
 remove_local_mode_excludes() {
-    target_dir="$1"
-    
-    update_git_exclude "$LOCAL_MANIFEST_FILE" "remove"
-    update_git_exclude "$target_dir/$LOCAL_DIR" "remove"
+	target_dir="$1"
+	
+	update_git_exclude "$LOCAL_MANIFEST_FILE" "remove"
+	update_git_exclude "$target_dir/$LOCAL_DIR" "remove"
 }
 
 # Validate git exclude state matches mode configuration
@@ -473,27 +473,27 @@ remove_local_mode_excludes() {
 #   0 always
 #
 validate_git_exclude_state() {
-    target_dir="$1"
-    
-    if [ "$HAS_LOCAL_MODE" = "true" ]; then
-        # Local mode should be excluded
-        if [ ! -f ".git/info/exclude" ] || ! grep -q "^$LOCAL_MANIFEST_FILE$" ".git/info/exclude"; then
-            warn "Local manifest file not in git exclude (should be git-ignored)"
-        fi
-        if [ ! -f ".git/info/exclude" ] || ! grep -q "^$target_dir/$LOCAL_DIR$" ".git/info/exclude"; then
-            warn "Local directory not in git exclude (should be git-ignored)"
-        fi
-    fi
-    
-    if [ "$HAS_COMMIT_MODE" = "true" ]; then
-        # Commit mode should NOT be excluded
-        if [ -f ".git/info/exclude" ] && grep -q "^$COMMIT_MANIFEST_FILE$" ".git/info/exclude"; then
-            warn "Commit manifest file in git exclude (should be git-tracked)"
-        fi
-        if [ -f ".git/info/exclude" ] && grep -q "^$target_dir/$SHARED_DIR$" ".git/info/exclude"; then
-            warn "Shared directory in git exclude (should be git-tracked)"
-        fi
-    fi
+	target_dir="$1"
+	
+	if [ "$HAS_LOCAL_MODE" = "true" ]; then
+	    # Local mode should be excluded
+	    if [ ! -f ".git/info/exclude" ] || ! grep -q "^$LOCAL_MANIFEST_FILE$" ".git/info/exclude"; then
+	        warn "Local manifest file not in git exclude (should be git-ignored)"
+	    fi
+	    if [ ! -f ".git/info/exclude" ] || ! grep -q "^$target_dir/$LOCAL_DIR$" ".git/info/exclude"; then
+	        warn "Local directory not in git exclude (should be git-ignored)"
+	    fi
+	fi
+	
+	if [ "$HAS_COMMIT_MODE" = "true" ]; then
+	    # Commit mode should NOT be excluded
+	    if [ -f ".git/info/exclude" ] && grep -q "^$COMMIT_MANIFEST_FILE$" ".git/info/exclude"; then
+	        warn "Commit manifest file in git exclude (should be git-tracked)"
+	    fi
+	    if [ -f ".git/info/exclude" ] && grep -q "^$target_dir/$SHARED_DIR$" ".git/info/exclude"; then
+	        warn "Shared directory in git exclude (should be git-tracked)"
+	    fi
+	fi
 }
 
 # Mode Detection Utilities
@@ -520,18 +520,18 @@ validate_git_exclude_state() {
 #   0 always
 #
 detect_manifest_files_only() {
-    # Quick check - just look for files, don't validate directories yet
-    if [ -f "$LOCAL_MANIFEST_FILE" ]; then
-        HAS_LOCAL_MODE=true
-    else
-        HAS_LOCAL_MODE=false
-    fi
-    
-    if [ -f "$COMMIT_MANIFEST_FILE" ]; then
-        HAS_COMMIT_MODE=true
-    else
-        HAS_COMMIT_MODE=false
-    fi
+	# Quick check - just look for files, don't validate directories yet
+	if [ -f "$LOCAL_MANIFEST_FILE" ]; then
+	    HAS_LOCAL_MODE=true
+	else
+	    HAS_LOCAL_MODE=false
+	fi
+	
+	if [ -f "$COMMIT_MANIFEST_FILE" ]; then
+	    HAS_COMMIT_MODE=true
+	else
+	    HAS_COMMIT_MODE=false
+	fi
 }
 
 # Phase 2: Full mode detection including directory validation
@@ -557,21 +557,21 @@ detect_manifest_files_only() {
 #   0 always
 #
 detect_initialized_modes() {
-    HAS_LOCAL_MODE=false
-    HAS_COMMIT_MODE=false
-    
-    # Get target directory or error if none available
-    target_base=$(get_target_directory)
-    
-    # Check for local mode (manifest + directory)
-    if [ -f "$LOCAL_MANIFEST_FILE" ] && [ -d "$target_base/$LOCAL_DIR" ]; then
-        HAS_LOCAL_MODE=true
-    fi
-    
-    # Check for commit mode (manifest + directory)  
-    if [ -f "$COMMIT_MANIFEST_FILE" ] && [ -d "$target_base/$SHARED_DIR" ]; then
-        HAS_COMMIT_MODE=true
-    fi
+	HAS_LOCAL_MODE=false
+	HAS_COMMIT_MODE=false
+	
+	# Get target directory or error if none available
+	target_base=$(get_target_directory)
+	
+	# Check for local mode (manifest + directory)
+	if [ -f "$LOCAL_MANIFEST_FILE" ] && [ -d "$target_base/$LOCAL_DIR" ]; then
+	    HAS_LOCAL_MODE=true
+	fi
+	
+	# Check for commit mode (manifest + directory)  
+	if [ -f "$COMMIT_MANIFEST_FILE" ] && [ -d "$target_base/$SHARED_DIR" ]; then
+	    HAS_COMMIT_MODE=true
+	fi
 }
 
 # Get target directory from available manifests
@@ -594,26 +594,26 @@ detect_initialized_modes() {
 #   0 always
 #
 get_target_directory() {
-    # Try commit manifest first
-    if [ -f "$COMMIT_MANIFEST_FILE" ]; then
-        metadata=$(read_manifest_metadata "$COMMIT_MANIFEST_FILE") || {
-            error "Failed to read commit manifest metadata"
-        }
-        echo "$metadata" | cut -f2
-        return 0
-    fi
-    
-    # Try local manifest
-    if [ -f "$LOCAL_MANIFEST_FILE" ]; then
-        metadata=$(read_manifest_metadata "$LOCAL_MANIFEST_FILE") || {
-            error "Failed to read local manifest metadata"
-        }
-        echo "$metadata" | cut -f2
-        return 0
-    fi
-    
-    # No manifests available - use default only during initialization
-    echo "$DEFAULT_TARGET_DIR"
+	# Try commit manifest first
+	if [ -f "$COMMIT_MANIFEST_FILE" ]; then
+	    metadata=$(read_manifest_metadata "$COMMIT_MANIFEST_FILE") || {
+	        error "Failed to read commit manifest metadata"
+	    }
+	    echo "$metadata" | cut -f2
+	    return 0
+	fi
+	
+	# Try local manifest
+	if [ -f "$LOCAL_MANIFEST_FILE" ]; then
+	    metadata=$(read_manifest_metadata "$LOCAL_MANIFEST_FILE") || {
+	        error "Failed to read local manifest metadata"
+	    }
+	    echo "$metadata" | cut -f2
+	    return 0
+	fi
+	
+	# No manifests available - use default only during initialization
+	echo "$DEFAULT_TARGET_DIR"
 }
 
 # Cache manifest metadata in globals for efficiency
@@ -638,23 +638,23 @@ get_target_directory() {
 #   0 always
 #
 cache_manifest_metadata() {
-    # Cache commit manifest metadata
-    if [ -f "$COMMIT_MANIFEST_FILE" ]; then
-        metadata=$(read_manifest_metadata "$COMMIT_MANIFEST_FILE") || {
-            error "Failed to read commit manifest metadata"
-        }
-        COMMIT_SOURCE_REPO=$(echo "$metadata" | cut -f1)
-        COMMIT_TARGET_DIR=$(echo "$metadata" | cut -f2)
-    fi
-    
-    # Cache local manifest metadata
-    if [ -f "$LOCAL_MANIFEST_FILE" ]; then
-        metadata=$(read_manifest_metadata "$LOCAL_MANIFEST_FILE") || {
-            error "Failed to read local manifest metadata"
-        }
-        LOCAL_SOURCE_REPO=$(echo "$metadata" | cut -f1)
-        LOCAL_TARGET_DIR=$(echo "$metadata" | cut -f2)
-    fi
+	# Cache commit manifest metadata
+	if [ -f "$COMMIT_MANIFEST_FILE" ]; then
+	    metadata=$(read_manifest_metadata "$COMMIT_MANIFEST_FILE") || {
+	        error "Failed to read commit manifest metadata"
+	    }
+	    COMMIT_SOURCE_REPO=$(echo "$metadata" | cut -f1)
+	    COMMIT_TARGET_DIR=$(echo "$metadata" | cut -f2)
+	fi
+	
+	# Cache local manifest metadata
+	if [ -f "$LOCAL_MANIFEST_FILE" ]; then
+	    metadata=$(read_manifest_metadata "$LOCAL_MANIFEST_FILE") || {
+	        error "Failed to read local manifest metadata"
+	    }
+	    LOCAL_SOURCE_REPO=$(echo "$metadata" | cut -f1)
+	    LOCAL_TARGET_DIR=$(echo "$metadata" | cut -f2)
+	fi
 }
 
 
@@ -679,14 +679,14 @@ cache_manifest_metadata() {
 #   1 if no migration needed
 #
 needs_migration() {
-    # Legacy local mode: ai-rizz.inf exists but is in .git/info/exclude
-    if [ -f "$COMMIT_MANIFEST_FILE" ] && [ -f ".git/info/exclude" ]; then
-        if grep -q "^$COMMIT_MANIFEST_FILE$" ".git/info/exclude"; then
-            return 0  # true, needs migration from legacy local
-        fi
-    fi
-    
-    return 1  # false, no migration needed
+	# Legacy local mode: ai-rizz.inf exists but is in .git/info/exclude
+	if [ -f "$COMMIT_MANIFEST_FILE" ] && [ -f ".git/info/exclude" ]; then
+	    if grep -q "^$COMMIT_MANIFEST_FILE$" ".git/info/exclude"; then
+	        return 0  # true, needs migration from legacy local
+	    fi
+	fi
+	
+	return 1  # false, no migration needed
 }
 
 # Migrate legacy repository to progressive format
@@ -704,20 +704,20 @@ needs_migration() {
 #   0 always
 #
 migrate_legacy_repository_if_needed() {
-    if ! needs_migration; then
-        return 0  # No migration needed
-    fi
-    
-    # Get target directory from existing manifest
-    if [ -f "$COMMIT_MANIFEST_FILE" ]; then
-        metadata=$(read_manifest_metadata "$COMMIT_MANIFEST_FILE") || {
-            error "Failed to read legacy manifest metadata"
-        }
-        legacy_target_dir=$(echo "$metadata" | cut -f2)
-        
-        # Migrate legacy local mode to new format
-        migrate_legacy_local_mode "$legacy_target_dir"
-    fi
+	if ! needs_migration; then
+	    return 0  # No migration needed
+	fi
+	
+	# Get target directory from existing manifest
+	if [ -f "$COMMIT_MANIFEST_FILE" ]; then
+	    metadata=$(read_manifest_metadata "$COMMIT_MANIFEST_FILE") || {
+	        error "Failed to read legacy manifest metadata"
+	    }
+	    legacy_target_dir=$(echo "$metadata" | cut -f2)
+	    
+	    # Migrate legacy local mode to new format
+	    migrate_legacy_local_mode "$legacy_target_dir"
+	fi
 }
 
 # Migrate from legacy local mode (ai-rizz.inf in git exclude) to new format
@@ -741,26 +741,26 @@ migrate_legacy_repository_if_needed() {
 #   0 always
 #
 migrate_legacy_local_mode() {
-    legacy_target_dir="$1"
-    
-    # 1. Rename manifest file
-    mv "$COMMIT_MANIFEST_FILE" "$LOCAL_MANIFEST_FILE"
-    
-    # 2. Create local directory and move rules from shared directory
-    mkdir -p "$legacy_target_dir/$LOCAL_DIR"
-    
-    if [ -d "$legacy_target_dir/$SHARED_DIR" ]; then
-        if [ "$(ls -A "$legacy_target_dir/$SHARED_DIR" 2>/dev/null)" ]; then
-            mv "$legacy_target_dir/$SHARED_DIR"/* "$legacy_target_dir/$LOCAL_DIR/"
-        fi
-        rmdir "$legacy_target_dir/$SHARED_DIR"
-    fi
-    
-    # 3. Update .git/info/exclude entries
-    update_git_exclude "$COMMIT_MANIFEST_FILE" "remove"
-    update_git_exclude "$legacy_target_dir/$SHARED_DIR" "remove"  
-    update_git_exclude "$LOCAL_MANIFEST_FILE" "add"
-    update_git_exclude "$legacy_target_dir/$LOCAL_DIR" "add"
+	legacy_target_dir="$1"
+	
+	# 1. Rename manifest file
+	mv "$COMMIT_MANIFEST_FILE" "$LOCAL_MANIFEST_FILE"
+	
+	# 2. Create local directory and move rules from shared directory
+	mkdir -p "$legacy_target_dir/$LOCAL_DIR"
+	
+	if [ -d "$legacy_target_dir/$SHARED_DIR" ]; then
+	    if [ "$(ls -A "$legacy_target_dir/$SHARED_DIR" 2>/dev/null)" ]; then
+	        mv "$legacy_target_dir/$SHARED_DIR"/* "$legacy_target_dir/$LOCAL_DIR/"
+	    fi
+	    rmdir "$legacy_target_dir/$SHARED_DIR"
+	fi
+	
+	# 3. Update .git/info/exclude entries
+	update_git_exclude "$COMMIT_MANIFEST_FILE" "remove"
+	update_git_exclude "$legacy_target_dir/$SHARED_DIR" "remove"  
+	update_git_exclude "$LOCAL_MANIFEST_FILE" "add"
+	update_git_exclude "$legacy_target_dir/$LOCAL_DIR" "add"
 }
 
 # Lazy Initialization Utilities
@@ -795,50 +795,50 @@ migrate_legacy_local_mode() {
 #   1 on error (via error() function)
 #
 lazy_init_mode() {
-    target_mode="$1"  # "local" or "commit"
-    
-    # Get metadata from any existing manifest
-    metadata=$(get_any_manifest_metadata) || {
-        error "No manifest available to copy metadata from for lazy initialization"
-    }
-    
-    source_repo=$(echo "$metadata" | cut -f1)
-    target_dir=$(echo "$metadata" | cut -f2)
-    
-    case "$target_mode" in
-        local)
-            # Create local mode structure
-            mkdir -p "$target_dir/$LOCAL_DIR"
-            
-            # Write empty manifest with metadata
-            echo "" | write_manifest_with_entries "$LOCAL_MANIFEST_FILE" "$source_repo" "$target_dir"
-            
-            # Update git excludes
-            setup_local_mode_excludes "$target_dir"
-            
-            # Update mode state and cache
-            HAS_LOCAL_MODE=true
-            LOCAL_SOURCE_REPO="$source_repo"
-            LOCAL_TARGET_DIR="$target_dir"
-            ;;
-            
-        commit)
-            # Create commit mode structure  
-            mkdir -p "$target_dir/$SHARED_DIR"
-            
-            # Write empty manifest with metadata
-            echo "" | write_manifest_with_entries "$COMMIT_MANIFEST_FILE" "$source_repo" "$target_dir"
-            
-            # Update mode state and cache
-            HAS_COMMIT_MODE=true
-            COMMIT_SOURCE_REPO="$source_repo"
-            COMMIT_TARGET_DIR="$target_dir"
-            ;;
-            
-        *)
-            error "Invalid target mode: $target_mode. Must be 'local' or 'commit'"
-            ;;
-    esac
+	target_mode="$1"  # "local" or "commit"
+	
+	# Get metadata from any existing manifest
+	metadata=$(get_any_manifest_metadata) || {
+	    error "No manifest available to copy metadata from for lazy initialization"
+	}
+	
+	source_repo=$(echo "$metadata" | cut -f1)
+	target_dir=$(echo "$metadata" | cut -f2)
+	
+	case "$target_mode" in
+	    local)
+	        # Create local mode structure
+	        mkdir -p "$target_dir/$LOCAL_DIR"
+	        
+	        # Write empty manifest with metadata
+	        echo "" | write_manifest_with_entries "$LOCAL_MANIFEST_FILE" "$source_repo" "$target_dir"
+	        
+	        # Update git excludes
+	        setup_local_mode_excludes "$target_dir"
+	        
+	        # Update mode state and cache
+	        HAS_LOCAL_MODE=true
+	        LOCAL_SOURCE_REPO="$source_repo"
+	        LOCAL_TARGET_DIR="$target_dir"
+	        ;;
+	        
+	    commit)
+	        # Create commit mode structure  
+	        mkdir -p "$target_dir/$SHARED_DIR"
+	        
+	        # Write empty manifest with metadata
+	        echo "" | write_manifest_with_entries "$COMMIT_MANIFEST_FILE" "$source_repo" "$target_dir"
+	        
+	        # Update mode state and cache
+	        HAS_COMMIT_MODE=true
+	        COMMIT_SOURCE_REPO="$source_repo"
+	        COMMIT_TARGET_DIR="$target_dir"
+	        ;;
+	        
+	    *)
+	        error "Invalid target mode: $target_mode. Must be 'local' or 'commit'"
+	        ;;
+	esac
 }
 
 # Check if lazy initialization is needed for a mode
@@ -860,19 +860,19 @@ lazy_init_mode() {
 #   1 otherwise
 #
 needs_lazy_init() {
-    target_mode="$1"
-    
-    case "$target_mode" in
-        local)
-            [ "$HAS_LOCAL_MODE" = "false" ] && [ "$HAS_COMMIT_MODE" = "true" ]
-            ;;
-        commit)
-            [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "true" ]
-            ;;
-        *)
-            return 1
-            ;;
-    esac
+	target_mode="$1"
+	
+	case "$target_mode" in
+	    local)
+	        [ "$HAS_LOCAL_MODE" = "false" ] && [ "$HAS_COMMIT_MODE" = "true" ]
+	        ;;
+	    commit)
+	        [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "true" ]
+	        ;;
+	    *)
+	        return 1
+	        ;;
+	esac
 }
 
 # Conflict Resolution Utilities
@@ -898,39 +898,39 @@ needs_lazy_init() {
 #   1 if manifest file doesn't exist
 #
 get_files_from_manifest() {
-    manifest_file="${1}"
-    
-    if [ ! -f "${manifest_file}" ]; then
-        return 1
-    fi
-    
-    # Get the source repo from manifest metadata
-    source_repo=$(read_manifest_metadata "${manifest_file}" | cut -f1)
-    
-    # Use the global repository directory
-    repo_dir="${REPO_DIR}"
-    
-    # Get all entries from the manifest
-    entries=$(read_manifest_entries "${manifest_file}" 2>/dev/null || true)
-    
-    if [ -n "${entries}" ]; then
-        echo "${entries}" | while IFS= read -r entry; do
-            if [ -n "${entry}" ]; then
-                # Get the source path for this entry
-                source_path="${repo_dir}/${entry}"
-                
-                if [ -f "${source_path}" ]; then
-                    # Single file - extract just the filename
-                    basename "${source_path}"
-                elif [ -d "${source_path}" ]; then
-                    # Directory (ruleset) - list all .mdc files in it
-                    find "${source_path}" -name "*.mdc" -type f -o -name "*.mdc" -type l | while IFS= read -r rule_file; do
-                        basename "${rule_file}"
-                    done
-                fi
-            fi
-        done
-    fi
+	manifest_file="${1}"
+	
+	if [ ! -f "${manifest_file}" ]; then
+	    return 1
+	fi
+	
+	# Get the source repo from manifest metadata
+	source_repo=$(read_manifest_metadata "${manifest_file}" | cut -f1)
+	
+	# Use the global repository directory
+	repo_dir="${REPO_DIR}"
+	
+	# Get all entries from the manifest
+	entries=$(read_manifest_entries "${manifest_file}" 2>/dev/null || true)
+	
+	if [ -n "${entries}" ]; then
+	    echo "${entries}" | while IFS= read -r entry; do
+	        if [ -n "${entry}" ]; then
+	            # Get the source path for this entry
+	            source_path="${repo_dir}/${entry}"
+	            
+	            if [ -f "${source_path}" ]; then
+	                # Single file - extract just the filename
+	                basename "${source_path}"
+	            elif [ -d "${source_path}" ]; then
+	                # Directory (ruleset) - list all .mdc files in it
+	                find "${source_path}" -name "*.mdc" -type f -o -name "*.mdc" -type l | while IFS= read -r rule_file; do
+	                    basename "${rule_file}"
+	                done
+	            fi
+	        fi
+	    done
+	fi
 }
 
 # Remove local manifest entries that would deploy the given filename
@@ -958,52 +958,52 @@ get_files_from_manifest() {
 #   0 always
 #
 remove_local_entries_deploying_file() {
-    filename="${1}"
-    
-    # Get all local entries
-    local_entries=$(read_manifest_entries "${LOCAL_MANIFEST_FILE}" 2>/dev/null || true)
-    
-    if [ -n "${local_entries}" ]; then
-        # Use a temporary file to avoid subshell issues
-        temp_entries=$(mktemp)
-        echo "${local_entries}" > "${temp_entries}"
-        
-        while IFS= read -r entry; do
-            if [ -n "${entry}" ]; then
-                # Check if this entry would deploy the target filename
-                source_path="${REPO_DIR}/${entry}"
-                
-                if [ -f "${source_path}" ]; then
-                    # Single file - check if it matches
-                    if [ "$(basename "${source_path}")" = "${filename}" ]; then
-                        remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${entry}"
-                    fi
-                elif [ -d "${source_path}" ]; then
-                    # Directory (ruleset) - check if it contains the file
-                    if find "${source_path}" -name "${filename}" -type f -o -name "${filename}" -type l | grep -q .; then
-                        # For rulesets containing a conflicting file, we have a partial conflict.
-                        # We should NOT remove the entire local ruleset because it may contain
-                        # other rules that should remain local. Instead, let the sync process
-                        # handle the file-level conflict (commit wins for individual files).
-                        #
-                        # The only case where we remove the entire local ruleset is if the
-                        # commit manifest contains the exact same ruleset entry.
-                        ruleset_path="${entry}"
-                        if [ -f "${COMMIT_MANIFEST_FILE}" ] && read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${ruleset_path}$"; then
-                            # Exact same ruleset in both modes - remove from local (commit wins)
-                            remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${entry}"
-                        else
-                            # Partial conflict - keep local ruleset, let sync handle file-level conflicts
-                            continue
-                        fi
-                    fi
-                fi
-            fi
-        done < "${temp_entries}"
-        
-        # Clean up temporary file
-        rm -f "${temp_entries}"
-    fi
+	filename="${1}"
+	
+	# Get all local entries
+	local_entries=$(read_manifest_entries "${LOCAL_MANIFEST_FILE}" 2>/dev/null || true)
+	
+	if [ -n "${local_entries}" ]; then
+	    # Use a temporary file to avoid subshell issues
+	    temp_entries=$(mktemp)
+	    echo "${local_entries}" > "${temp_entries}"
+	    
+	    while IFS= read -r entry; do
+	        if [ -n "${entry}" ]; then
+	            # Check if this entry would deploy the target filename
+	            source_path="${REPO_DIR}/${entry}"
+	            
+	            if [ -f "${source_path}" ]; then
+	                # Single file - check if it matches
+	                if [ "$(basename "${source_path}")" = "${filename}" ]; then
+	                    remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${entry}"
+	                fi
+	            elif [ -d "${source_path}" ]; then
+	                # Directory (ruleset) - check if it contains the file
+	                if find "${source_path}" -name "${filename}" -type f -o -name "${filename}" -type l | grep -q .; then
+	                    # For rulesets containing a conflicting file, we have a partial conflict.
+	                    # We should NOT remove the entire local ruleset because it may contain
+	                    # other rules that should remain local. Instead, let the sync process
+	                    # handle the file-level conflict (commit wins for individual files).
+	                    #
+	                    # The only case where we remove the entire local ruleset is if the
+	                    # commit manifest contains the exact same ruleset entry.
+	                    ruleset_path="${entry}"
+	                    if [ -f "${COMMIT_MANIFEST_FILE}" ] && read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${ruleset_path}$"; then
+	                        # Exact same ruleset in both modes - remove from local (commit wins)
+	                        remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${entry}"
+	                    else
+	                        # Partial conflict - keep local ruleset, let sync handle file-level conflicts
+	                        continue
+	                    fi
+	                fi
+	            fi
+	        fi
+	    done < "${temp_entries}"
+	    
+	    # Clean up temporary file
+	    rm -f "${temp_entries}"
+	fi
 }
 
 
@@ -1033,32 +1033,32 @@ remove_local_entries_deploying_file() {
 #   0 always
 #
 resolve_conflicts() {
-    if [ "${HAS_COMMIT_MODE}" = "false" ] || [ "${HAS_LOCAL_MODE}" = "false" ]; then
-        return 0  # No conflicts possible with single mode
-    fi
-    
-    if [ ! -f "${COMMIT_MANIFEST_FILE}" ] || [ ! -f "${LOCAL_MANIFEST_FILE}" ]; then
-        return 0  # Can't have conflicts if manifests don't exist
-    fi
-    
-    # Get all .mdc files that would be deployed by commit manifest
-    commit_files=$(get_files_from_manifest "${COMMIT_MANIFEST_FILE}" 2>/dev/null || true)
-    
-    if [ -n "${commit_files}" ]; then
-        # Use a temporary file to avoid subshell issues
-        temp_file=$(mktemp)
-        echo "${commit_files}" > "${temp_file}"
-        
-        # For each file that commit would deploy, remove any local entries that would deploy the same file
-        while IFS= read -r filename; do
-            if [ -n "${filename}" ]; then
-                remove_local_entries_deploying_file "${filename}"
-            fi
-        done < "${temp_file}"
-        
-        # Clean up temporary file
-        rm -f "${temp_file}"
-    fi
+	if [ "${HAS_COMMIT_MODE}" = "false" ] || [ "${HAS_LOCAL_MODE}" = "false" ]; then
+	    return 0  # No conflicts possible with single mode
+	fi
+	
+	if [ ! -f "${COMMIT_MANIFEST_FILE}" ] || [ ! -f "${LOCAL_MANIFEST_FILE}" ]; then
+	    return 0  # Can't have conflicts if manifests don't exist
+	fi
+	
+	# Get all .mdc files that would be deployed by commit manifest
+	commit_files=$(get_files_from_manifest "${COMMIT_MANIFEST_FILE}" 2>/dev/null || true)
+	
+	if [ -n "${commit_files}" ]; then
+	    # Use a temporary file to avoid subshell issues
+	    temp_file=$(mktemp)
+	    echo "${commit_files}" > "${temp_file}"
+	    
+	    # For each file that commit would deploy, remove any local entries that would deploy the same file
+	    while IFS= read -r filename; do
+	        if [ -n "${filename}" ]; then
+	            remove_local_entries_deploying_file "${filename}"
+	        fi
+	    done < "${temp_file}"
+	    
+	    # Clean up temporary file
+	    rm -f "${temp_file}"
+	fi
 }
 
 # Validation Utilities
@@ -1080,26 +1080,26 @@ resolve_conflicts() {
 #   1 if invalid or missing
 #
 validate_manifest_format() {
-    manifest_file="$1"
-    
-    if [ ! -f "$manifest_file" ]; then
-        return 1
-    fi
-    
-    # Check if file is empty
-    if [ ! -s "$manifest_file" ]; then
-        warn "Manifest file $manifest_file is empty"
-        return 1
-    fi
-    
-    # Check first line format
-    first_line=$(head -n1 "$manifest_file")
-    if ! echo "$first_line" | grep -q "	"; then
-        warn "Invalid manifest format in $manifest_file: First line must be 'source_repo<tab>target_dir'"
-        return 1
-    fi
-    
-    return 0
+	manifest_file="$1"
+	
+	if [ ! -f "$manifest_file" ]; then
+	    return 1
+	fi
+	
+	# Check if file is empty
+	if [ ! -s "$manifest_file" ]; then
+	    warn "Manifest file $manifest_file is empty"
+	    return 1
+	fi
+	
+	# Check first line format
+	first_line=$(head -n1 "$manifest_file")
+	if ! echo "$first_line" | grep -q "	"; then
+	    warn "Invalid manifest format in $manifest_file: First line must be 'source_repo<tab>target_dir'"
+	    return 1
+	fi
+	
+	return 0
 }
 
 # Validate that both manifests use the same source repository (hard error)
@@ -1121,11 +1121,11 @@ validate_manifest_format() {
 #   0 if valid or single mode
 #
 validate_manifest_integrity() {
-    if [ "${HAS_COMMIT_MODE}" = "true" ] && [ "${HAS_LOCAL_MODE}" = "true" ]; then
-        if [ "${COMMIT_SOURCE_REPO}" != "${LOCAL_SOURCE_REPO}" ]; then
-            error "Manifest integrity error: Local and commit modes use different source repositories (${LOCAL_SOURCE_REPO} vs ${COMMIT_SOURCE_REPO}). This is not supported. Use 'ai-rizz deinit' to reset."
-        fi
-    fi
+	if [ "${HAS_COMMIT_MODE}" = "true" ] && [ "${HAS_LOCAL_MODE}" = "true" ]; then
+	    if [ "${COMMIT_SOURCE_REPO}" != "${LOCAL_SOURCE_REPO}" ]; then
+	        error "Manifest integrity error: Local and commit modes use different source repositories (${LOCAL_SOURCE_REPO} vs ${COMMIT_SOURCE_REPO}). This is not supported. Use 'ai-rizz deinit' to reset."
+	    fi
+	fi
 }
 
 # Commands
@@ -1162,151 +1162,151 @@ validate_manifest_integrity() {
 #   1 on error (via error() function)
 #
 cmd_init() {
-    source_repo=""
-    target_dir=""
-    mode=""
-    
-    # Parse arguments
-    while [ $# -gt 0 ]; do
-        case "$1" in
-            -d)
-                target_dir="$2"
-                shift 2
-                ;;
-            --local|-l)
-                mode="local"
-                shift
-                ;;
-            --commit|-c)
-                mode="commit"
-                shift
-                ;;
-            *)
-                if [ -z "$source_repo" ]; then
-                    source_repo="$1"
-                    shift
-                else
-                    error "Unknown argument: $1"
-                fi
-                ;;
-        esac
-    done
-    
-    # Prompt for source repo if not provided
-    if [ -z "$source_repo" ]; then
-        printf "Source repository URL: "
-        read -r source_repo
-        if [ -z "$source_repo" ]; then
-            error "Source repository URL is required"
-        fi
-    fi
-    
-    # Use default target directory if not provided
-    if [ -z "$target_dir" ]; then
-        target_dir="$DEFAULT_TARGET_DIR"
-    fi
-    
-    # Prompt for mode if not provided
-    if [ -z "$mode" ]; then
-        printf "Mode [local/commit]: "
-        read -r mode
-        if [ -z "$mode" ]; then
-            mode="local"
-        fi
-    fi
-    
-        # Validate mode
-    case "$mode" in
-        local|commit)
-            ;;
-        *)
-            error "Invalid mode: $mode. Must be 'local' or 'commit'"
-            ;;
-    esac
+	source_repo=""
+	target_dir=""
+	mode=""
+	
+	# Parse arguments
+	while [ $# -gt 0 ]; do
+	    case "$1" in
+	        -d)
+	            target_dir="$2"
+	            shift 2
+	            ;;
+	        --local|-l)
+	            mode="local"
+	            shift
+	            ;;
+	        --commit|-c)
+	            mode="commit"
+	            shift
+	            ;;
+	        *)
+	            if [ -z "$source_repo" ]; then
+	                source_repo="$1"
+	                shift
+	            else
+	                error "Unknown argument: $1"
+	            fi
+	            ;;
+	    esac
+	done
+	
+	# Prompt for source repo if not provided
+	if [ -z "$source_repo" ]; then
+	    printf "Source repository URL: "
+	    read -r source_repo
+	    if [ -z "$source_repo" ]; then
+	        error "Source repository URL is required"
+	    fi
+	fi
+	
+	# Use default target directory if not provided
+	if [ -z "$target_dir" ]; then
+	    target_dir="$DEFAULT_TARGET_DIR"
+	fi
+	
+	# Prompt for mode if not provided
+	if [ -z "$mode" ]; then
+	    printf "Mode [local/commit]: "
+	    read -r mode
+	    if [ -z "$mode" ]; then
+	        mode="local"
+	    fi
+	fi
+	
+	    # Validate mode
+	case "$mode" in
+	    local|commit)
+	        ;;
+	    *)
+	        error "Invalid mode: $mode. Must be 'local' or 'commit'"
+	        ;;
+	esac
 
-    # If one mode already exists, use its source_repo (no override allowed)
-    if [ "${HAS_COMMIT_MODE}" = "true" ] || [ "${HAS_LOCAL_MODE}" = "true" ]; then
-        existing_source_repo=""
-        if [ "${HAS_COMMIT_MODE}" = "true" ]; then
-            existing_source_repo="${COMMIT_SOURCE_REPO}"
-        else
-            existing_source_repo="${LOCAL_SOURCE_REPO}"
-        fi
-        
-        # Override user input silently
-        source_repo="${existing_source_repo}"
-    fi
+	# If one mode already exists, use its source_repo (no override allowed)
+	if [ "${HAS_COMMIT_MODE}" = "true" ] || [ "${HAS_LOCAL_MODE}" = "true" ]; then
+	    existing_source_repo=""
+	    if [ "${HAS_COMMIT_MODE}" = "true" ]; then
+	        existing_source_repo="${COMMIT_SOURCE_REPO}"
+	    else
+	        existing_source_repo="${LOCAL_SOURCE_REPO}"
+	    fi
+	    
+	    # Override user input silently
+	    source_repo="${existing_source_repo}"
+	fi
 
-    # Check if repository is already initialized in the requested mode
-    case "$mode" in
-        local)
-            if [ "$HAS_LOCAL_MODE" = "true" ]; then
-                # Check if parameters match existing configuration
-                if [ "$LOCAL_SOURCE_REPO" = "$source_repo" ] && [ "$LOCAL_TARGET_DIR" = "$target_dir" ]; then
-                    echo "Initialized ai-rizz with source: $source_repo, target: $target_dir, mode: $mode"
-                    return 0  # Idempotent success
-                else
-                    error "Local mode already initialized with different parameters. Use 'ai-rizz deinit --local' first."
-                fi
-            fi
-            ;;
-        commit)
-            if [ "$HAS_COMMIT_MODE" = "true" ]; then
-                # Check if parameters match existing configuration
-                if [ "$COMMIT_SOURCE_REPO" = "$source_repo" ] && [ "$COMMIT_TARGET_DIR" = "$target_dir" ]; then
-                    echo "Initialized ai-rizz with source: $source_repo, target: $target_dir, mode: $mode"
-                    return 0  # Idempotent success
-                else
-                    error "Commit mode already initialized with different parameters. Use 'ai-rizz deinit --commit' first."
-                fi
-            fi
-            ;;
-    esac
-    
-    # Ensure git repository context
-    if [ ! -d ".git" ]; then
-        error "Not in a git repository"
-    fi
-    
-    # Clone/sync source repository first
-    if ! git_sync "$source_repo"; then
-        error "Failed to initialize: repository unavailable"
-    fi
-    
-    # Initialize the requested mode
-    case "$mode" in
-        local)
-            # Create local mode structure
-            mkdir -p "$target_dir/$LOCAL_DIR"
-            
-            # Write empty manifest with metadata
-            echo "" | write_manifest_with_entries "$LOCAL_MANIFEST_FILE" "$source_repo" "$target_dir"
-            
-            # Update git excludes
-            setup_local_mode_excludes "$target_dir"
-            
-            # Update mode state and cache
-            HAS_LOCAL_MODE=true
-            LOCAL_SOURCE_REPO="$source_repo"
-            LOCAL_TARGET_DIR="$target_dir"
-            ;;
-            
-        commit)
-            # Create commit mode structure  
-            mkdir -p "$target_dir/$SHARED_DIR"
-            
-            # Write empty manifest with metadata
-            echo "" | write_manifest_with_entries "$COMMIT_MANIFEST_FILE" "$source_repo" "$target_dir"
-            
-            # Update mode state and cache
-            HAS_COMMIT_MODE=true
-            COMMIT_SOURCE_REPO="$source_repo"
-            COMMIT_TARGET_DIR="$target_dir"
-            ;;
-    esac
-    
-    echo "Initialized ai-rizz with source: $source_repo, target: $target_dir, mode: $mode"
-    return 0
+	# Check if repository is already initialized in the requested mode
+	case "$mode" in
+	    local)
+	        if [ "$HAS_LOCAL_MODE" = "true" ]; then
+	            # Check if parameters match existing configuration
+	            if [ "$LOCAL_SOURCE_REPO" = "$source_repo" ] && [ "$LOCAL_TARGET_DIR" = "$target_dir" ]; then
+	                echo "Initialized ai-rizz with source: $source_repo, target: $target_dir, mode: $mode"
+	                return 0  # Idempotent success
+	            else
+	                error "Local mode already initialized with different parameters. Use 'ai-rizz deinit --local' first."
+	            fi
+	        fi
+	        ;;
+	    commit)
+	        if [ "$HAS_COMMIT_MODE" = "true" ]; then
+	            # Check if parameters match existing configuration
+	            if [ "$COMMIT_SOURCE_REPO" = "$source_repo" ] && [ "$COMMIT_TARGET_DIR" = "$target_dir" ]; then
+	                echo "Initialized ai-rizz with source: $source_repo, target: $target_dir, mode: $mode"
+	                return 0  # Idempotent success
+	            else
+	                error "Commit mode already initialized with different parameters. Use 'ai-rizz deinit --commit' first."
+	            fi
+	        fi
+	        ;;
+	esac
+	
+	# Ensure git repository context
+	if [ ! -d ".git" ]; then
+	    error "Not in a git repository"
+	fi
+	
+	# Clone/sync source repository first
+	if ! git_sync "$source_repo"; then
+	    error "Failed to initialize: repository unavailable"
+	fi
+	
+	# Initialize the requested mode
+	case "$mode" in
+	    local)
+	        # Create local mode structure
+	        mkdir -p "$target_dir/$LOCAL_DIR"
+	        
+	        # Write empty manifest with metadata
+	        echo "" | write_manifest_with_entries "$LOCAL_MANIFEST_FILE" "$source_repo" "$target_dir"
+	        
+	        # Update git excludes
+	        setup_local_mode_excludes "$target_dir"
+	        
+	        # Update mode state and cache
+	        HAS_LOCAL_MODE=true
+	        LOCAL_SOURCE_REPO="$source_repo"
+	        LOCAL_TARGET_DIR="$target_dir"
+	        ;;
+	        
+	    commit)
+	        # Create commit mode structure  
+	        mkdir -p "$target_dir/$SHARED_DIR"
+	        
+	        # Write empty manifest with metadata
+	        echo "" | write_manifest_with_entries "$COMMIT_MANIFEST_FILE" "$source_repo" "$target_dir"
+	        
+	        # Update mode state and cache
+	        HAS_COMMIT_MODE=true
+	        COMMIT_SOURCE_REPO="$source_repo"
+	        COMMIT_TARGET_DIR="$target_dir"
+	        ;;
+	esac
+	
+	echo "Initialized ai-rizz with source: $source_repo, target: $target_dir, mode: $mode"
+	return 0
 }
 
 # Recursively remove empty parent directories
@@ -1327,14 +1327,14 @@ cleanup_empty_parents() {
   dir="$1"
   # Check if directory exists and is empty
   if [ -d "$dir" ] && [ -z "$(ls -A "$dir")" ]; then
-    parent_dir=$(dirname "$dir")
-    echo "Removing empty directory: $dir"
-    rmdir "$dir"
-    
-    # Stop at filesystem root, home directory, or current directory
-    if [ "$parent_dir" != "/" ] && [ "$parent_dir" != "$HOME" ] && [ "$parent_dir" != "." ]; then
-      cleanup_empty_parents "$parent_dir"
-    fi
+	parent_dir=$(dirname "$dir")
+	echo "Removing empty directory: $dir"
+	rmdir "$dir"
+	
+	# Stop at filesystem root, home directory, or current directory
+	if [ "$parent_dir" != "/" ] && [ "$parent_dir" != "$HOME" ] && [ "$parent_dir" != "." ]; then
+	  cleanup_empty_parents "$parent_dir"
+	fi
   fi
 }
 
@@ -1370,157 +1370,157 @@ cleanup_empty_parents() {
 #   1 on error (via error() function)
 #
 cmd_deinit() {
-    force=false
-    mode=""
-    
-    # Parse arguments
-    while [ $# -gt 0 ]; do
-        case "$1" in
-            -y)
-                force=true
-                shift
-                ;;
-            --local|-l)
-                mode="local"
-                shift
-                ;;
-            --commit|-c)
-                mode="commit"
-                shift
-                ;;
-            --all|-a)
-                mode="all"
-                shift
-                ;;
-            *)
-                error "Unknown argument: $1"
-                ;;
-        esac
-    done
-    
-    # Check if any mode is initialized
-    if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
-        error "No ai-rizz configuration found."
-    fi
-    
-    # Prompt for mode if not provided
-    if [ -z "$mode" ]; then
-        if [ "$HAS_LOCAL_MODE" = "true" ] && [ "$HAS_COMMIT_MODE" = "true" ]; then
-            printf "Which mode to remove [local/commit/all]: "
-            read -r mode
-            if [ -z "$mode" ]; then
-                mode="all"
-            fi
-        elif [ "$HAS_LOCAL_MODE" = "true" ]; then
-            mode="local"
-        elif [ "$HAS_COMMIT_MODE" = "true" ]; then
-            mode="commit"
-        fi
-    fi
-    
-    # Validate mode
-    case "$mode" in
-        local|commit|all)
-            ;;
-        *)
-            error "Invalid mode: $mode. Must be 'local', 'commit', or 'all'"
-            ;;
-    esac
-    
-    # Determine what to remove
-    remove_local=false
-    remove_commit=false
-    
-    case "$mode" in
-        local)
-            if [ "$HAS_LOCAL_MODE" = "false" ]; then
-                error "Local mode not initialized"
-            fi
-            remove_local=true
-            ;;
-        commit)
-            if [ "$HAS_COMMIT_MODE" = "false" ]; then
-                error "Commit mode not initialized"
-            fi
-            remove_commit=true
-            ;;
-        all)
-            remove_local=true
-            remove_commit=true
-            ;;
-    esac
-    
-    # Build confirmation message
-    items_to_remove=""
-    if [ "$remove_local" = "true" ] && [ "$HAS_LOCAL_MODE" = "true" ]; then
-        items_to_remove="$items_to_remove $LOCAL_MANIFEST_FILE $LOCAL_TARGET_DIR/$LOCAL_DIR"
-    fi
-    if [ "$remove_commit" = "true" ] && [ "$HAS_COMMIT_MODE" = "true" ]; then
-        items_to_remove="$items_to_remove $COMMIT_MANIFEST_FILE $COMMIT_TARGET_DIR/$SHARED_DIR"
-    fi
-    
-    # Confirm deletion
-    if ! $force && [ -n "$items_to_remove" ]; then
-        echo "This will delete:$items_to_remove"
-        printf "Are you sure? [y/N] "
-        read -r confirm
-        if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
-            echo "Canceled"
-            return 0
-        fi
-    fi
-    
-    # Save target directories for cleanup before clearing them
-    local_target_for_cleanup="$LOCAL_TARGET_DIR"
-    commit_target_for_cleanup="$COMMIT_TARGET_DIR"
-    
-    # Remove local mode
-    if [ "$remove_local" = "true" ] && [ "$HAS_LOCAL_MODE" = "true" ]; then
-        # Remove from git excludes
-        remove_local_mode_excludes "$LOCAL_TARGET_DIR"
-        
-        # Remove files
-        rm -rf "$LOCAL_TARGET_DIR/$LOCAL_DIR"
-        rm -f "$LOCAL_MANIFEST_FILE"
-        
-        # Update mode state
-        HAS_LOCAL_MODE=false
-        LOCAL_SOURCE_REPO=""
-        LOCAL_TARGET_DIR=""
-        
-        echo "Removed local mode configuration"
-    fi
-    
-    # Remove commit mode
-    if [ "$remove_commit" = "true" ] && [ "$HAS_COMMIT_MODE" = "true" ]; then
-        # Remove files (no git exclude changes needed for commit mode)
-        rm -rf "$COMMIT_TARGET_DIR/$SHARED_DIR"
-        rm -f "$COMMIT_MANIFEST_FILE"
-        
-        # Update mode state
-        HAS_COMMIT_MODE=false
-        COMMIT_SOURCE_REPO=""
-        COMMIT_TARGET_DIR=""
-        
-        echo "Removed commit mode configuration"
-    fi
-    
-    # Clean up empty parent directories using saved values
-    if [ "$remove_local" = "true" ] && [ -n "$local_target_for_cleanup" ]; then
-        parent_dir=$(dirname "$local_target_for_cleanup/$LOCAL_DIR")
-        if [ "$parent_dir" != "." ] && [ "$parent_dir" != "/" ]; then
-            cleanup_empty_parents "$parent_dir"
-        fi
-    fi
-    
-    if [ "$remove_commit" = "true" ] && [ -n "$commit_target_for_cleanup" ]; then
-        parent_dir=$(dirname "$commit_target_for_cleanup/$SHARED_DIR")
-        if [ "$parent_dir" != "." ] && [ "$parent_dir" != "/" ]; then
-            cleanup_empty_parents "$parent_dir"
-        fi
-    fi
-    
-    return 0
+	force=false
+	mode=""
+	
+	# Parse arguments
+	while [ $# -gt 0 ]; do
+	    case "$1" in
+	        -y)
+	            force=true
+	            shift
+	            ;;
+	        --local|-l)
+	            mode="local"
+	            shift
+	            ;;
+	        --commit|-c)
+	            mode="commit"
+	            shift
+	            ;;
+	        --all|-a)
+	            mode="all"
+	            shift
+	            ;;
+	        *)
+	            error "Unknown argument: $1"
+	            ;;
+	    esac
+	done
+	
+	# Check if any mode is initialized
+	if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
+	    error "No ai-rizz configuration found."
+	fi
+	
+	# Prompt for mode if not provided
+	if [ -z "$mode" ]; then
+	    if [ "$HAS_LOCAL_MODE" = "true" ] && [ "$HAS_COMMIT_MODE" = "true" ]; then
+	        printf "Which mode to remove [local/commit/all]: "
+	        read -r mode
+	        if [ -z "$mode" ]; then
+	            mode="all"
+	        fi
+	    elif [ "$HAS_LOCAL_MODE" = "true" ]; then
+	        mode="local"
+	    elif [ "$HAS_COMMIT_MODE" = "true" ]; then
+	        mode="commit"
+	    fi
+	fi
+	
+	# Validate mode
+	case "$mode" in
+	    local|commit|all)
+	        ;;
+	    *)
+	        error "Invalid mode: $mode. Must be 'local', 'commit', or 'all'"
+	        ;;
+	esac
+	
+	# Determine what to remove
+	remove_local=false
+	remove_commit=false
+	
+	case "$mode" in
+	    local)
+	        if [ "$HAS_LOCAL_MODE" = "false" ]; then
+	            error "Local mode not initialized"
+	        fi
+	        remove_local=true
+	        ;;
+	    commit)
+	        if [ "$HAS_COMMIT_MODE" = "false" ]; then
+	            error "Commit mode not initialized"
+	        fi
+	        remove_commit=true
+	        ;;
+	    all)
+	        remove_local=true
+	        remove_commit=true
+	        ;;
+	esac
+	
+	# Build confirmation message
+	items_to_remove=""
+	if [ "$remove_local" = "true" ] && [ "$HAS_LOCAL_MODE" = "true" ]; then
+	    items_to_remove="$items_to_remove $LOCAL_MANIFEST_FILE $LOCAL_TARGET_DIR/$LOCAL_DIR"
+	fi
+	if [ "$remove_commit" = "true" ] && [ "$HAS_COMMIT_MODE" = "true" ]; then
+	    items_to_remove="$items_to_remove $COMMIT_MANIFEST_FILE $COMMIT_TARGET_DIR/$SHARED_DIR"
+	fi
+	
+	# Confirm deletion
+	if ! $force && [ -n "$items_to_remove" ]; then
+	    echo "This will delete:$items_to_remove"
+	    printf "Are you sure? [y/N] "
+	    read -r confirm
+	    if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+	        echo "Canceled"
+	        return 0
+	    fi
+	fi
+	
+	# Save target directories for cleanup before clearing them
+	local_target_for_cleanup="$LOCAL_TARGET_DIR"
+	commit_target_for_cleanup="$COMMIT_TARGET_DIR"
+	
+	# Remove local mode
+	if [ "$remove_local" = "true" ] && [ "$HAS_LOCAL_MODE" = "true" ]; then
+	    # Remove from git excludes
+	    remove_local_mode_excludes "$LOCAL_TARGET_DIR"
+	    
+	    # Remove files
+	    rm -rf "$LOCAL_TARGET_DIR/$LOCAL_DIR"
+	    rm -f "$LOCAL_MANIFEST_FILE"
+	    
+	    # Update mode state
+	    HAS_LOCAL_MODE=false
+	    LOCAL_SOURCE_REPO=""
+	    LOCAL_TARGET_DIR=""
+	    
+	    echo "Removed local mode configuration"
+	fi
+	
+	# Remove commit mode
+	if [ "$remove_commit" = "true" ] && [ "$HAS_COMMIT_MODE" = "true" ]; then
+	    # Remove files (no git exclude changes needed for commit mode)
+	    rm -rf "$COMMIT_TARGET_DIR/$SHARED_DIR"
+	    rm -f "$COMMIT_MANIFEST_FILE"
+	    
+	    # Update mode state
+	    HAS_COMMIT_MODE=false
+	    COMMIT_SOURCE_REPO=""
+	    COMMIT_TARGET_DIR=""
+	    
+	    echo "Removed commit mode configuration"
+	fi
+	
+	# Clean up empty parent directories using saved values
+	if [ "$remove_local" = "true" ] && [ -n "$local_target_for_cleanup" ]; then
+	    parent_dir=$(dirname "$local_target_for_cleanup/$LOCAL_DIR")
+	    if [ "$parent_dir" != "." ] && [ "$parent_dir" != "/" ]; then
+	        cleanup_empty_parents "$parent_dir"
+	    fi
+	fi
+	
+	if [ "$remove_commit" = "true" ] && [ -n "$commit_target_for_cleanup" ]; then
+	    parent_dir=$(dirname "$commit_target_for_cleanup/$SHARED_DIR")
+	    if [ "$parent_dir" != "." ] && [ "$parent_dir" != "/" ]; then
+	        cleanup_empty_parents "$parent_dir"
+	    fi
+	fi
+	
+	return 0
 }
 
 # List available rules and rulesets (multi-mode aware)
@@ -1551,146 +1551,146 @@ cmd_deinit() {
 #   1 on error (via error() function)
 #
 cmd_list() {
-    # Check if any mode is initialized
-    if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
-        error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-    fi
-    
-    # Validate manifest integrity (hard error for mismatched source repos)
-    validate_manifest_integrity
-    
-    # Validate manifest format for all existing manifests
-    if [ "$HAS_LOCAL_MODE" = "true" ]; then
-        validate_manifest_format "$LOCAL_MANIFEST_FILE" || error "Corrupted local manifest file"
-    fi
-    if [ "$HAS_COMMIT_MODE" = "true" ]; then
-        validate_manifest_format "$COMMIT_MANIFEST_FILE" || error "Corrupted commit manifest file"
-    fi
-    
-    # Get source repo from any available mode
-    source_repo=""
-    if [ "$HAS_COMMIT_MODE" = "true" ]; then
-        source_repo="$COMMIT_SOURCE_REPO"
-    elif [ "$HAS_LOCAL_MODE" = "true" ]; then
-        source_repo="$LOCAL_SOURCE_REPO"
-    fi
-    
-    # Update source repository
-    git_sync "$source_repo"
-    
-    # Helper function to check if an item is installed in any mode
-    is_installed() {
-        _is_installed_item="$1"
-        _is_installed_status="uninstalled"
-        
-        # Helper to check if item is covered by rulesets in a manifest
-        check_rulesets_for_item() {
-            _check_manifest_file="$1"
-            _check_item_basename=$(basename "$_is_installed_item")
-            _check_entries=""
-            
-            _check_entries=$(read_manifest_entries "$_check_manifest_file" 2>/dev/null) || return 1
-            
-            # Use a for loop instead of while to avoid subshell issues
-            for _check_entry in $_check_entries; do
-                if [ -n "$_check_entry" ] && echo "$_check_entry" | grep -q "^rulesets/"; then
-                    # Check if this ruleset contains the item
-                    _check_ruleset_dir="$REPO_DIR/$_check_entry"
-                    if [ -d "$_check_ruleset_dir" ] && [ -f "$_check_ruleset_dir/$_check_item_basename" ]; then
-                        return 0  # Found in ruleset
-                    fi
-                fi
-            done
-            return 1  # Not found in any ruleset
-        }
-        
-        # Check local mode first (weaker glyph)
-        if [ "$HAS_LOCAL_MODE" = "true" ]; then
-            # Check if item is directly in manifest
-            if read_manifest_entries "$LOCAL_MANIFEST_FILE" 2>/dev/null | grep -q "^$_is_installed_item$"; then
-                _is_installed_status="local"
-            elif check_rulesets_for_item "$LOCAL_MANIFEST_FILE"; then
-                _is_installed_status="local"
-            fi
-        fi
-        
-        # Check commit mode (stronger glyph - overrides local)
-        if [ "$HAS_COMMIT_MODE" = "true" ]; then
-            # Check if item is directly in manifest
-            if read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null | grep -q "^$_is_installed_item$"; then
-                _is_installed_status="committed"
-            elif check_rulesets_for_item "$COMMIT_MANIFEST_FILE"; then
-                _is_installed_status="committed"
-            fi
-        fi
-        
-        echo "$_is_installed_status"
-    }
-    
-    # Display rules
-    echo "Available rules:"
-    rules=$(find "$REPO_DIR/rules" -name "*.mdc" | sort 2>/dev/null)
-    if [ -z "$rules" ]; then
-        echo "  No rules found"
-    else
-        for rule in $rules; do
-            rule_name=$(basename "$rule")
-            rule_path="rules/$rule_name"
-            status=$(is_installed "$rule_path")
-            
-            case "$status" in
-                committed)
-                    printf "  %s %s\n" "$COMMITTED_GLYPH" "$rule_name"
-                    ;;
-                local)
-                    printf "  %s %s\n" "$LOCAL_GLYPH" "$rule_name"
-                    ;;
-                *)
-                    printf "  %s %s\n" "$UNINSTALLED_GLYPH" "$rule_name"
-                    ;;
-            esac
-        done
-    fi
-    echo ""
-    
-    # Display rulesets
-    echo "Available rulesets:"
-    rulesets=$(find "$REPO_DIR/rulesets" -mindepth 1 -maxdepth 1 -type d | sort 2>/dev/null)
-    if [ -z "$rulesets" ]; then
-        echo "  No rulesets found"
-    else
-        for ruleset in $rulesets; do
-            ruleset_name=$(basename "$ruleset")
-            ruleset_path="rulesets/$ruleset_name"
-            status=$(is_installed "$ruleset_path")
-            
-            # Display ruleset with installation status
-            case "$status" in
-                committed)
-                    printf "  %s %s\n" "$COMMITTED_GLYPH" "$ruleset_name"
-                    ;;
-                local)
-                    printf "  %s %s\n" "$LOCAL_GLYPH" "$ruleset_name"
-                    ;;
-                *)
-                    printf "  %s %s\n" "$UNINSTALLED_GLYPH" "$ruleset_name"
-                    ;;
-            esac
-            
-            # Use tree to display ruleset contents
-            if [ -d "$ruleset" ]; then
-                # Check if tree command exists
-                if command -v tree >/dev/null 2>&1; then
-                    (cd "$ruleset" && tree -L 1 --noreport) | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'
-                else
-                    # Fallback if tree is not available
-                    find "$ruleset" -maxdepth 1 -name "*.mdc" -exec basename {} \; | sort | sed 's/^/    ├── /'
-                fi
-            fi
-        done
-    fi
-    
-    return 0
+	# Check if any mode is initialized
+	if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
+	    error "No ai-rizz configuration found. Run 'ai-rizz init' first."
+	fi
+	
+	# Validate manifest integrity (hard error for mismatched source repos)
+	validate_manifest_integrity
+	
+	# Validate manifest format for all existing manifests
+	if [ "$HAS_LOCAL_MODE" = "true" ]; then
+	    validate_manifest_format "$LOCAL_MANIFEST_FILE" || error "Corrupted local manifest file"
+	fi
+	if [ "$HAS_COMMIT_MODE" = "true" ]; then
+	    validate_manifest_format "$COMMIT_MANIFEST_FILE" || error "Corrupted commit manifest file"
+	fi
+	
+	# Get source repo from any available mode
+	source_repo=""
+	if [ "$HAS_COMMIT_MODE" = "true" ]; then
+	    source_repo="$COMMIT_SOURCE_REPO"
+	elif [ "$HAS_LOCAL_MODE" = "true" ]; then
+	    source_repo="$LOCAL_SOURCE_REPO"
+	fi
+	
+	# Update source repository
+	git_sync "$source_repo"
+	
+	# Helper function to check if an item is installed in any mode
+	is_installed() {
+	    _is_installed_item="$1"
+	    _is_installed_status="uninstalled"
+	    
+	    # Helper to check if item is covered by rulesets in a manifest
+	    check_rulesets_for_item() {
+	        _check_manifest_file="$1"
+	        _check_item_basename=$(basename "$_is_installed_item")
+	        _check_entries=""
+	        
+	        _check_entries=$(read_manifest_entries "$_check_manifest_file" 2>/dev/null) || return 1
+	        
+	        # Use a for loop instead of while to avoid subshell issues
+	        for _check_entry in $_check_entries; do
+	            if [ -n "$_check_entry" ] && echo "$_check_entry" | grep -q "^rulesets/"; then
+	                # Check if this ruleset contains the item
+	                _check_ruleset_dir="$REPO_DIR/$_check_entry"
+	                if [ -d "$_check_ruleset_dir" ] && [ -f "$_check_ruleset_dir/$_check_item_basename" ]; then
+	                    return 0  # Found in ruleset
+	                fi
+	            fi
+	        done
+	        return 1  # Not found in any ruleset
+	    }
+	    
+	    # Check local mode first (weaker glyph)
+	    if [ "$HAS_LOCAL_MODE" = "true" ]; then
+	        # Check if item is directly in manifest
+	        if read_manifest_entries "$LOCAL_MANIFEST_FILE" 2>/dev/null | grep -q "^$_is_installed_item$"; then
+	            _is_installed_status="local"
+	        elif check_rulesets_for_item "$LOCAL_MANIFEST_FILE"; then
+	            _is_installed_status="local"
+	        fi
+	    fi
+	    
+	    # Check commit mode (stronger glyph - overrides local)
+	    if [ "$HAS_COMMIT_MODE" = "true" ]; then
+	        # Check if item is directly in manifest
+	        if read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null | grep -q "^$_is_installed_item$"; then
+	            _is_installed_status="committed"
+	        elif check_rulesets_for_item "$COMMIT_MANIFEST_FILE"; then
+	            _is_installed_status="committed"
+	        fi
+	    fi
+	    
+	    echo "$_is_installed_status"
+	}
+	
+	# Display rules
+	echo "Available rules:"
+	rules=$(find "$REPO_DIR/rules" -name "*.mdc" | sort 2>/dev/null)
+	if [ -z "$rules" ]; then
+	    echo "  No rules found"
+	else
+	    for rule in $rules; do
+	        rule_name=$(basename "$rule")
+	        rule_path="rules/$rule_name"
+	        status=$(is_installed "$rule_path")
+	        
+	        case "$status" in
+	            committed)
+	                printf "  %s %s\n" "$COMMITTED_GLYPH" "$rule_name"
+	                ;;
+	            local)
+	                printf "  %s %s\n" "$LOCAL_GLYPH" "$rule_name"
+	                ;;
+	            *)
+	                printf "  %s %s\n" "$UNINSTALLED_GLYPH" "$rule_name"
+	                ;;
+	        esac
+	    done
+	fi
+	echo ""
+	
+	# Display rulesets
+	echo "Available rulesets:"
+	rulesets=$(find "$REPO_DIR/rulesets" -mindepth 1 -maxdepth 1 -type d | sort 2>/dev/null)
+	if [ -z "$rulesets" ]; then
+	    echo "  No rulesets found"
+	else
+	    for ruleset in $rulesets; do
+	        ruleset_name=$(basename "$ruleset")
+	        ruleset_path="rulesets/$ruleset_name"
+	        status=$(is_installed "$ruleset_path")
+	        
+	        # Display ruleset with installation status
+	        case "$status" in
+	            committed)
+	                printf "  %s %s\n" "$COMMITTED_GLYPH" "$ruleset_name"
+	                ;;
+	            local)
+	                printf "  %s %s\n" "$LOCAL_GLYPH" "$ruleset_name"
+	                ;;
+	            *)
+	                printf "  %s %s\n" "$UNINSTALLED_GLYPH" "$ruleset_name"
+	                ;;
+	        esac
+	        
+	        # Use tree to display ruleset contents
+	        if [ -d "$ruleset" ]; then
+	            # Check if tree command exists
+	            if command -v tree >/dev/null 2>&1; then
+	                (cd "$ruleset" && tree -L 1 --noreport) | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'
+	            else
+	                # Fallback if tree is not available
+	                find "$ruleset" -maxdepth 1 -name "*.mdc" -exec basename {} \; | sort | sed 's/^/    ├── /'
+	            fi
+	        fi
+	    done
+	fi
+	
+	return 0
 }
 
 # Add rule(s) to the repository (progressive mode-aware)
@@ -1727,174 +1727,174 @@ cmd_list() {
 #   1 on error (via error() function)
 #
 cmd_add_rule() {
-    mode=""
-    rules=""
-    
-    # Parse arguments
-    while [ $# -gt 0 ]; do
-        case "$1" in
-            --local|-l)
-                mode="local"
-                shift
-                ;;
-            --commit|-c)
-                mode="commit"
-                shift
-                ;;
-            *)
-                if [ -z "$rules" ]; then
-                    rules="$1"
-                else
-                    rules="$rules $1"
-                fi
-                shift
-                ;;
-        esac
-    done
-    
-    # Check if any mode is initialized
-    if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
-        error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-    fi
-    
-    # Validate manifest integrity (hard error for mismatched source repos)
-    validate_manifest_integrity
-    
-    # Smart mode selection
-    if [ -z "$mode" ]; then
-        if [ "$HAS_LOCAL_MODE" = "true" ] && [ "$HAS_COMMIT_MODE" = "false" ]; then
-            mode="local"
-        elif [ "$HAS_COMMIT_MODE" = "true" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
-            mode="commit"
-        else
-            error "Both modes available. Please specify --local or --commit flag."
-        fi
-    fi
-    
-    # Check if lazy initialization is needed and track it
-    lazy_init_occurred=false
-    if needs_lazy_init "$mode"; then
-        lazy_init_mode "$mode"
-        lazy_init_occurred=true
-    fi
-    
-    # Select manifest and target based on mode
-    case "$mode" in
-        local)
-            manifest_file="$LOCAL_MANIFEST_FILE"
-            target_dir="$LOCAL_TARGET_DIR/$LOCAL_DIR"
-            # Update source repository
-            git_sync "$LOCAL_SOURCE_REPO"
-            ;;
-        commit)
-            manifest_file="$COMMIT_MANIFEST_FILE"
-            target_dir="$COMMIT_TARGET_DIR/$SHARED_DIR"
-            # Update source repository
-            git_sync "$COMMIT_SOURCE_REPO"
-            ;;
-        *)
-            error "Invalid mode: $mode"
-            ;;
-    esac
-    
-    # Process each rule
-    for rule in $rules; do
-        # Add .mdc extension if not present
-        case "$rule" in
-            *".mdc") ;;  # Already has extension
-            *) rule="${rule}.mdc" ;;  # Add extension
-        esac
-        
-        rule_path="rules/$rule"
-        
-        # Check if rule exists in source repo
-        if [ ! -f "$REPO_DIR/$rule_path" ]; then
-            warn "Rule not found: $rule_path"
-            continue
-        fi
-        
-        # Check for downgrade conflicts: prevent adding individual rules to local mode 
-        # when they're part of a committed ruleset
-        if [ "$mode" = "local" ] && [ "$HAS_COMMIT_MODE" = "true" ]; then
-            # Check if this rule is part of any committed ruleset
-            rule_filename=$(basename "$rule_path")
-            commit_entries=$(read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null || true)
-            
-            if [ -n "$commit_entries" ]; then
-                # Check each committed entry to see if it's a ruleset containing this rule
-                echo "$commit_entries" | while IFS= read -r entry; do
-                    if [ -n "$entry" ]; then
-                        entry_path="$REPO_DIR/$entry"
-                        if [ -d "$entry_path" ]; then
-                            # This is a ruleset - check if it contains our rule
-                            if find "$entry_path" -name "$rule_filename" -type f -o -name "$rule_filename" -type l | grep -q .; then
-                                warn "Cannot add individual rule '$rule' to local mode: it's part of committed ruleset '$entry'. Use 'ai-rizz add-ruleset $(basename "$entry") --local' to move the entire ruleset."
-                                continue 2  # Skip to next rule in outer loop
-                            fi
-                        fi
-                    fi
-                done
-            fi
-        fi
-        
-        # Check if rule exists in opposite mode (conflict resolution)
-        # Skip migration check if we just lazy-initialized the target mode (it's empty)
-        if [ "$lazy_init_occurred" = "false" ]; then
-            case "$mode" in
-                local)
-                    if [ "$HAS_COMMIT_MODE" = "true" ]; then
-                        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-                            # Remove from commit mode, add to local mode
-                            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
-                        fi
-                    fi
-                    ;;
-                commit)
-                    if [ "$HAS_LOCAL_MODE" = "true" ]; then
-                        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-                            # Remove from local mode, add to commit mode
-                            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
-                        fi
-                    fi
-                    ;;
-            esac
-        else
-            # Lazy initialization occurred - need to migrate from opposite mode
-            case "$mode" in
-                local)
-                    # We just created local mode, migrate from commit mode if rule exists there
-                    if [ "$HAS_COMMIT_MODE" = "true" ]; then
-                        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-                            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
-                        fi
-                    fi
-                    ;;
-                commit)
-                    # We just created commit mode, migrate from local mode if rule exists there
-                    if [ "$HAS_LOCAL_MODE" = "true" ]; then
-                        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-                            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
-                        fi
-                    fi
-                    ;;
-            esac
-        fi
-        
-        # Check if target directory is writable before adding to manifest
-        if [ ! -w "$target_dir" ]; then
-            error "Cannot write to target directory: $target_dir (permission denied)"
-        fi
-        
-        # Add to target manifest
-        add_manifest_entry_to_file "$manifest_file" "$rule_path"
-        
-        echo "Added rule: $rule_path"
-    done
-    
-    # Sync to update file locations
-    sync_all_modes
-    
-    return 0
+	mode=""
+	rules=""
+	
+	# Parse arguments
+	while [ $# -gt 0 ]; do
+	    case "$1" in
+	        --local|-l)
+	            mode="local"
+	            shift
+	            ;;
+	        --commit|-c)
+	            mode="commit"
+	            shift
+	            ;;
+	        *)
+	            if [ -z "$rules" ]; then
+	                rules="$1"
+	            else
+	                rules="$rules $1"
+	            fi
+	            shift
+	            ;;
+	    esac
+	done
+	
+	# Check if any mode is initialized
+	if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
+	    error "No ai-rizz configuration found. Run 'ai-rizz init' first."
+	fi
+	
+	# Validate manifest integrity (hard error for mismatched source repos)
+	validate_manifest_integrity
+	
+	# Smart mode selection
+	if [ -z "$mode" ]; then
+	    if [ "$HAS_LOCAL_MODE" = "true" ] && [ "$HAS_COMMIT_MODE" = "false" ]; then
+	        mode="local"
+	    elif [ "$HAS_COMMIT_MODE" = "true" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
+	        mode="commit"
+	    else
+	        error "Both modes available. Please specify --local or --commit flag."
+	    fi
+	fi
+	
+	# Check if lazy initialization is needed and track it
+	lazy_init_occurred=false
+	if needs_lazy_init "$mode"; then
+	    lazy_init_mode "$mode"
+	    lazy_init_occurred=true
+	fi
+	
+	# Select manifest and target based on mode
+	case "$mode" in
+	    local)
+	        manifest_file="$LOCAL_MANIFEST_FILE"
+	        target_dir="$LOCAL_TARGET_DIR/$LOCAL_DIR"
+	        # Update source repository
+	        git_sync "$LOCAL_SOURCE_REPO"
+	        ;;
+	    commit)
+	        manifest_file="$COMMIT_MANIFEST_FILE"
+	        target_dir="$COMMIT_TARGET_DIR/$SHARED_DIR"
+	        # Update source repository
+	        git_sync "$COMMIT_SOURCE_REPO"
+	        ;;
+	    *)
+	        error "Invalid mode: $mode"
+	        ;;
+	esac
+	
+	# Process each rule
+	for rule in $rules; do
+	    # Add .mdc extension if not present
+	    case "$rule" in
+	        *".mdc") ;;  # Already has extension
+	        *) rule="${rule}.mdc" ;;  # Add extension
+	    esac
+	    
+	    rule_path="rules/$rule"
+	    
+	    # Check if rule exists in source repo
+	    if [ ! -f "$REPO_DIR/$rule_path" ]; then
+	        warn "Rule not found: $rule_path"
+	        continue
+	    fi
+	    
+	    # Check for downgrade conflicts: prevent adding individual rules to local mode 
+	    # when they're part of a committed ruleset
+	    if [ "$mode" = "local" ] && [ "$HAS_COMMIT_MODE" = "true" ]; then
+	        # Check if this rule is part of any committed ruleset
+	        rule_filename=$(basename "$rule_path")
+	        commit_entries=$(read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null || true)
+	        
+	        if [ -n "$commit_entries" ]; then
+	            # Check each committed entry to see if it's a ruleset containing this rule
+	            echo "$commit_entries" | while IFS= read -r entry; do
+	                if [ -n "$entry" ]; then
+	                    entry_path="$REPO_DIR/$entry"
+	                    if [ -d "$entry_path" ]; then
+	                        # This is a ruleset - check if it contains our rule
+	                        if find "$entry_path" -name "$rule_filename" -type f -o -name "$rule_filename" -type l | grep -q .; then
+	                            warn "Cannot add individual rule '$rule' to local mode: it's part of committed ruleset '$entry'. Use 'ai-rizz add-ruleset $(basename "$entry") --local' to move the entire ruleset."
+	                            continue 2  # Skip to next rule in outer loop
+	                        fi
+	                    fi
+	                fi
+	            done
+	        fi
+	    fi
+	    
+	    # Check if rule exists in opposite mode (conflict resolution)
+	    # Skip migration check if we just lazy-initialized the target mode (it's empty)
+	    if [ "$lazy_init_occurred" = "false" ]; then
+	        case "$mode" in
+	            local)
+	                if [ "$HAS_COMMIT_MODE" = "true" ]; then
+	                    if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+	                        # Remove from commit mode, add to local mode
+	                        remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
+	                    fi
+	                fi
+	                ;;
+	            commit)
+	                if [ "$HAS_LOCAL_MODE" = "true" ]; then
+	                    if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+	                        # Remove from local mode, add to commit mode
+	                        remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
+	                    fi
+	                fi
+	                ;;
+	        esac
+	    else
+	        # Lazy initialization occurred - need to migrate from opposite mode
+	        case "$mode" in
+	            local)
+	                # We just created local mode, migrate from commit mode if rule exists there
+	                if [ "$HAS_COMMIT_MODE" = "true" ]; then
+	                    if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+	                        remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
+	                    fi
+	                fi
+	                ;;
+	            commit)
+	                # We just created commit mode, migrate from local mode if rule exists there
+	                if [ "$HAS_LOCAL_MODE" = "true" ]; then
+	                    if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+	                        remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
+	                    fi
+	                fi
+	                ;;
+	        esac
+	    fi
+	    
+	    # Check if target directory is writable before adding to manifest
+	    if [ ! -w "$target_dir" ]; then
+	        error "Cannot write to target directory: $target_dir (permission denied)"
+	    fi
+	    
+	    # Add to target manifest
+	    add_manifest_entry_to_file "$manifest_file" "$rule_path"
+	    
+	    echo "Added rule: $rule_path"
+	done
+	
+	# Sync to update file locations
+	sync_all_modes
+	
+	return 0
 }
 
 # Add ruleset(s) to the repository (progressive mode-aware)
@@ -1927,137 +1927,137 @@ cmd_add_rule() {
 #   1 on error (via error() function)
 #
 cmd_add_ruleset() {
-    mode=""
-    rulesets=""
-    
-    # Parse arguments
-    while [ $# -gt 0 ]; do
-        case "$1" in
-            --local|-l)
-                mode="local"
-                shift
-                ;;
-            --commit|-c)
-                mode="commit"
-                shift
-                ;;
-            *)
-                if [ -z "$rulesets" ]; then
-                    rulesets="$1"
-                else
-                    rulesets="$rulesets $1"
-                fi
-                shift
-                ;;
-        esac
-    done
-    
-    # Check if any mode is initialized
-    if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
-        error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-    fi
-    
-    # Validate manifest integrity (hard error for mismatched source repos)
-    validate_manifest_integrity
-    
-    # Smart mode selection
-    if [ -z "$mode" ]; then
-        if [ "$HAS_LOCAL_MODE" = "true" ] && [ "$HAS_COMMIT_MODE" = "false" ]; then
-            mode="local"
-        elif [ "$HAS_COMMIT_MODE" = "true" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
-            mode="commit"
-        else
-            error "Both modes available. Please specify --local or --commit flag."
-        fi
-    fi
-    
-    # Check if lazy initialization is needed and track it
-    lazy_init_occurred=false
-    if needs_lazy_init "$mode"; then
-        lazy_init_mode "$mode"
-        lazy_init_occurred=true
-    fi
-    
-    # Select manifest and target based on mode
-    case "$mode" in
-        local)
-            manifest_file="$LOCAL_MANIFEST_FILE"
-            # Update source repository
-            git_sync "$LOCAL_SOURCE_REPO"
-            ;;
-        commit)
-            manifest_file="$COMMIT_MANIFEST_FILE"
-            # Update source repository
-            git_sync "$COMMIT_SOURCE_REPO"
-            ;;
-        *)
-            error "Invalid mode: $mode"
-            ;;
-    esac
-    
-    # Process each ruleset
-    for ruleset in $rulesets; do
-        ruleset_path="rulesets/$ruleset"
-        
-        # Check if ruleset exists in source repo
-        if [ ! -d "$REPO_DIR/$ruleset_path" ]; then
-            warn "Ruleset not found: $ruleset_path"
-            continue
-        fi
-        
-        # Check if ruleset exists in opposite mode (conflict resolution)
-        # Skip migration check if we just lazy-initialized the target mode (it's empty)
-        if [ "$lazy_init_occurred" = "false" ]; then
-            case "$mode" in
-                local)
-                    if [ "$HAS_COMMIT_MODE" = "true" ]; then
-                        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-                            # Remove from commit mode, add to local mode
-                            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
-                        fi
-                    fi
-                    ;;
-                commit)
-                    if [ "$HAS_LOCAL_MODE" = "true" ]; then
-                        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-                            # Remove from local mode, add to commit mode
-                            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
-                        fi
-                    fi
-                    ;;
-            esac
-        else
-            # Lazy initialization occurred - need to migrate from opposite mode
-            case "$mode" in
-                local)
-                    # We just created local mode, migrate from commit mode if ruleset exists there
-                    if [ "$HAS_COMMIT_MODE" = "true" ]; then
-                        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-                            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
-                        fi
-                    fi
-                    ;;
-                commit)
-                    # We just created commit mode, migrate from local mode if ruleset exists there
-                    if [ "$HAS_LOCAL_MODE" = "true" ]; then
-                        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-                            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
-                        fi
-                    fi
-                    ;;
-            esac
-        fi
-        
-        # Add to target manifest
-        add_manifest_entry_to_file "$manifest_file" "$ruleset_path"
-        
-        echo "Added ruleset: $ruleset_path"
-    done
-    
-    # Sync to update file locations
-    sync_all_modes
-    
-    return 0
+	mode=""
+	rulesets=""
+	
+	# Parse arguments
+	while [ $# -gt 0 ]; do
+	    case "$1" in
+	        --local|-l)
+	            mode="local"
+	            shift
+	            ;;
+	        --commit|-c)
+	            mode="commit"
+	            shift
+	            ;;
+	        *)
+	            if [ -z "$rulesets" ]; then
+	                rulesets="$1"
+	            else
+	                rulesets="$rulesets $1"
+	            fi
+	            shift
+	            ;;
+	    esac
+	done
+	
+	# Check if any mode is initialized
+	if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
+	    error "No ai-rizz configuration found. Run 'ai-rizz init' first."
+	fi
+	
+	# Validate manifest integrity (hard error for mismatched source repos)
+	validate_manifest_integrity
+	
+	# Smart mode selection
+	if [ -z "$mode" ]; then
+	    if [ "$HAS_LOCAL_MODE" = "true" ] && [ "$HAS_COMMIT_MODE" = "false" ]; then
+	        mode="local"
+	    elif [ "$HAS_COMMIT_MODE" = "true" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
+	        mode="commit"
+	    else
+	        error "Both modes available. Please specify --local or --commit flag."
+	    fi
+	fi
+	
+	# Check if lazy initialization is needed and track it
+	lazy_init_occurred=false
+	if needs_lazy_init "$mode"; then
+	    lazy_init_mode "$mode"
+	    lazy_init_occurred=true
+	fi
+	
+	# Select manifest and target based on mode
+	case "$mode" in
+	    local)
+	        manifest_file="$LOCAL_MANIFEST_FILE"
+	        # Update source repository
+	        git_sync "$LOCAL_SOURCE_REPO"
+	        ;;
+	    commit)
+	        manifest_file="$COMMIT_MANIFEST_FILE"
+	        # Update source repository
+	        git_sync "$COMMIT_SOURCE_REPO"
+	        ;;
+	    *)
+	        error "Invalid mode: $mode"
+	        ;;
+	esac
+	
+	# Process each ruleset
+	for ruleset in $rulesets; do
+	    ruleset_path="rulesets/$ruleset"
+	    
+	    # Check if ruleset exists in source repo
+	    if [ ! -d "$REPO_DIR/$ruleset_path" ]; then
+	        warn "Ruleset not found: $ruleset_path"
+	        continue
+	    fi
+	    
+	    # Check if ruleset exists in opposite mode (conflict resolution)
+	    # Skip migration check if we just lazy-initialized the target mode (it's empty)
+	    if [ "$lazy_init_occurred" = "false" ]; then
+	        case "$mode" in
+	            local)
+	                if [ "$HAS_COMMIT_MODE" = "true" ]; then
+	                    if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+	                        # Remove from commit mode, add to local mode
+	                        remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
+	                    fi
+	                fi
+	                ;;
+	            commit)
+	                if [ "$HAS_LOCAL_MODE" = "true" ]; then
+	                    if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+	                        # Remove from local mode, add to commit mode
+	                        remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
+	                    fi
+	                fi
+	                ;;
+	        esac
+	    else
+	        # Lazy initialization occurred - need to migrate from opposite mode
+	        case "$mode" in
+	            local)
+	                # We just created local mode, migrate from commit mode if ruleset exists there
+	                if [ "$HAS_COMMIT_MODE" = "true" ]; then
+	                    if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+	                        remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
+	                    fi
+	                fi
+	                ;;
+	            commit)
+	                # We just created commit mode, migrate from local mode if ruleset exists there
+	                if [ "$HAS_LOCAL_MODE" = "true" ]; then
+	                    if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+	                        remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
+	                    fi
+	                fi
+	                ;;
+	        esac
+	    fi
+	    
+	    # Add to target manifest
+	    add_manifest_entry_to_file "$manifest_file" "$ruleset_path"
+	    
+	    echo "Added ruleset: $ruleset_path"
+	done
+	
+	# Sync to update file locations
+	sync_all_modes
+	
+	return 0
 }
 
 # Remove rule(s) from the repository (mode-aware)
@@ -2084,51 +2084,51 @@ cmd_add_ruleset() {
 #   1 on error (via error() function)
 #
 cmd_remove_rule() {
-    # Check if any mode is initialized
-    if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
-        error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-    fi
-    
-    # Validate manifest integrity (hard error for mismatched source repos)
-    validate_manifest_integrity
-    
-    # Process each rule
-    for rule in "$@"; do
-        # Add .mdc extension if not present
-        case "$rule" in
-            *".mdc") ;;  # Already has extension
-            *) rule="${rule}.mdc" ;;  # Add extension
-        esac
-        
-        rule_path="rules/$rule"
-        removed=false
-        
-        # Remove from whichever mode contains it
-        if [ "$HAS_LOCAL_MODE" = "true" ]; then
-            if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-                remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
-                removed=true
-            fi
-        fi
-        
-        if [ "$HAS_COMMIT_MODE" = "true" ]; then
-            if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-                remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
-                removed=true
-            fi
-        fi
-        
-        if [ "$removed" = "true" ]; then
-            echo "Removed rule: $rule_path"
-        else
-            warn "Rule not found in any mode: $rule_path"
-        fi
-    done
-    
-    # Sync to ensure proper cleanup
-    sync_all_modes
-    
-    return 0
+	# Check if any mode is initialized
+	if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
+	    error "No ai-rizz configuration found. Run 'ai-rizz init' first."
+	fi
+	
+	# Validate manifest integrity (hard error for mismatched source repos)
+	validate_manifest_integrity
+	
+	# Process each rule
+	for rule in "$@"; do
+	    # Add .mdc extension if not present
+	    case "$rule" in
+	        *".mdc") ;;  # Already has extension
+	        *) rule="${rule}.mdc" ;;  # Add extension
+	    esac
+	    
+	    rule_path="rules/$rule"
+	    removed=false
+	    
+	    # Remove from whichever mode contains it
+	    if [ "$HAS_LOCAL_MODE" = "true" ]; then
+	        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+	            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
+	            removed=true
+	        fi
+	    fi
+	    
+	    if [ "$HAS_COMMIT_MODE" = "true" ]; then
+	        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+	            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
+	            removed=true
+	        fi
+	    fi
+	    
+	    if [ "$removed" = "true" ]; then
+	        echo "Removed rule: $rule_path"
+	    else
+	        warn "Rule not found in any mode: $rule_path"
+	    fi
+	done
+	
+	# Sync to ensure proper cleanup
+	sync_all_modes
+	
+	return 0
 }
 
 # Remove ruleset(s) from the repository (mode-aware)
@@ -2155,45 +2155,45 @@ cmd_remove_rule() {
 #   1 on error (via error() function)
 #
 cmd_remove_ruleset() {
-    # Check if any mode is initialized
-    if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
-        error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-    fi
-    
-    # Validate manifest integrity (hard error for mismatched source repos)
-    validate_manifest_integrity
-    
-    # Process each ruleset
-    for ruleset in "$@"; do
-        ruleset_path="rulesets/$ruleset"
-        removed=false
-        
-        # Remove from whichever mode contains it
-        if [ "$HAS_LOCAL_MODE" = "true" ]; then
-            if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-                remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
-                removed=true
-            fi
-        fi
-        
-        if [ "$HAS_COMMIT_MODE" = "true" ]; then
-            if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-                remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
-                removed=true
-            fi
-        fi
-        
-        if [ "$removed" = "true" ]; then
-            echo "Removed ruleset: $ruleset_path"
-        else
-            warn "Ruleset not found in any mode: $ruleset_path"
-        fi
-    done
-    
-    # Sync to ensure proper cleanup
-    sync_all_modes
-    
-    return 0
+	# Check if any mode is initialized
+	if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
+	    error "No ai-rizz configuration found. Run 'ai-rizz init' first."
+	fi
+	
+	# Validate manifest integrity (hard error for mismatched source repos)
+	validate_manifest_integrity
+	
+	# Process each ruleset
+	for ruleset in "$@"; do
+	    ruleset_path="rulesets/$ruleset"
+	    removed=false
+	    
+	    # Remove from whichever mode contains it
+	    if [ "$HAS_LOCAL_MODE" = "true" ]; then
+	        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+	            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
+	            removed=true
+	        fi
+	    fi
+	    
+	    if [ "$HAS_COMMIT_MODE" = "true" ]; then
+	        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+	            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
+	            removed=true
+	        fi
+	    fi
+	    
+	    if [ "$removed" = "true" ]; then
+	        echo "Removed ruleset: $ruleset_path"
+	    else
+	        warn "Ruleset not found in any mode: $ruleset_path"
+	    fi
+	done
+	
+	# Sync to ensure proper cleanup
+	sync_all_modes
+	
+	return 0
 }
 
 # Sync all available manifests to their target directories
@@ -2222,25 +2222,25 @@ cmd_remove_ruleset() {
 #   0 always (handles failures internally)
 #
 sync_all_modes() {
-    sync_success=true
-    
-    # Resolve conflicts first (commit mode wins)
-    resolve_conflicts
-    
-    # Sync commit mode if initialized
-    if [ "$HAS_COMMIT_MODE" = "true" ]; then
-        sync_manifest_to_directory "$COMMIT_MANIFEST_FILE" "$COMMIT_TARGET_DIR/$SHARED_DIR" || sync_success=false
-    fi
-    
-    # Sync local mode if initialized  
-    if [ "$HAS_LOCAL_MODE" = "true" ]; then
-        sync_manifest_to_directory "$LOCAL_MANIFEST_FILE" "$LOCAL_TARGET_DIR/$LOCAL_DIR" || sync_success=false
-    fi
-    
-    # Handle any cleanup needed
-    if [ "$sync_success" = "false" ]; then
-        handle_sync_cleanup
-    fi
+	sync_success=true
+	
+	# Resolve conflicts first (commit mode wins)
+	resolve_conflicts
+	
+	# Sync commit mode if initialized
+	if [ "$HAS_COMMIT_MODE" = "true" ]; then
+	    sync_manifest_to_directory "$COMMIT_MANIFEST_FILE" "$COMMIT_TARGET_DIR/$SHARED_DIR" || sync_success=false
+	fi
+	
+	# Sync local mode if initialized  
+	if [ "$HAS_LOCAL_MODE" = "true" ]; then
+	    sync_manifest_to_directory "$LOCAL_MANIFEST_FILE" "$LOCAL_TARGET_DIR/$LOCAL_DIR" || sync_success=false
+	fi
+	
+	# Handle any cleanup needed
+	if [ "$sync_success" = "false" ]; then
+	    handle_sync_cleanup
+	fi
 }
 
 # Sync a single manifest to its target directory
@@ -2265,50 +2265,50 @@ sync_all_modes() {
 #   1 on failure (unrecognized directory, read errors)
 #
 sync_manifest_to_directory() {
-    manifest_file="$1"
-    target_directory="$2"
-    
-    if [ ! -f "$manifest_file" ]; then
-        return 0  # No manifest to sync
-    fi
-    
-    # Create target directory if needed
-    mkdir -p "$target_directory"
-    
-    # Safety check: Only operate in our managed directories (local or shared)
-    case "$target_directory" in
-        */"$LOCAL_DIR"|*/"$SHARED_DIR")
-            # Clear existing .mdc files to ensure removed rules are deleted
-            # Only delete regular .mdc files, never directories or other files
-            find "$target_directory" -maxdepth 1 -name "*.mdc" -type f -delete 2>/dev/null || true
-            ;;
-        *)
-            warn "Refusing to clear unrecognized target directory: $target_directory"
-            return 1
-            ;;
-    esac
-    
-    # Get entries from manifest (handle external modifications gracefully)
-    entries=$(read_manifest_entries "$manifest_file") || {
-        warn "Failed to read entries from $manifest_file (possibly corrupted by external changes)"
-        return 1
-    }
-    
-    # Copy each entry (avoid subshell to ensure error propagation)
-    if [ -n "$entries" ]; then
-        # Use a temporary file to avoid subshell issues with pipes
-        temp_file=$(mktemp)
-        echo "$entries" > "$temp_file"
-        
-        while IFS= read -r entry; do
-            if [ -n "$entry" ]; then
-                # Continue with other entries even if one fails (resilient to external modifications)
-                copy_entry_to_target "$entry" "$target_directory" || true
-            fi
-        done < "$temp_file"
-        
-        rm -f "$temp_file"
-    fi
+	manifest_file="$1"
+	target_directory="$2"
+	
+	if [ ! -f "$manifest_file" ]; then
+	    return 0  # No manifest to sync
+	fi
+	
+	# Create target directory if needed
+	mkdir -p "$target_directory"
+	
+	# Safety check: Only operate in our managed directories (local or shared)
+	case "$target_directory" in
+	    */"$LOCAL_DIR"|*/"$SHARED_DIR")
+	        # Clear existing .mdc files to ensure removed rules are deleted
+	        # Only delete regular .mdc files, never directories or other files
+	        find "$target_directory" -maxdepth 1 -name "*.mdc" -type f -delete 2>/dev/null || true
+	        ;;
+	    *)
+	        warn "Refusing to clear unrecognized target directory: $target_directory"
+	        return 1
+	        ;;
+	esac
+	
+	# Get entries from manifest (handle external modifications gracefully)
+	entries=$(read_manifest_entries "$manifest_file") || {
+	    warn "Failed to read entries from $manifest_file (possibly corrupted by external changes)"
+	    return 1
+	}
+	
+	# Copy each entry (avoid subshell to ensure error propagation)
+	if [ -n "$entries" ]; then
+	    # Use a temporary file to avoid subshell issues with pipes
+	    temp_file=$(mktemp)
+	    echo "$entries" > "$temp_file"
+	    
+	    while IFS= read -r entry; do
+	        if [ -n "$entry" ]; then
+	            # Continue with other entries even if one fails (resilient to external modifications)
+	            copy_entry_to_target "$entry" "$target_directory" || true
+	        fi
+	    done < "$temp_file"
+	    
+	    rm -f "$temp_file"
+	fi
 }
 
 # Check if a filename would be deployed by commit mode
@@ -2332,20 +2332,20 @@ sync_manifest_to_directory() {
 #   1 otherwise
 #
 file_exists_in_commit_mode() {
-    filename="$1"
-    
-    if [ "$HAS_COMMIT_MODE" = "false" ] || [ ! -f "$COMMIT_MANIFEST_FILE" ]; then
-        return 1  # No commit mode, so no conflict
-    fi
-    
-    # Check if commit mode would deploy this filename
-    commit_files=$(get_files_from_manifest "$COMMIT_MANIFEST_FILE" 2>/dev/null || true)
-    if [ -n "$commit_files" ]; then
-        echo "$commit_files" | grep -q "^${filename}$"
-        return $?
-    fi
-    
-    return 1  # Not found in commit mode
+	filename="$1"
+	
+	if [ "$HAS_COMMIT_MODE" = "false" ] || [ ! -f "$COMMIT_MANIFEST_FILE" ]; then
+	    return 1  # No commit mode, so no conflict
+	fi
+	
+	# Check if commit mode would deploy this filename
+	commit_files=$(get_files_from_manifest "$COMMIT_MANIFEST_FILE" 2>/dev/null || true)
+	if [ -n "$commit_files" ]; then
+	    echo "$commit_files" | grep -q "^${filename}$"
+	    return $?
+	fi
+	
+	return 1  # Not found in commit mode
 }
 
 # Copy a single entry (rule or ruleset) to target directory
@@ -2371,49 +2371,49 @@ file_exists_in_commit_mode() {
 #   1 if entry not found in repository
 #
 copy_entry_to_target() {
-    entry="$1"
-    target_directory="$2"
-    
-    source_path="$REPO_DIR/$entry"
-    
-    # Check if we're syncing to local directory and need to avoid commit conflicts
-    is_local_sync=false
-    case "$target_directory" in
-        */"$LOCAL_DIR")
-            is_local_sync=true
-            ;;
-    esac
-    
-    if [ -f "$source_path" ]; then
-        # Single file (rule)
-        filename=$(basename "$source_path")
-        
-        # Skip if file would conflict with commit mode (commit wins)
-        if [ "$is_local_sync" = "true" ] && file_exists_in_commit_mode "$filename"; then
-            return 0  # Skip this file
-        fi
-        
-        cp "$source_path" "$target_directory/"
-    elif [ -d "$source_path" ]; then
-        # Directory (ruleset) - copy individual .mdc files from ruleset to target directory
-        # Handle symlinks correctly by following them and copying actual content
-        find "$source_path" -name "*.mdc" -type f -o -name "*.mdc" -type l | while IFS= read -r rule_file; do
-            if [ -f "$rule_file" ] || [ -L "$rule_file" ]; then
-                filename=$(basename "$rule_file")
-                
-                # Skip if file would conflict with commit mode (commit wins)
-                if [ "$is_local_sync" = "true" ] && file_exists_in_commit_mode "$filename"; then
-                    continue  # Skip this file
-                fi
-                
-                # Copy the file (following symlinks to get actual content)
-                cp -L "$rule_file" "$target_directory/"
-            fi
-        done
-    else
-        warn "Entry not found in repository: $entry"
-        return 1
-    fi
+	entry="$1"
+	target_directory="$2"
+	
+	source_path="$REPO_DIR/$entry"
+	
+	# Check if we're syncing to local directory and need to avoid commit conflicts
+	is_local_sync=false
+	case "$target_directory" in
+	    */"$LOCAL_DIR")
+	        is_local_sync=true
+	        ;;
+	esac
+	
+	if [ -f "$source_path" ]; then
+	    # Single file (rule)
+	    filename=$(basename "$source_path")
+	    
+	    # Skip if file would conflict with commit mode (commit wins)
+	    if [ "$is_local_sync" = "true" ] && file_exists_in_commit_mode "$filename"; then
+	        return 0  # Skip this file
+	    fi
+	    
+	    cp "$source_path" "$target_directory/"
+	elif [ -d "$source_path" ]; then
+	    # Directory (ruleset) - copy individual .mdc files from ruleset to target directory
+	    # Handle symlinks correctly by following them and copying actual content
+	    find "$source_path" -name "*.mdc" -type f -o -name "*.mdc" -type l | while IFS= read -r rule_file; do
+	        if [ -f "$rule_file" ] || [ -L "$rule_file" ]; then
+	            filename=$(basename "$rule_file")
+	            
+	            # Skip if file would conflict with commit mode (commit wins)
+	            if [ "$is_local_sync" = "true" ] && file_exists_in_commit_mode "$filename"; then
+	                continue  # Skip this file
+	            fi
+	            
+	            # Copy the file (following symlinks to get actual content)
+	            cp -L "$rule_file" "$target_directory/"
+	        fi
+	    done
+	else
+	    warn "Entry not found in repository: $entry"
+	    return 1
+	fi
 }
 
 # Handle cleanup after sync issues
@@ -2435,12 +2435,12 @@ copy_entry_to_target() {
 #   0 always
 #
 handle_sync_cleanup() {
-    # Re-cache manifest metadata to ensure consistency
-    cache_manifest_metadata
-    
-    # Validate git exclude state
-    target_dir=$(get_target_directory)
-    validate_git_exclude_state "$target_dir"
+	# Re-cache manifest metadata to ensure consistency
+	cache_manifest_metadata
+	
+	# Validate git exclude state
+	target_dir=$(get_target_directory)
+	validate_git_exclude_state "$target_dir"
 }
 
 # Sync the repository (multi-mode aware)
@@ -2467,35 +2467,35 @@ handle_sync_cleanup() {
 #   1 on error (via error() function)
 #
 cmd_sync() {
-    # Check if any mode is initialized
-    if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
-        error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-    fi
-    
-    # Validate manifest integrity (hard error for mismatched source repos)
-    validate_manifest_integrity
-    
-    # Get source repo from any available manifest
-    source_repo=""
-    if [ -n "$COMMIT_SOURCE_REPO" ]; then
-        source_repo="$COMMIT_SOURCE_REPO"
-    elif [ -n "$LOCAL_SOURCE_REPO" ]; then
-        source_repo="$LOCAL_SOURCE_REPO"
-    fi
-    
-    # Sync repository first
-    if [ -n "$source_repo" ]; then
-        if ! git_sync "$source_repo"; then
-            # git_sync already issued a warning, fail the sync operation
-            return 1
-        fi
-    fi
-    
-    # Sync all initialized modes
-    sync_all_modes
-    
-    echo "Sync complete"
-    return 0
+	# Check if any mode is initialized
+	if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
+	    error "No ai-rizz configuration found. Run 'ai-rizz init' first."
+	fi
+	
+	# Validate manifest integrity (hard error for mismatched source repos)
+	validate_manifest_integrity
+	
+	# Get source repo from any available manifest
+	source_repo=""
+	if [ -n "$COMMIT_SOURCE_REPO" ]; then
+	    source_repo="$COMMIT_SOURCE_REPO"
+	elif [ -n "$LOCAL_SOURCE_REPO" ]; then
+	    source_repo="$LOCAL_SOURCE_REPO"
+	fi
+	
+	# Sync repository first
+	if [ -n "$source_repo" ]; then
+	    if ! git_sync "$source_repo"; then
+	        # git_sync already issued a warning, fail the sync operation
+	        return 1
+	    fi
+	fi
+	
+	# Sync all initialized modes
+	sync_all_modes
+	
+	echo "Sync complete"
+	return 0
 }
 
 
@@ -2533,12 +2533,12 @@ Available commands:
 
 Command-specific options:
   init options:
-    -d <target_dir>        Target directory (default: .cursor/rules)
-    --local, -l            Use local mode (ignore files)
-    --commit, -c           Use commit mode (commit files)
+	-d <target_dir>        Target directory (default: .cursor/rules)
+	--local, -l            Use local mode (ignore files)
+	--commit, -c           Use commit mode (commit files)
 
   deinit options:
-    -y                     Skip confirmation prompts
+	-y                     Skip confirmation prompts
 EOF
   return 0
 }
@@ -2572,16 +2572,16 @@ EOF
 #   0 always
 #
 initialize_ai_rizz() {
-    # Phase 1: Minimal detection and migration (file-based only)
-    detect_manifest_files_only
-    migrate_legacy_repository_if_needed
-    
-    # Phase 2: Full initialization with directory checking  
-    detect_initialized_modes
-    cache_manifest_metadata
-    
-    # Phase 3: Set repository directory for current project
-    REPO_DIR=$(get_repo_dir)
+	# Phase 1: Minimal detection and migration (file-based only)
+	detect_manifest_files_only
+	migrate_legacy_repository_if_needed
+	
+	# Phase 2: Full initialization with directory checking  
+	detect_initialized_modes
+	cache_manifest_metadata
+	
+	# Phase 3: Set repository directory for current project
+	REPO_DIR=$(get_repo_dir)
 }
 
 # Main
@@ -2589,90 +2589,90 @@ initialize_ai_rizz() {
 
 # Only run main code if script is executed, not sourced
 if [ "${0##*/}" = "ai-rizz" ]; then
-    # Check if no arguments provided
-    if [ $# -eq 0 ]; then
-        cmd_help
-        exit 0
-    fi
-    
-    # Initialize ai-rizz state for production use
-    initialize_ai_rizz
-    
-    # Parse command
-    command=$1
-    shift
+	# Check if no arguments provided
+	if [ $# -eq 0 ]; then
+	    cmd_help
+	    exit 0
+	fi
+	
+	# Initialize ai-rizz state for production use
+	initialize_ai_rizz
+	
+	# Parse command
+	command=$1
+	shift
 
-    case "$command" in
-    init)
-      cmd_init "$@"
-      ;;
-    deinit)
-      cmd_deinit "$@"
-      ;;
-    list)
-      cmd_list "$@"
-      ;;
-    add)
-      if [ $# -eq 0 ]; then
-        error "Missing type: 'rule' or 'ruleset'"
-      fi
-      
-      type=$1
-      shift
-      
-      case "$type" in
-        rule)
-          if [ $# -eq 0 ]; then
-            error "Missing rule name"
-          fi
-          cmd_add_rule "$@"
-          ;;
-        ruleset)
-          if [ $# -eq 0 ]; then
-            error "Missing ruleset name"
-          fi
-          cmd_add_ruleset "$@"
-          ;;
-        *)
-          error "Invalid type: $type. Must be 'rule' or 'ruleset'"
-          ;;
-      esac
-      ;;
-    remove)
-      if [ $# -eq 0 ]; then
-        error "Missing type: 'rule' or 'ruleset'"
-      fi
-      
-      type=$1
-      shift
-      
-      case "$type" in
-        rule)
-          if [ $# -eq 0 ]; then
-            error "Missing rule name"
-          fi
-          cmd_remove_rule "$@"
-          ;;
-        ruleset)
-          if [ $# -eq 0 ]; then
-            error "Missing ruleset name"
-          fi
-          cmd_remove_ruleset "$@"
-          ;;
-        *)
-          error "Invalid type: $type. Must be 'rule' or 'ruleset'"
-          ;;
-      esac
-      ;;
-    sync)
-      cmd_sync "$@"
-      ;;
-    help)
-      cmd_help "$@"
-      ;;
-    *)
-      error "Unknown command: $command. Run 'ai-rizz help' for usage"
-      ;;
+	case "$command" in
+	init)
+	  cmd_init "$@"
+	  ;;
+	deinit)
+	  cmd_deinit "$@"
+	  ;;
+	list)
+	  cmd_list "$@"
+	  ;;
+	add)
+	  if [ $# -eq 0 ]; then
+	    error "Missing type: 'rule' or 'ruleset'"
+	  fi
+	  
+	  type=$1
+	  shift
+	  
+	  case "$type" in
+	    rule)
+	      if [ $# -eq 0 ]; then
+	        error "Missing rule name"
+	      fi
+	      cmd_add_rule "$@"
+	      ;;
+	    ruleset)
+	      if [ $# -eq 0 ]; then
+	        error "Missing ruleset name"
+	      fi
+	      cmd_add_ruleset "$@"
+	      ;;
+	    *)
+	      error "Invalid type: $type. Must be 'rule' or 'ruleset'"
+	      ;;
+	  esac
+	  ;;
+	remove)
+	  if [ $# -eq 0 ]; then
+	    error "Missing type: 'rule' or 'ruleset'"
+	  fi
+	  
+	  type=$1
+	  shift
+	  
+	  case "$type" in
+	    rule)
+	      if [ $# -eq 0 ]; then
+	        error "Missing rule name"
+	      fi
+	      cmd_remove_rule "$@"
+	      ;;
+	    ruleset)
+	      if [ $# -eq 0 ]; then
+	        error "Missing ruleset name"
+	      fi
+	      cmd_remove_ruleset "$@"
+	      ;;
+	    *)
+	      error "Invalid type: $type. Must be 'rule' or 'ruleset'"
+	      ;;
+	  esac
+	  ;;
+	sync)
+	  cmd_sync "$@"
+	  ;;
+	help)
+	  cmd_help "$@"
+	  ;;
+	*)
+	  error "Unknown command: $command. Run 'ai-rizz help' for usage"
+	  ;;
   esac
 fi
 

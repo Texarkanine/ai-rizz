@@ -1,6 +1,12 @@
 #!/bin/sh
-# ai-rizz - A CLI tool to manage rules and rulesets  
-# POSIX compliant shell script
+#
+# ai-rizz - A CLI tool to manage Cursor rules and rulesets
+# Supports progressive initialization with local and commit modes
+#
+# Usage: ai-rizz <command> [options]
+# 
+# Copyright 2024 ai-rizz project
+# POSIX-compliant shell script for maximum portability
 
 set -e  # Exit on error
 
@@ -254,9 +260,9 @@ remove_manifest_entry_from_file() {
 	fi
 	
 	# Get metadata
-	rmeff_metadata=$(read_manifest_metadata "${rmeff_local_manifest_file}") || {
-	    error "Failed to read manifest metadata from ${rmeff_local_manifest_file}"
-	}
+	if ! rmeff_metadata=$(read_manifest_metadata "${rmeff_local_manifest_file}"); then
+		error "Failed to read manifest metadata from ${rmeff_local_manifest_file}"
+	fi
 	
 	# Get entries excluding the one to remove
 	rmeff_entries=$(read_manifest_entries "${rmeff_local_manifest_file}" | grep -v "^${rmeff_entry}$" || true)
@@ -596,20 +602,20 @@ detect_initialized_modes() {
 get_target_directory() {
 	# Try commit manifest first
 	if [ -f "${COMMIT_MANIFEST_FILE}" ]; then
-	    gtd_metadata=$(read_manifest_metadata "${COMMIT_MANIFEST_FILE}") || {
-	        error "Failed to read commit manifest metadata"
-	    }
-	    echo "${gtd_metadata}" | cut -f2
-	    return 0
+		if ! gtd_metadata=$(read_manifest_metadata "${COMMIT_MANIFEST_FILE}"); then
+			error "Failed to read commit manifest metadata"
+		fi
+		echo "${gtd_metadata}" | cut -f2
+		return 0
 	fi
 	
 	# Try local manifest
 	if [ -f "${LOCAL_MANIFEST_FILE}" ]; then
-	    gtd_metadata=$(read_manifest_metadata "${LOCAL_MANIFEST_FILE}") || {
-	        error "Failed to read local manifest metadata"
-	    }
-	    echo "${gtd_metadata}" | cut -f2
-	    return 0
+		if ! gtd_metadata=$(read_manifest_metadata "${LOCAL_MANIFEST_FILE}"); then
+			error "Failed to read local manifest metadata"
+		fi
+		echo "${gtd_metadata}" | cut -f2
+		return 0
 	fi
 	
 	# No manifests available - use default only during initialization
@@ -640,20 +646,20 @@ get_target_directory() {
 cache_manifest_metadata() {
 	# Cache commit manifest metadata
 	if [ -f "${COMMIT_MANIFEST_FILE}" ]; then
-	    cmm_metadata=$(read_manifest_metadata "${COMMIT_MANIFEST_FILE}") || {
-	        error "Failed to read commit manifest metadata"
-	    }
-	    COMMIT_SOURCE_REPO=$(echo "${cmm_metadata}" | cut -f1)
-	    COMMIT_TARGET_DIR=$(echo "${cmm_metadata}" | cut -f2)
+		if ! cmm_metadata=$(read_manifest_metadata "${COMMIT_MANIFEST_FILE}"); then
+			error "Failed to read commit manifest metadata"
+		fi
+		COMMIT_SOURCE_REPO=$(echo "${cmm_metadata}" | cut -f1)
+		COMMIT_TARGET_DIR=$(echo "${cmm_metadata}" | cut -f2)
 	fi
 	
 	# Cache local manifest metadata
 	if [ -f "${LOCAL_MANIFEST_FILE}" ]; then
-	    cmm_metadata=$(read_manifest_metadata "${LOCAL_MANIFEST_FILE}") || {
-	        error "Failed to read local manifest metadata"
-	    }
-	    LOCAL_SOURCE_REPO=$(echo "${cmm_metadata}" | cut -f1)
-	    LOCAL_TARGET_DIR=$(echo "${cmm_metadata}" | cut -f2)
+		if ! cmm_metadata=$(read_manifest_metadata "${LOCAL_MANIFEST_FILE}"); then
+			error "Failed to read local manifest metadata"
+		fi
+		LOCAL_SOURCE_REPO=$(echo "${cmm_metadata}" | cut -f1)
+		LOCAL_TARGET_DIR=$(echo "${cmm_metadata}" | cut -f2)
 	fi
 }
 
@@ -710,13 +716,13 @@ migrate_legacy_repository_if_needed() {
 	
 	# Get target directory from existing manifest
 	if [ -f "${COMMIT_MANIFEST_FILE}" ]; then
-	    mlrin_metadata=$(read_manifest_metadata "${COMMIT_MANIFEST_FILE}") || {
-	        error "Failed to read legacy manifest metadata"
-	    }
-	    mlrin_legacy_target_dir=$(echo "${mlrin_metadata}" | cut -f2)
-	    
-	    # Migrate legacy local mode to new format
-	    migrate_legacy_local_mode "${mlrin_legacy_target_dir}"
+		if ! mlrin_metadata=$(read_manifest_metadata "${COMMIT_MANIFEST_FILE}"); then
+			error "Failed to read legacy manifest metadata"
+		fi
+		mlrin_legacy_target_dir=$(echo "${mlrin_metadata}" | cut -f2)
+		
+		# Migrate legacy local mode to new format
+		migrate_legacy_local_mode "${mlrin_legacy_target_dir}"
 	fi
 }
 
@@ -798,9 +804,9 @@ lazy_init_mode() {
 	lim_target_mode="${1}"  # "local" or "commit"
 	
 	# Get metadata from any existing manifest
-	lim_metadata=$(get_any_manifest_metadata) || {
-	    error "No manifest available to copy metadata from for lazy initialization"
-	}
+	if ! lim_metadata=$(get_any_manifest_metadata); then
+		error "No manifest available to copy metadata from for lazy initialization"
+	fi
 	
 	lim_source_repo=$(echo "${lim_metadata}" | cut -f1)
 	lim_target_dir=$(echo "${lim_metadata}" | cut -f2)
@@ -903,9 +909,6 @@ get_files_from_manifest() {
 	if [ ! -f "${gffm_manifest_file}" ]; then
 	    return 1
 	fi
-	
-	# Get the source repo from manifest metadata
-	gffm_source_repo=$(read_manifest_metadata "${gffm_manifest_file}" | cut -f1)
 	
 	# Use the global repository directory
 	gffm_repo_dir="${REPO_DIR}"
@@ -1484,7 +1487,7 @@ cmd_deinit() {
 	    remove_local_mode_excludes "${LOCAL_TARGET_DIR}"
 	    
 	    # Remove files
-	    rm -rf "${LOCAL_TARGET_DIR}/${LOCAL_DIR}"
+	    rm -rf "${LOCAL_TARGET_DIR:?}/${LOCAL_DIR}"
 	    rm -f "${LOCAL_MANIFEST_FILE}"
 	    
 	    # Update mode state
@@ -1498,7 +1501,7 @@ cmd_deinit() {
 	# Remove commit mode
 	if [ "${cd_remove_commit}" = "true" ] && [ "${HAS_COMMIT_MODE}" = "true" ]; then
 	    # Remove files (no git exclude changes needed for commit mode)
-	    rm -rf "${COMMIT_TARGET_DIR}/${SHARED_DIR}"
+	    rm -rf "${COMMIT_TARGET_DIR:?}/${SHARED_DIR}"
 	    rm -f "${COMMIT_MANIFEST_FILE}"
 	    
 	    # Update mode state
@@ -2293,10 +2296,10 @@ sync_manifest_to_directory() {
 	esac
 	
 	# Get entries from manifest (handle external modifications gracefully)
-	smtd_entries=$(read_manifest_entries "${smtd_manifest_file}") || {
-	    warn "Failed to read entries from ${smtd_manifest_file} (possibly corrupted by external changes)"
-	    return 1
-	}
+	if ! smtd_entries=$(read_manifest_entries "${smtd_manifest_file}"); then
+		warn "Failed to read entries from ${smtd_manifest_file} (possibly corrupted by external changes)"
+		return 1
+	fi
 	
 	# Copy each entry (avoid subshell to ensure error propagation)
 	if [ -n "${smtd_entries}" ]; then

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Focused test for the complex ruleset scenario
+# Detailed debug script to understand the test failure
 set -e
 
 # Load common test utilities
@@ -8,7 +8,7 @@ set -e
 
 # Source the actual implementation from ai-rizz
 . ./ai-rizz
-set -x
+
 # Set up test environment (mimics setUp)
 TEST_DIR="$(mktemp -d)"
 cd "$TEST_DIR" || exit 1
@@ -35,8 +35,6 @@ ln -sf "$REPO_DIR/rules/rule3.mdc" "$REPO_DIR/rulesets/ruleset2/rule3.mdc"
 # Initialize test_repo as a git repository
 cd "$REPO_DIR" || exit 1
 git init . >/dev/null 2>&1
-git config user.email "test@example.com" >/dev/null 2>&1
-git config user.name "Test User" >/dev/null 2>&1
 git add . >/dev/null 2>&1
 git commit -m "Initial commit" >/dev/null 2>&1
 cd "$TEST_DIR" || exit 1
@@ -56,69 +54,71 @@ touch .git/info/exclude
 # Initialize ai-rizz state
 initialize_ai_rizz
 
-echo "=== Complex Ruleset Scenario Debug ==="
+echo "=== Detailed Debug: test_resolve_duplicate_entries_commit_wins ==="
 
 echo "Step 1: Initialize local mode"
 cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+echo "After init - HAS_LOCAL_MODE: $HAS_LOCAL_MODE, HAS_COMMIT_MODE: $HAS_COMMIT_MODE"
 
-echo "Step 2: Add ruleset1 to local mode (contains rule1, rule2)"
-cmd_add_ruleset "ruleset1" --local
-echo "Local manifest after adding ruleset1:"
+echo "Step 2: Add rule to local mode"
+cmd_add_rule "rule1.mdc" --local
+echo "After add local - Local manifest:"
 cat "$LOCAL_MANIFEST_FILE"
-echo "Files in local dir:"
+echo "Local dir contents:"
 ls -la "$TARGET_DIR/$LOCAL_DIR/" 2>/dev/null || echo "No local dir"
 
-echo "Step 3: Add rule3 individually to local mode"
-cmd_add_rule "rule3.mdc" --local
-echo "Local manifest after adding rule3:"
+echo "Step 3: Add rule to commit mode (should migrate)"
+cmd_add_rule "rule1.mdc" --commit
+echo "After add commit - HAS_LOCAL_MODE: $HAS_LOCAL_MODE, HAS_COMMIT_MODE: $HAS_COMMIT_MODE"
+echo "Local manifest after migration:"
 cat "$LOCAL_MANIFEST_FILE"
-echo "Files in local dir:"
-ls -la "$TARGET_DIR/$LOCAL_DIR/" 2>/dev/null || echo "No local dir"
-
-echo "Step 4: Add ruleset2 to commit mode (contains rule2, rule3)"
-cmd_add_ruleset "ruleset2" --commit
-echo "After adding ruleset2 to commit:"
-echo "Local manifest:"
-cat "$LOCAL_MANIFEST_FILE"
-echo "Commit manifest:"
+echo "Commit manifest after migration:"
 cat "$COMMIT_MANIFEST_FILE"
+
+echo "Step 4: Manually add duplicate entry to simulate user editing error"
+echo "rules/rule1.mdc" >> "$LOCAL_MANIFEST_FILE"
+echo "Local manifest after manual duplicate addition:"
+cat "$LOCAL_MANIFEST_FILE"
+
+echo "Step 5: Test resolve_conflicts function directly"
+echo "Before resolve_conflicts:"
+echo "  Local manifest entries: $(read_manifest_entries "$LOCAL_MANIFEST_FILE" | tr '\n' ' ')"
+echo "  Commit manifest entries: $(read_manifest_entries "$COMMIT_MANIFEST_FILE" | tr '\n' ' ')"
+
+resolve_conflicts
+
+echo "After resolve_conflicts:"
+echo "  Local manifest entries: $(read_manifest_entries "$LOCAL_MANIFEST_FILE" | tr '\n' ' ')"
+echo "  Commit manifest entries: $(read_manifest_entries "$COMMIT_MANIFEST_FILE" | tr '\n' ' ')"
+
+echo "Step 6: Run full sync"
+cmd_sync
+
+echo "Step 7: Final state check"
+echo "Final local manifest:"
+cat "$LOCAL_MANIFEST_FILE"
+echo "Final commit manifest:"
+cat "$COMMIT_MANIFEST_FILE"
+
 echo "Files in local dir:"
 ls -la "$TARGET_DIR/$LOCAL_DIR/" 2>/dev/null || echo "No local dir"
 echo "Files in shared dir:"
 ls -la "$TARGET_DIR/$SHARED_DIR/" 2>/dev/null || echo "No shared dir"
 
-echo "Step 5: Check expected results"
-echo "Expected: rule1.mdc in local, rule2.mdc and rule3.mdc in shared"
-
-if [ -f "$TARGET_DIR/$LOCAL_DIR/rule1.mdc" ]; then
-    echo "✓ rule1.mdc exists in local dir"
+echo "Step 8: Test the exact assertion that's failing"
+local_content=$(cat "$LOCAL_MANIFEST_FILE")
+if echo "$local_content" | grep -q "rule1.mdc"; then
+    echo "FAIL: Duplicate still exists in local manifest"
+    echo "Local manifest content:"
+    echo "$local_content"
+    echo "Grep result:"
+    echo "$local_content" | grep "rule1.mdc" || echo "No matches"
+    exit 1
 else
-    echo "✗ rule1.mdc missing from local dir"
+    echo "PASS: Duplicate removed from local manifest"
 fi
 
-if [ -f "$TARGET_DIR/$LOCAL_DIR/rule2.mdc" ]; then
-    echo "✗ rule2.mdc still in local dir (should be moved to shared)"
-else
-    echo "✓ rule2.mdc removed from local dir"
-fi
-
-if [ -f "$TARGET_DIR/$LOCAL_DIR/rule3.mdc" ]; then
-    echo "✗ rule3.mdc still in local dir (should be moved to shared)"
-else
-    echo "✓ rule3.mdc removed from local dir"
-fi
-
-if [ -f "$TARGET_DIR/$SHARED_DIR/rule2.mdc" ]; then
-    echo "✓ rule2.mdc exists in shared dir"
-else
-    echo "✗ rule2.mdc missing from shared dir"
-fi
-
-if [ -f "$TARGET_DIR/$SHARED_DIR/rule3.mdc" ]; then
-    echo "✓ rule3.mdc exists in shared dir"
-else
-    echo "✗ rule3.mdc missing from shared dir"
-fi
+echo "SUCCESS: All checks passed"
 
 # Cleanup
 cd /

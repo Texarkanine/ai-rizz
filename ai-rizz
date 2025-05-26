@@ -1722,16 +1722,17 @@ cmd_list() {
 	                ;;
 	        esac
 	        
-	        # Use tree to display ruleset contents
-	        if [ -d "${cl_ruleset}" ]; then
-	            # Check if tree command exists
-	            if command -v tree >/dev/null 2>&1; then
-	                (cd "${cl_ruleset}" && tree -L 1 --noreport) | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'
-	            else
-	                # Fallback if tree is not available
-	                find "${cl_ruleset}" -maxdepth 1 -name "*.mdc" -exec basename {} \; | sort | sed 's/^/    ├── /'
-	            fi
-	        fi
+	                # Use tree to display ruleset contents (filter to .mdc files only)
+        if [ -d "${cl_ruleset}" ]; then
+            # Check if tree command exists
+            if command -v tree >/dev/null 2>&1; then
+                # Use tree with pattern matching to show only .mdc files and symlinks
+                (cd "${cl_ruleset}" && tree -P "*.mdc" -L 1 --noreport) | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'
+            else
+                # Fallback if tree is not available
+                find "${cl_ruleset}" -maxdepth 1 \( -name "*.mdc" -type f \) -o \( -name "*.mdc" -type l \) -exec basename {} \; | sort | sed 's/^/    ├── /'
+            fi
+        fi
 	    done
 	fi
 	

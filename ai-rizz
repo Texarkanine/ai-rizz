@@ -925,7 +925,7 @@ get_files_from_manifest() {
 	            elif [ -d "${source_path}" ]; then
 	                # Directory (ruleset) - list all .mdc files in it
 	                find "${source_path}" -name "*.mdc" -type f -o -name "*.mdc" -type l | \
-	                    while IFS= read -r rule_file; do
+	                while IFS= read -r rule_file; do
 	                    basename "${rule_file}"
 	                done
 	            fi

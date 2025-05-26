@@ -204,8 +204,10 @@ add_manifest_entry_to_file() {
         fi
     fi
     
-    # Add the entry
-    echo "$entry" >> "$target_manifest_file"
+    # Add the entry with error handling
+    if ! echo "$entry" >> "$target_manifest_file" 2>/dev/null; then
+        error "Cannot write to manifest file: $target_manifest_file (permission denied or read-only)"
+    fi
 }
 
 # Remove entry from manifest file
@@ -265,9 +267,15 @@ git_sync() {
   
   # Clone/update project repository
   if [ ! -d "${REPO_DIR}" ]; then
-    git clone "${repo_url}" "${REPO_DIR}" || error "Failed to clone repository: ${repo_url}"
+    if ! git clone "${repo_url}" "${REPO_DIR}" 2>/dev/null; then
+      warn "Failed to clone repository: ${repo_url} (repository unavailable or invalid URL)"
+      return 1
+    fi
   else
-    (cd "${REPO_DIR}" && git pull) || error "Failed to update repository: ${repo_url}"
+    if ! (cd "${REPO_DIR}" && git pull 2>/dev/null); then
+      warn "Failed to update repository: ${repo_url} (repository unavailable or network issue)"
+      return 1
+    fi
   fi
   
   return 0
@@ -901,7 +909,9 @@ cmd_init() {
     fi
     
     # Clone/sync source repository first
-    git_sync "$source_repo"
+    if ! git_sync "$source_repo"; then
+        error "Failed to initialize: repository unavailable"
+    fi
     
     # Initialize the requested mode
     case "$mode" in
@@ -1115,6 +1125,14 @@ cmd_list() {
     
     # Validate manifest integrity (hard error for mismatched source repos)
     validate_manifest_integrity
+    
+    # Validate manifest format for all existing manifests
+    if [ "$HAS_LOCAL_MODE" = "true" ]; then
+        validate_manifest_format "$LOCAL_MANIFEST_FILE" || error "Corrupted local manifest file"
+    fi
+    if [ "$HAS_COMMIT_MODE" = "true" ]; then
+        validate_manifest_format "$COMMIT_MANIFEST_FILE" || error "Corrupted commit manifest file"
+    fi
     
     # Get source repo from any available mode
     source_repo=""
@@ -1371,6 +1389,11 @@ cmd_add_rule() {
                     fi
                     ;;
             esac
+        fi
+        
+        # Check if target directory is writable before adding to manifest
+        if [ ! -w "$target_dir" ]; then
+            error "Cannot write to target directory: $target_dir (permission denied)"
         fi
         
         # Add to target manifest
@@ -1731,7 +1754,10 @@ cmd_sync() {
     
     # Sync repository first
     if [ -n "$source_repo" ]; then
-        git_sync "$source_repo"
+        if ! git_sync "$source_repo"; then
+            # git_sync already issued a warning, fail the sync operation
+            return 1
+        fi
     fi
     
     # Sync all initialized modes

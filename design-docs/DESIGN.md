@@ -312,17 +312,18 @@ ai-rizz add rule my-rule --local
 - [x] **Conflict resolution logic** ✅ COMPLETED
 - [x] **Repository isolation fixes** ✅ COMPLETED  
 - [x] **Code cleanup and simplification** ✅ COMPLETED
-- [ ] Error handling improvements (6/18 tests failing)
+- [x] **Error handling improvements** ✅ MOSTLY COMPLETED (16/18 tests passing, improved from 12/18)
 - [ ] Mode operations fixes (2/15 tests failing)
 - [ ] Git tracking edge case (1/10 tests failing)
 
-**Phase 4 Status**: ⚠️ **MOSTLY COMPLETED** - Core conflict resolution working:
+**Phase 4 Status**: ⚠️ **MOSTLY COMPLETED** - Core systems working, minor edge cases remain:
 - ✅ **Major Achievement**: Conflict resolution implemented and working (9/10 tests passing)
 - ✅ **Repository Isolation**: Fixed by using `${REPO_DIR}` directly instead of function calls
 - ✅ **Code Cleanup**: Removed unnecessary local variable assignments (18 fewer lines)
+- ✅ **Repository Validation**: Fixed `cmd_init` error checking for invalid repositories
 - ✅ **Test Framework Compatibility**: `REPO_DIR` override works correctly in tests
-- ⏳ **Remaining Work**: Error handling validation and minor edge cases (3 test suites with failures)
-- 📊 **Progress**: 5/8 test suites passing completely, significant improvement from 6/8
+- ⏳ **Remaining Work**: 2 error handling edge cases, 2 mode operations issues, 1 git tracking issue
+- 📊 **Progress**: 5/8 test suites passing completely, significant improvement in error handling
 
 ### Phase 5: Polish & Testing
 - [ ] Update help text and usage documentation

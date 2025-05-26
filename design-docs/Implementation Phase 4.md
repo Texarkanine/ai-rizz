@@ -10,7 +10,7 @@ Phase 4 implements only the essential features needed to achieve 100% unit test 
 
 **Failing Test Suites**:
 1. `test_conflict_resolution.test.sh` - 1/10 tests failing (improved from 5/10)
-2. `test_error_handling.test.sh` - 6/18 tests failing  
+2. `test_error_handling.test.sh` - 2/18 tests failing (improved from 6/18)
 3. `test_mode_operations.test.sh` - 2/15 tests failing
 
 **Major Progress Achieved**:
@@ -71,15 +71,20 @@ Phase 4 implements only the essential features needed to achieve 100% unit test 
 
 **Analysis**: The conflict resolution implemented in Step 1 should handle this scenario. The remaining failure appears to be related to git tracking rather than core conflict resolution logic.
 
-### Step 3: Enhanced Error Handling (PENDING)
+### Step 3: Enhanced Error Handling (MOSTLY COMPLETED)
 **Objective**: Add only essential error handling for failing tests
 
-**Status**: ⏳ **PENDING** - 6/18 tests still failing in error handling suite
+**Status**: ✅ **MOSTLY COMPLETED** - 16/18 tests passing (improved from 12/18)
 
-**Next Steps**:
-1. Implement basic manifest validation
-2. Add error handling for corrupted manifests
-3. Improve error messages for invalid formats
+**Major Achievement**: Fixed repository availability validation in `cmd_init`
+- ✅ **Root Cause**: `cmd_init` was not checking `git_sync` return value
+- ✅ **Solution**: Added proper error checking: `if ! git_sync "$source_repo"; then error "Failed to initialize: repository unavailable"; fi`
+- ✅ **Impact**: Repository validation now properly enforced during initialization
+- ✅ **Test Framework**: Fixed mock `git_sync` functions in test environment
+
+**Remaining Issues** (2/18 tests):
+1. `test_graceful_disk_full_simulation` - Uses undefined `skip` function
+2. `test_error_concurrent_modification` - External manifest changes handling
 
 ### Step 4: Mode Operations Fixes (PENDING)
 **Objective**: Fix remaining issues in mode operations
@@ -123,10 +128,9 @@ resolve_conflicts()
 ## Remaining Work for Phase 4
 
 ### High Priority (Blocking 100% test pass rate)
-1. **Error Handling**: Fix 6 failing tests in `test_error_handling.test.sh`
-   - Manifest validation for corrupted files
-   - Better error messages for invalid formats
-   - Graceful handling of edge cases
+1. **Error Handling**: Fix 2 remaining tests in `test_error_handling.test.sh` (improved from 6)
+   - `test_graceful_disk_full_simulation` - Uses undefined `skip` function
+   - `test_error_concurrent_modification` - External manifest changes handling
 
 2. **Mode Operations**: Fix 2 failing tests in `test_mode_operations.test.sh`
    - Ruleset glyph display issues
@@ -147,7 +151,7 @@ Phase 4 is complete when:
 2. ✅ **Repository isolation fixed** (test framework compatibility)
 3. ✅ **Code cleanup completed** (unnecessary variables removed)
 4. ⏳ **All unit tests pass** (currently 5/8 test suites, target: 8/8)
-5. ⏳ **Error handling robust** (6 tests still failing)
+5. ⚠️ **Error handling mostly robust** (2 tests still failing, improved from 6)
 6. ⏳ **Mode operations stable** (2 tests still failing)
 
 ## Current Test Suite Status
@@ -161,6 +165,6 @@ Phase 4 is complete when:
 | `test_deinit_modes.test.sh` | ✅ PASS | 15/15 | Complete |
 | `test_conflict_resolution.test.sh` | ⚠️ MOSTLY | 9/10 | 1 git tracking issue |
 | `test_mode_operations.test.sh` | ⚠️ MOSTLY | 13/15 | 2 minor issues |
-| `test_error_handling.test.sh` | ❌ FAIL | 12/18 | 6 validation issues |
+| `test_error_handling.test.sh` | ⚠️ MOSTLY | 16/18 | 2 edge cases remaining |
 
 **Overall Progress**: 5/8 suites passing completely, significant improvement in conflict resolution 

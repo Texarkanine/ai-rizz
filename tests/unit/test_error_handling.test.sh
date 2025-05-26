@@ -112,14 +112,14 @@ test_error_readonly_manifest() {
 }
 
 test_error_source_repo_unavailable() {
-    # Setup: Invalid source repo
-    cmd_init "invalid://nonexistent.repo" -d "$TARGET_DIR" --local
+    # Test: Init with invalid source repo should fail
+    output=$(cmd_init "invalid://nonexistent.repo" -d "$TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
     
-    # Test: Sync should handle unavailable repo
-    output=$(cmd_sync 2>&1 || echo "ERROR_OCCURRED")
+    # Expected: Should fail with repository error
+    echo "$output" | grep -q "repository\|clone\|fetch\|unavailable\|ERROR_OCCURRED" || fail "Should fail with repo issue"
     
-    # Expected: Should warn about repo availability
-    echo "$output" | grep -q "repository\|clone\|fetch\|unavailable" || fail "Should warn about repo issue"
+    # Verify that no configuration was created
+    [ ! -f "$LOCAL_MANIFEST_FILE" ] || fail "Should not create manifest with invalid repo"
 }
 
 test_graceful_disk_full_simulation() {

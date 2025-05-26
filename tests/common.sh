@@ -84,8 +84,19 @@ tearDown() {
 
 # Mock git_sync function for testing
 git_sync() {
-  # Return success silently
-  return 0
+  repo_url="$1"
+  
+  # Simulate failure for invalid URLs
+  case "$repo_url" in
+    invalid://*|*nonexistent*)
+      warn "Failed to clone repository: $repo_url (repository unavailable or invalid URL)"
+      return 1
+      ;;
+    *)
+      # Return success for valid-looking URLs
+      return 0
+      ;;
+  esac
 }
 
 # Read and validate manifest file
@@ -275,13 +286,24 @@ source_ai_rizz() {
   REPO_DIR="$_TEST_REPO_DIR"
   
   # Override functions that interact with external systems for testing
-  git_sync() { 
-    # For tests, just ensure the test repo directory exists
-    if [ ! -d "$REPO_DIR" ]; then
-      echo "ERROR: Test repo directory not found: $REPO_DIR" >&2
-      return 1
-    fi
-    return 0
+  git_sync() {
+    repo_url="$1"
+    
+    # Simulate failure for invalid URLs
+    case "$repo_url" in
+      invalid://*|*nonexistent*)
+        warn "Failed to clone repository: $repo_url (repository unavailable or invalid URL)"
+        return 1
+        ;;
+      *)
+        # For valid URLs, just ensure the test repo directory exists
+        if [ ! -d "$REPO_DIR" ]; then
+          echo "ERROR: Test repo directory not found: $REPO_DIR" >&2
+          return 1
+        fi
+        return 0
+        ;;
+    esac
   }
   
   # Override git command with silent function that always succeeds

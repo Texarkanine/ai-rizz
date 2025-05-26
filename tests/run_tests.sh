@@ -27,9 +27,22 @@ get_project_root() {
 	pwd
 }
 
-# Find all test files (relative to the tests directory)
+# Find test files based on type selection
 find_tests() {
-	find "$PROJECT_ROOT/tests" -name "*.test.sh" | sort
+	local test_files=""
+	
+	if [ "$RUN_UNIT_TESTS" = "true" ]; then
+		unit_tests=$(find "$PROJECT_ROOT/tests/unit" -name "*.test.sh" 2>/dev/null | sort)
+		test_files="$test_files $unit_tests"
+	fi
+	
+	if [ "$RUN_INTEGRATION_TESTS" = "true" ]; then
+		integration_tests=$(find "$PROJECT_ROOT/tests/integration" -name "*.test.sh" 2>/dev/null | sort)
+		test_files="$test_files $integration_tests"
+	fi
+	
+	# Remove leading/trailing spaces and output
+	echo "$test_files" | tr ' ' '\n' | grep -v '^$' | sort
 }
 
 # Enhanced test execution with verbosity control
@@ -88,17 +101,25 @@ show_usage() {
 	echo "Usage: $0 [options]"
 	echo ""
 	echo "Options:"
-	echo "  -v, --verbose    Run tests with verbose output"
-	echo "  -h, --help       Show this help message"
+	echo "  -v, --verbose      Run tests with verbose output"
+	echo "  -u, --unit         Run only unit tests"
+	echo "  -i, --integration  Run only integration tests"
+	echo "  -h, --help         Show this help message"
 	echo ""
 	echo "Environment Variables:"
 	echo "  VERBOSE_TESTS=true    Force verbose output for all tests"
 	echo ""
 	echo "Examples:"
-	echo "  $0                    # Run tests quietly (default)"
-	echo "  $0 --verbose          # Run tests with full output"
-	echo "  VERBOSE_TESTS=true $0 # Run tests with full output"
+	echo "  $0                    # Run all tests quietly (default)"
+	echo "  $0 --verbose          # Run all tests with full output"
+	echo "  $0 --unit             # Run only unit tests"
+	echo "  $0 --integration      # Run only integration tests"
+	echo "  VERBOSE_TESTS=true $0 # Run all tests with full output"
 }
+
+# Test type selection
+RUN_UNIT_TESTS=true
+RUN_INTEGRATION_TESTS=true
 
 # Parse command line arguments
 parse_arguments() {
@@ -107,6 +128,16 @@ parse_arguments() {
 			-v|--verbose)
 				VERBOSE_TESTS=true
 				export VERBOSE_TESTS
+				shift
+				;;
+			-u|--unit)
+				RUN_UNIT_TESTS=true
+				RUN_INTEGRATION_TESTS=false
+				shift
+				;;
+			-i|--integration)
+				RUN_UNIT_TESTS=false
+				RUN_INTEGRATION_TESTS=true
 				shift
 				;;
 			-h|--help)
@@ -146,7 +177,18 @@ parse_arguments "$@"
 
 # Find the project root directory
 PROJECT_ROOT="$(get_project_root)"
-echo "Running ai-rizz tests from: $PROJECT_ROOT"
+
+# Show what tests will be run
+if [ "$RUN_UNIT_TESTS" = "true" ] && [ "$RUN_INTEGRATION_TESTS" = "true" ]; then
+	echo "Running all ai-rizz tests from: $PROJECT_ROOT"
+elif [ "$RUN_UNIT_TESTS" = "true" ]; then
+	echo "Running unit tests from: $PROJECT_ROOT"
+elif [ "$RUN_INTEGRATION_TESTS" = "true" ]; then
+	echo "Running integration tests from: $PROJECT_ROOT"
+else
+	echo "No tests selected to run"
+	exit 0
+fi
 
 # Check prerequisites first
 check_prerequisites

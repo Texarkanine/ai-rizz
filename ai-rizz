@@ -63,7 +63,7 @@ REPO_DIR=""
 # Display formatting variables  
 COMMITTED_GLYPH="●"
 UNINSTALLED_GLYPH="○"
-LOCAL_GLYPH="◐"       # For Phase 3 (list command)
+LOCAL_GLYPH="◐"
 
 # Utilities
 # =========

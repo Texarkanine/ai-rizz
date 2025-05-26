@@ -122,18 +122,7 @@ test_error_source_repo_unavailable() {
     [ ! -f "$LOCAL_MANIFEST_FILE" ] || fail "Should not create manifest with invalid repo"
 }
 
-test_graceful_disk_full_simulation() {
-    # Setup: Valid repo
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
-    
-    # Simulate disk full by creating a device that's full (if possible)
-    # This test might be skipped on some systems
-    if [ -w /tmp ]; then
-        # Try to create a large file to fill up temp space (carefully)
-        # Skip this test if we can't simulate the condition safely
-        skip "Disk full simulation requires special setup"
-    fi
-}
+
 
 test_error_malformed_ruleset() {
     # Setup: Local mode

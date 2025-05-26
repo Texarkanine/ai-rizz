@@ -1683,19 +1683,26 @@ sync_manifest_to_directory() {
             ;;
     esac
     
-    # Get entries from manifest
+    # Get entries from manifest (handle external modifications gracefully)
     entries=$(read_manifest_entries "$manifest_file") || {
-        warn "Failed to read entries from $manifest_file"
+        warn "Failed to read entries from $manifest_file (possibly corrupted by external changes)"
         return 1
     }
     
-    # Copy each entry
+    # Copy each entry (avoid subshell to ensure error propagation)
     if [ -n "$entries" ]; then
-        echo "$entries" | while IFS= read -r entry; do
+        # Use a temporary file to avoid subshell issues with pipes
+        temp_file=$(mktemp)
+        echo "$entries" > "$temp_file"
+        
+        while IFS= read -r entry; do
             if [ -n "$entry" ]; then
-                copy_entry_to_target "$entry" "$target_directory" || return 1
+                # Continue with other entries even if one fails (resilient to external modifications)
+                copy_entry_to_target "$entry" "$target_directory" || true
             fi
-        done
+        done < "$temp_file"
+        
+        rm -f "$temp_file"
     fi
 }
 

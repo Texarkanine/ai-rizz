@@ -1,2 +1,2 @@
-invalid://nonexistent.repo	test_target
+https://github.com/texarkanine/.cursor-rules.git	.cursor/rules
 rulesets/shell

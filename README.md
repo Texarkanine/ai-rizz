@@ -7,6 +7,7 @@ A command-line tool for managing AI rules and rulesets. Pull rules from a source
 
 Each rule can be handled independently. Rule repositories may also choose to bundle rules into "rulesets" for easier management of related rules.
 
+Check out my rules in [texarkanine/.cursor-rules](https://github.com/texarkanine/.cursor-rules.git) for examples.
 
 ## Quick Start
 
@@ -15,13 +16,35 @@ Each rule can be handled independently. Rule repositories may also choose to bun
 - tree (optional; makes prettier displays easier)
 
 ### Installation
+
+Install the tool:
+
 ```
-git clone https://github.com/yourusername/ai-rizz.git
+git clone https://github.com/texarkanine/ai-rizz.git
 cd ai-rizz
 make install
 ```
 
+### Initialization
+
+Add some rules to your repository:
+
+```
+cd <your repository>
+ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
+ai-rizz list
+```
+
 ### Common Recipes
+
+**Personal rules only (git-ignored):**
+```bash
+ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
+ai-rizz add rule my-personal-rule.mdc
+ai-rizz list
+```
+# Initialize with a rules repository
+ai-rizz init https://github.com/example/rules.git --local
 
 **Personal rules only (git-ignored):**
 ```bash

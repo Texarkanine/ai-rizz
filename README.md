@@ -9,6 +9,24 @@ Each rule can be handled independently. Rule repositories may also choose to bun
 
 Check out my rules in [texarkanine/.cursor-rules](https://github.com/texarkanine/.cursor-rules.git) for examples.
 
+## Table of Contents
+
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Common Recipes](#common-recipes)
+- [User Guide](#user-guide)
+  - [Configuration](#configuration)
+  - [Rule Modes](#rule-modes)
+  - [Installation Options](#installation-options)
+  - [Commands](#commands)
+- [Advanced Usage](#advanced-usage)
+  - [Rule and Ruleset Constraints](#rule-and-ruleset-constraints)
+  - [Repository Integrity](#repository-integrity)
+- [Developer Guide](#developer-guide)
+  - [Progressive Manifest System](#progressive-manifest-system)
+  - [Testing](#testing)
+
 ## Quick Start
 
 ### Prerequisites
@@ -374,23 +392,6 @@ Both modes must use the same source repository. If they differ, `ai-rizz` will c
 When both modes contain the same rule/ruleset:
 - **Commit mode wins**: Committed rules take precedence
 - **Automatic cleanup**: Conflicting local entries are silently removed
-
-### Best Practices
-
-#### For Individual Contributors
-- Start with local mode for experimentation
-- Promote stable rules to commit mode for team sharing
-- Use rulesets for related rules that should stay together
-
-#### For Teams
-- Establish team rulesets in commit mode early
-- Avoid fragmenting team rulesets across modes
-- Use local mode for personal productivity rules
-
-#### For Rule Authors
-- Group related rules into logical rulesets
-- Include README.md files in rulesets for documentation
-- Use semantic naming for rules and rulesets
 
 ## Developer Guide
 

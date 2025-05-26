@@ -1,0 +1,41 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# AI-Rizz Development Practices
+
+## Project-Specific Testing Standards
+
+1. **Test Execution**: Always run tests with `make test` for consistency. Individual test suites can be run directly for debugging only.
+
+2. **Test Environment Setup**: 
+   - Set git user and email in all dummy repositories used for testing
+   - Use `git commit --no-gpg-sign` in test environments
+
+3. **Test Output Management**: 
+   - Don't proactively truncate test output without understanding length first
+   - Run tests once to gauge output length before deciding on truncation
+
+## Function Documentation Standards
+
+For ai-rizz's complex command functions, ensure documentation includes:
+
+1. **Summary Bullet Points**: Long functions like `cmd_init` and `cmd_list` need summary bullet points explaining their primary purpose
+2. **Flag Documentation**: All `cmd_xxx` functions must document which flags they respond to (since they're user-interface functions)
+3. **Return Value Clarity**: Use shell conventions (0/1 for success/failure) not "TRUE/FALSE" in documentation
+4. **Complexity Explanation**: When describing complex logic, explain the value provided by the complexity, not just that "it's complex"
+
+## User Interface Patterns
+
+1. **Argument Ordering**: Support flexible argument ordering where reasonable (e.g., `ai-rizz add --local rule foo` and `ai-rizz add rule foo --local`)
+
+## Shell Scripting Specifics
+
+1. **Subshell Avoidance**: Avoid subshells when variable scope matters - use temporary files or other patterns instead
+2. **Variable Scope**: Continue using function-specific prefixes for all local variables (already established pattern)
+
+## Error Message Standards
+
+1. **Actionable Errors**: Error messages should include copy-pasteable fix commands when possible. If not possible, they should at least guide the user closer to a resolution.
+2. **Manifest Integrity**: Use the enhanced error format that shows both repositories and provides three clear resolution options

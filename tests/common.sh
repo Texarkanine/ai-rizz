@@ -30,23 +30,23 @@ test_echo() {
 
 test_debug() {
 	if [ "$VERBOSE_TESTS" = "true" ]; then
-		echo "DEBUG: $@" >&2
+		echo "DEBUG: $*" >&2
 	fi
 }
 
 test_info() {
 	if [ "$VERBOSE_TESTS" = "true" ]; then
-		echo "INFO: $@" >&2
+		echo "INFO: $*" >&2
 	fi
 }
 
 # Always show critical messages (errors, failures)
 test_error() {
-	echo "ERROR: $@" >&2
+	echo "ERROR: $*" >&2
 }
 
 test_fail() {
-	echo "FAIL: $@" >&2
+	echo "FAIL: $*" >&2
 }
 
 # Create a temporary test directory and set up test environment

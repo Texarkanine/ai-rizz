@@ -35,10 +35,10 @@ test_init_commit_mode_only() {
 }
 
 test_init_requires_mode_flag() {
-    # Test: ai-rizz init $REPO (no mode flag)
+    # Test: ai-rizz init $REPO (no mode flag, provide empty input to prompt)
     # Expected: Should prompt for mode selection
     
-    output=$(cmd_init "$SOURCE_REPO" 2>&1 || echo "ERROR_OCCURRED")
+    output=$(echo "" | cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" 2>&1 || echo "ERROR_OCCURRED")
     
     # Expected: Should show prompt for mode selection
     echo "$output" | grep -q "mode\|local\|commit\|choose\|select" || fail "Should show mode selection prompt"
@@ -58,7 +58,7 @@ test_init_custom_target_dir() {
 test_init_creates_correct_manifest_headers() {
     # Test both modes create proper headers
     
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     first_line=$(head -n1 "$LOCAL_MANIFEST_FILE")
     assertEquals "Local manifest header incorrect" "$SOURCE_REPO	$TARGET_DIR" "$first_line"
     
@@ -66,7 +66,7 @@ test_init_creates_correct_manifest_headers() {
     tearDown
     setUp
     
-    cmd_init "$SOURCE_REPO" --commit  
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit  
     first_line=$(head -n1 "$COMMIT_MANIFEST_FILE")
     assertEquals "Commit manifest header incorrect" "$SOURCE_REPO	$TARGET_DIR" "$first_line"
 }
@@ -74,7 +74,7 @@ test_init_creates_correct_manifest_headers() {
 test_init_local_creates_git_excludes() {
     # Test: Local mode should add entries to git exclude
     
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     
     # Verify git exclude entries were added
     assert_git_exclude_contains "$LOCAL_MANIFEST_FILE"
@@ -84,7 +84,7 @@ test_init_local_creates_git_excludes() {
 test_init_commit_no_git_excludes() {
     # Test: Commit mode should NOT add entries to git exclude
     
-    cmd_init "$SOURCE_REPO" --commit
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
     
     # Verify no git exclude entries for commit mode files
     assert_git_exclude_not_contains "$COMMIT_MANIFEST_FILE"
@@ -94,11 +94,11 @@ test_init_commit_no_git_excludes() {
 test_init_twice_same_mode_idempotent() {
     # Test: Running init twice with same mode should be idempotent
     
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     assert_local_mode_exists
     
     # Init again with same mode
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     assert_local_mode_exists
     
     # Should still only have local mode

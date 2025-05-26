@@ -13,7 +13,7 @@ source_ai_rizz
 
 test_lazy_init_local_from_commit() {
     # Setup: Only commit mode exists
-    cmd_init "$SOURCE_REPO" --commit
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
     assert_commit_mode_exists
     assert_file_not_exists "$LOCAL_MANIFEST_FILE"
     
@@ -33,7 +33,7 @@ test_lazy_init_local_from_commit() {
 
 test_lazy_init_commit_from_local() {
     # Setup: Only local mode exists
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     assert_local_mode_exists
     assert_file_not_exists "$COMMIT_MANIFEST_FILE"
     
@@ -48,7 +48,7 @@ test_lazy_init_commit_from_local() {
 
 test_lazy_init_preserves_existing_rules() {
     # Setup: Local mode with existing rule
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule2.mdc" --local
     assert_file_exists "$TARGET_DIR/$LOCAL_DIR/rule2.mdc"
     
@@ -73,7 +73,7 @@ test_lazy_init_no_mode_error() {
 
 test_lazy_init_with_rulesets() {
     # Setup: Commit mode only
-    cmd_init "$SOURCE_REPO" --commit
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
     
     # Test: Add ruleset to local mode
     cmd_add_ruleset "ruleset1" --local
@@ -99,7 +99,7 @@ test_lazy_init_copies_target_dir() {
 
 test_lazy_init_creates_git_excludes() {
     # Setup: Commit mode only (no git excludes)
-    cmd_init "$SOURCE_REPO" --commit
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
     assert_git_exclude_not_contains "$LOCAL_MANIFEST_FILE"
     
     # Test: Add rule to local mode
@@ -112,7 +112,7 @@ test_lazy_init_creates_git_excludes() {
 
 test_lazy_init_preserves_manifest_entries() {
     # Setup: Local mode with existing entries
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule2.mdc" --local
     cmd_add_ruleset "ruleset1" --local
     
@@ -131,7 +131,7 @@ test_lazy_init_preserves_manifest_entries() {
 
 test_lazy_init_no_cross_contamination() {
     # Setup: Both modes via lazy init
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "local-rule.mdc" --local
     cmd_add_rule "commit-rule.mdc" --commit
     

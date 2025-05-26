@@ -26,6 +26,11 @@ setUp() {
   TEST_DIR="$(mktemp -d)"
   cd "$TEST_DIR" || fail "Failed to change to test directory"
   
+  # Reset ai-rizz state to ensure clean state between tests
+  if command -v reset_ai_rizz_state >/dev/null 2>&1; then
+    reset_ai_rizz_state
+  fi
+  
   # Set REPO_DIR to point to the test repo
   REPO_DIR="$TEST_DIR/$SOURCE_REPO"
   
@@ -219,6 +224,19 @@ setup_legacy_commit_repo() {
     # No git exclude entries = commit mode
 }
 
+# Reset ai-rizz global state (call after sourcing to ensure clean state)
+reset_ai_rizz_state() {
+  # Reset mode detection state
+  HAS_LOCAL_MODE=false
+  HAS_COMMIT_MODE=false
+  
+  # Reset cached metadata
+  COMMIT_SOURCE_REPO=""
+  LOCAL_SOURCE_REPO=""
+  COMMIT_TARGET_DIR=""
+  LOCAL_TARGET_DIR=""
+}
+
 # Source the ai-rizz script - use this in test files to test the actual implementation
 source_ai_rizz() {
   # Save original global variables that we need to restore after sourcing
@@ -261,4 +279,7 @@ source_ai_rizz() {
   SOURCE_REPO="$_TEST_SOURCE_REPO"
   TARGET_DIR="$_TEST_TARGET_DIR"
   REPO_DIR="$_TEST_REPO_DIR"
+  
+  # Reset ai-rizz state to ensure clean state between tests
+  reset_ai_rizz_state
 } 

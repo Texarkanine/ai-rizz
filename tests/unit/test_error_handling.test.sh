@@ -25,7 +25,7 @@ test_error_no_init_before_add() {
 
 test_error_invalid_mode_flag() {
     # Setup: Valid repo
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     
     # Test: Invalid mode flag
     output=$(cmd_add_rule "rule1.mdc" --invalid 2>&1 || echo "ERROR_OCCURRED")
@@ -35,16 +35,16 @@ test_error_invalid_mode_flag() {
 }
 
 test_error_missing_source_repo() {
-    # Test: Init without source repo
-    output=$(cmd_init 2>&1 || echo "ERROR_OCCURRED")
+    # Test: Init without source repo (provide empty input to prompt)
+    output=$(echo "" | cmd_init -d "$TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
     
-    # Expected: Error or prompt for source repo
-    echo "$output" | grep -q "source\|repo\|URL" || fail "Should mention source repo"
+    # Expected: Error about missing source repo
+    echo "$output" | grep -q "source.*required\|repository.*required\|Source repository URL" || fail "Should require source repo"
 }
 
 test_graceful_nonexistent_rule() {
     # Setup: Valid initialization
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     
     # Test: Add nonexistent rule
     output=$(cmd_add_rule "nonexistent.mdc" --local 2>&1 || echo "ERROR_OCCURRED")
@@ -55,7 +55,7 @@ test_graceful_nonexistent_rule() {
 
 test_graceful_corrupted_manifest() {
     # Setup: Corrupted manifest
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     echo "CORRUPTED_DATA" > "$LOCAL_MANIFEST_FILE"
     
     # Test: Operations should handle gracefully
@@ -78,7 +78,7 @@ test_error_git_repo_required() {
     rm -rf .git
     
     # Test: Any command should error
-    output=$(cmd_init "$SOURCE_REPO" --local 2>&1 || echo "ERROR_OCCURRED")
+    output=$(cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
     
     # Expected: Should require git repository
     echo "$output" | grep -q "git.*repository\|not.*git" || fail "Should require git repo"
@@ -86,7 +86,7 @@ test_error_git_repo_required() {
 
 test_graceful_missing_git_exclude() {
     # Setup: Remove git info directory
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     rm -rf .git/info
     
     # Test: Should handle missing git exclude file
@@ -98,7 +98,7 @@ test_graceful_missing_git_exclude() {
 
 test_error_readonly_manifest() {
     # Setup: Make manifest read-only
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     chmod 444 "$LOCAL_MANIFEST_FILE"
     
     # Test: Add rule should error
@@ -113,7 +113,7 @@ test_error_readonly_manifest() {
 
 test_error_source_repo_unavailable() {
     # Setup: Invalid source repo
-    cmd_init "invalid://nonexistent.repo" --local
+    cmd_init "invalid://nonexistent.repo" -d "$TARGET_DIR" --local
     
     # Test: Sync should handle unavailable repo
     output=$(cmd_sync 2>&1 || echo "ERROR_OCCURRED")
@@ -124,7 +124,7 @@ test_error_source_repo_unavailable() {
 
 test_graceful_disk_full_simulation() {
     # Setup: Valid repo
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     
     # Simulate disk full by creating a device that's full (if possible)
     # This test might be skipped on some systems
@@ -137,7 +137,7 @@ test_graceful_disk_full_simulation() {
 
 test_error_malformed_ruleset() {
     # Setup: Local mode
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     
     # Create malformed ruleset in repo (broken symlinks)
     mkdir -p "$REPO_DIR/rulesets/broken_ruleset"
@@ -152,7 +152,7 @@ test_error_malformed_ruleset() {
 
 test_error_concurrent_modification() {
     # Setup: Both modes
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit
     
     # Simulate concurrent modification by changing manifest during operation
@@ -171,7 +171,7 @@ test_error_concurrent_modification() {
 
 test_error_network_timeout() {
     # Setup: Repo with network-dependent source
-    cmd_init "https://github.com/nonexistent/timeout-test.git" --local
+    cmd_init "https://github.com/nonexistent/timeout-test.git" -d "$TARGET_DIR" --local
     
     # Test: Sync with network timeout (timeout prerequisite checked at startup)
     output=$(timeout 1 cmd_sync 2>&1 || echo "ERROR_OCCURRED")
@@ -182,7 +182,7 @@ test_error_network_timeout() {
 
 test_graceful_partial_rule_sync() {
     # Setup: Local mode with rule that exists in manifest but not in target
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     
     # Remove the synced file to simulate partial sync
@@ -197,7 +197,7 @@ test_graceful_partial_rule_sync() {
 
 test_error_invalid_manifest_format() {
     # Setup: Create manifest with invalid format
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     
     # Corrupt the manifest header
     echo "INVALID FORMAT WITHOUT TAB" > "$LOCAL_MANIFEST_FILE"
@@ -211,7 +211,7 @@ test_error_invalid_manifest_format() {
 
 test_error_cleanup_on_failure() {
     # Setup: Start init process
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     
     # Simulate failure during add operation by making target readonly
     chmod 444 "$TARGET_DIR"

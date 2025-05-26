@@ -13,7 +13,7 @@ source_ai_rizz
 
 test_migrate_rule_local_to_commit() {
     # Setup: Rule in local mode
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     assert_file_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
     
@@ -34,7 +34,7 @@ test_migrate_rule_local_to_commit() {
 
 test_migrate_rule_commit_to_local() {
     # Setup: Rule in commit mode
-    cmd_init "$SOURCE_REPO" --commit
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
     cmd_add_rule "rule1.mdc" --commit
     assert_file_exists "$TARGET_DIR/$SHARED_DIR/rule1.mdc"
     
@@ -48,7 +48,7 @@ test_migrate_rule_commit_to_local() {
 
 test_migrate_ruleset_with_all_rules() {
     # Setup: Ruleset in local mode
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_ruleset "ruleset1" --local
     assert_file_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
     assert_file_exists "$TARGET_DIR/$LOCAL_DIR/rule2.mdc"
@@ -65,7 +65,7 @@ test_migrate_ruleset_with_all_rules() {
 
 test_migrate_preserves_other_rules() {
     # Setup: Multiple rules in local mode
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --local
     cmd_add_rule "rule3.mdc" --local
@@ -82,7 +82,7 @@ test_migrate_preserves_other_rules() {
 
 test_resolve_duplicate_entries_commit_wins() {
     # Setup: Manually create duplicate entries (simulates user error)
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule1.mdc" --commit  # Should migrate, but manually add back to local
     
@@ -102,7 +102,7 @@ test_resolve_duplicate_entries_commit_wins() {
 
 test_migrate_updates_git_tracking() {
     # Setup: Rule in local mode (git-ignored)
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     
     # Initialize git tracking to verify changes
@@ -121,7 +121,7 @@ test_migrate_updates_git_tracking() {
 
 test_migrate_complex_ruleset_scenario() {
     # Setup: Complex scenario with overlapping rulesets
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_ruleset "ruleset1" --local  # Contains rule1, rule2
     cmd_add_rule "rule3.mdc" --local    # Individual rule
     
@@ -140,7 +140,7 @@ test_migrate_complex_ruleset_scenario() {
 
 test_migrate_sync_after_modification() {
     # Setup: Rules in both modes
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --commit
     
@@ -155,7 +155,7 @@ test_migrate_sync_after_modification() {
 
 test_migrate_nonexistent_rule_graceful() {
     # Setup: Local mode only
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     
     # Test: Try to migrate nonexistent rule
     output=$(cmd_add_rule "nonexistent.mdc" --commit 2>&1 || echo "ERROR_OCCURRED")

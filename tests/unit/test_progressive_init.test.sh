@@ -12,10 +12,10 @@ source_ai_rizz
 # ------------------
 
 test_init_local_mode_only() {
-    # Test: ai-rizz init $REPO --local
+    # Test: ai-rizz init $REPO -d $TARGET_DIR --local
     # Expected: Creates local manifest and directory only
     
-    cmd_init "$SOURCE_REPO" --local
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     
     assert_local_mode_exists
     assert_file_not_exists "$COMMIT_MANIFEST_FILE"
@@ -24,10 +24,10 @@ test_init_local_mode_only() {
 }
 
 test_init_commit_mode_only() {
-    # Test: ai-rizz init $REPO --commit  
+    # Test: ai-rizz init $REPO -d $TARGET_DIR --commit  
     # Expected: Creates commit manifest and directory only
     
-    cmd_init "$SOURCE_REPO" --commit
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
     
     assert_commit_mode_exists
     assert_file_not_exists "$LOCAL_MANIFEST_FILE"

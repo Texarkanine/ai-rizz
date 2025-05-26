@@ -17,7 +17,7 @@ test_deinit_local_mode_only() {
     cmd_add_rule "rule1.mdc" --commit  # Creates both modes
     
     # Test: Deinit local mode only
-    cmd_deinit --local
+    cmd_deinit --local -y
     
     # Expected: Local mode removed, commit mode preserved
     assert_file_not_exists "$LOCAL_MANIFEST_FILE"

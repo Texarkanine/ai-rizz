@@ -25,26 +25,9 @@ cd ai-rizz
 make install
 ```
 
-### Initialization
-
-Add some rules to your repository:
-
-```
-cd <your repository>
-ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
-ai-rizz list
-```
-
 ### Common Recipes
 
-**Personal rules only (git-ignored):**
-```bash
-ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
-ai-rizz add rule my-personal-rule.mdc
-ai-rizz list
-```
-# Initialize with a rules repository
-ai-rizz init https://github.com/example/rules.git --local
+Add some rules to your repository:
 
 **Personal rules only (git-ignored):**
 ```bash

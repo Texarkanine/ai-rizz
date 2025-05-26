@@ -89,74 +89,54 @@ tearDown() {
 
 # Mock git_sync function is defined inside source_ai_rizz() function below
 
-# Read and validate manifest file
+# Read and validate manifest file using progressive functions
 # Sets: SOURCE_REPO, TARGET_DIR, MANIFEST_ENTRIES
 read_manifest() {
   if [ ! -f "$MANIFEST_FILE" ]; then
     fail "Manifest file '$MANIFEST_FILE' not found"
   fi
   
-  # Read first line to get source repo and target dir
-  read -r first_line < "$MANIFEST_FILE"
+  # Use progressive manifest functions
+  metadata=$(read_manifest_metadata "$MANIFEST_FILE") || fail "Failed to read manifest metadata"
+  SOURCE_REPO=$(echo "$metadata" | cut -f1)
+  TARGET_DIR=$(echo "$metadata" | cut -f2)
   
-  # Extract the source repo and target dir
-  SOURCE_REPO=$(echo "$first_line" | cut -f1)
-  TARGET_DIR=$(echo "$first_line" | cut -f2)
-  
-  # Read the rest of the manifest file
-  MANIFEST_ENTRIES=""
-  while IFS= read -r line; do
-    if [ -n "$line" ] && [ "$line" != "$first_line" ]; then
-      MANIFEST_ENTRIES="$MANIFEST_ENTRIES
-$line"
-    fi
-  done < "$MANIFEST_FILE"
-  
-  # Trim leading newline
-  MANIFEST_ENTRIES=$(echo "$MANIFEST_ENTRIES" | sed '/./,$!d')
+  # Read entries
+  MANIFEST_ENTRIES=$(read_manifest_entries "$MANIFEST_FILE" || true)
   
   return 0
 }
 
-# Write manifest file
+# Write manifest file using progressive functions
 write_manifest() {
-  # Write the first line
-  echo "$SOURCE_REPO	$TARGET_DIR" > "$MANIFEST_FILE"
-  
-  # Write the rest of the entries
-  if [ -n "$MANIFEST_ENTRIES" ]; then
-    echo "$MANIFEST_ENTRIES" >> "$MANIFEST_FILE"
-  fi
+  # Use progressive manifest function
+  echo "$MANIFEST_ENTRIES" | write_manifest_with_entries "$MANIFEST_FILE" "$SOURCE_REPO" "$TARGET_DIR"
   
   return 0
 }
 
-# Add entry to manifest
+# Add entry to manifest using progressive functions
 add_manifest_entry() {
   entry="$1"
   
-  # Check if entry already exists
-  if echo "$MANIFEST_ENTRIES" | grep -q "^$entry$"; then
-    return 0  # Already exists, nothing to do
-  fi
+  # Use progressive manifest function
+  add_manifest_entry_to_file "$MANIFEST_FILE" "$entry"
   
-  # Add the entry
-  if [ -z "$MANIFEST_ENTRIES" ]; then
-    MANIFEST_ENTRIES="$entry"
-  else
-    MANIFEST_ENTRIES="$MANIFEST_ENTRIES
-$entry"
-  fi
+  # Update our local MANIFEST_ENTRIES for compatibility
+  MANIFEST_ENTRIES=$(read_manifest_entries "$MANIFEST_FILE" || true)
   
   return 0
 }
 
-# Remove entry from manifest
+# Remove entry from manifest using progressive functions
 remove_manifest_entry() {
   entry="$1"
   
-  # Remove the entry
-  MANIFEST_ENTRIES=$(echo "$MANIFEST_ENTRIES" | grep -v "^$entry$" || true)
+  # Use progressive manifest function
+  remove_manifest_entry_from_file "$MANIFEST_FILE" "$entry"
+  
+  # Update our local MANIFEST_ENTRIES for compatibility
+  MANIFEST_ENTRIES=$(read_manifest_entries "$MANIFEST_FILE" || true)
   
   return 0
 }

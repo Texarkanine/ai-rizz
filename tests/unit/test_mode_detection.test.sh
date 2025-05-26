@@ -16,17 +16,17 @@ test_detect_local_mode_only() {
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     
     # Test internal mode detection functions
-    # These test the new utility functions that will be added
-    assertTrue "Should detect local mode" "has_local_mode"
-    assertFalse "Should not detect commit mode" "has_commit_mode"
+    # These test the global mode variables
+    assertTrue "Should detect local mode" "[ \"$HAS_LOCAL_MODE\" = \"true\" ]"
+    assertFalse "Should not detect commit mode" "[ \"$HAS_COMMIT_MODE\" = \"true\" ]"
 }
 
 test_detect_commit_mode_only() {
     # Setup: Commit mode only  
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
     
-    assertTrue "Should detect commit mode" "has_commit_mode"
-    assertFalse "Should not detect local mode" "has_local_mode"
+    assertTrue "Should detect commit mode" "[ \"$HAS_COMMIT_MODE\" = \"true\" ]"
+    assertFalse "Should not detect local mode" "[ \"$HAS_LOCAL_MODE\" = \"true\" ]"
 }
 
 test_detect_dual_mode() {
@@ -34,8 +34,8 @@ test_detect_dual_mode() {
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit  # Triggers lazy init
     
-    assertTrue "Should detect local mode" "has_local_mode"
-    assertTrue "Should detect commit mode" "has_commit_mode"
+    assertTrue "Should detect local mode" "[ \"$HAS_LOCAL_MODE\" = \"true\" ]"
+    assertTrue "Should detect commit mode" "[ \"$HAS_COMMIT_MODE\" = \"true\" ]"
 }
 
 test_detect_no_modes() {
@@ -43,8 +43,8 @@ test_detect_no_modes() {
     assert_no_modes_exist
     
     # Test mode detection with no manifests
-    assertFalse "Should not detect local mode" "has_local_mode"
-    assertFalse "Should not detect commit mode" "has_commit_mode"
+    assertFalse "Should not detect local mode" "[ \"$HAS_LOCAL_MODE\" = \"true\" ]"
+    assertFalse "Should not detect commit mode" "[ \"$HAS_COMMIT_MODE\" = \"true\" ]"
 }
 
 test_add_rule_single_mode_auto_select() {
@@ -101,22 +101,22 @@ test_mode_detection_with_custom_target() {
     cmd_init "$SOURCE_REPO" -d "$custom_dir" --local
     
     # Test: Mode detection should work with custom paths
-    assertTrue "Should detect local mode with custom dir" "has_local_mode"
-    assertFalse "Should not detect commit mode" "has_commit_mode"
+    assertTrue "Should detect local mode with custom dir" "[ \"$HAS_LOCAL_MODE\" = \"true\" ]"
+    assertFalse "Should not detect commit mode" "[ \"$HAS_COMMIT_MODE\" = \"true\" ]"
 }
 
 test_mode_detection_after_deinit() {
     # Setup: Both modes exist
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit
-    assertTrue "Should detect both modes" "has_local_mode && has_commit_mode"
+    assertTrue "Should detect both modes" "[ \"$HAS_LOCAL_MODE\" = \"true\" ] && [ \"$HAS_COMMIT_MODE\" = \"true\" ]"
     
     # Test: Deinit one mode
     cmd_deinit --local -y
     
     # Expected: Should only detect commit mode
-    assertFalse "Should not detect local mode after deinit" "has_local_mode"
-    assertTrue "Should still detect commit mode" "has_commit_mode"
+    assertFalse "Should not detect local mode after deinit" "[ \"$HAS_LOCAL_MODE\" = \"true\" ]"
+    assertTrue "Should still detect commit mode" "[ \"$HAS_COMMIT_MODE\" = \"true\" ]"
 }
 
 test_smart_mode_selection_prefers_existing() {

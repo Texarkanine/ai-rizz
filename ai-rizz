@@ -100,145 +100,6 @@ warn() {
   echo "Warning: $1" >&2
 }
 
-# Read and validate manifest file (legacy function)
-#
-# Globals:
-#   MANIFEST_FILE - Path to manifest file to read
-#   SOURCE_REPO - Set to source repository URL from manifest
-#   TARGET_DIR - Set to target directory from manifest  
-#   MANIFEST_ENTRIES - Set to newline-separated list of entries
-#
-# Arguments:
-#   None
-#
-# Outputs:
-#   Stderr: Error messages if file not found or invalid format
-#
-# Returns:
-#   0 on success
-#   1 on error (via error() function)
-#
-read_manifest() {
-  if [ ! -f "$MANIFEST_FILE" ]; then
-    error "Manifest file '$MANIFEST_FILE' not found"
-  fi
-  
-  # Read first line to get source repo and target dir
-  read -r first_line < "$MANIFEST_FILE"
-  
-  # Check if it has the correct format (tab-separated)
-  if ! echo "$first_line" | grep -q "	"; then
-    error "Invalid manifest format: First line must be 'source_repo<tab>target_dir'"
-  fi
-  
-  # Extract the source repo and target dir
-  SOURCE_REPO=$(echo "$first_line" | cut -f1)
-  TARGET_DIR=$(echo "$first_line" | cut -f2)
-  
-  # Read the rest of the manifest file
-  MANIFEST_ENTRIES=""
-  while IFS= read -r line; do
-    if [ -n "$line" ] && [ "$line" != "$first_line" ]; then
-      MANIFEST_ENTRIES="$MANIFEST_ENTRIES
-$line"
-    fi
-  done < "$MANIFEST_FILE"
-  
-  # Trim leading newline
-  MANIFEST_ENTRIES=$(echo "$MANIFEST_ENTRIES" | sed '/./,$!d')
-  
-  return 0
-}
-
-# Write manifest file (legacy function)
-#
-# Globals:
-#   MANIFEST_FILE - Path to manifest file to write
-#   SOURCE_REPO - Source repository URL to write to manifest
-#   TARGET_DIR - Target directory to write to manifest
-#   MANIFEST_ENTRIES - Newline-separated list of entries to write
-#
-# Arguments:
-#   None
-#
-# Outputs:
-#   Stderr: Error message if required globals not set
-#
-# Returns:
-#   0 on success
-#   1 on error (via error() function)
-#
-write_manifest() {
-  if [ -z "$SOURCE_REPO" ] || [ -z "$TARGET_DIR" ]; then
-    error "SOURCE_REPO and TARGET_DIR must be set before writing manifest"
-  fi
-  
-  # Write the first line
-  echo "$SOURCE_REPO	$TARGET_DIR" > "$MANIFEST_FILE"
-  
-  # Write the rest of the entries
-  if [ -n "$MANIFEST_ENTRIES" ]; then
-    echo "$MANIFEST_ENTRIES" >> "$MANIFEST_FILE"
-  fi
-  
-  return 0
-}
-
-# Add entry to manifest (legacy function)
-#
-# Globals:
-#   MANIFEST_ENTRIES - Modified to include new entry if not already present
-#
-# Arguments:
-#   $1 - Entry to add to manifest (required)
-#
-# Outputs:
-#   None
-#
-# Returns:
-#   0 on success (including if entry already exists)
-#
-add_manifest_entry() {
-  entry="$1"
-  
-  # Check if entry already exists
-  if echo "$MANIFEST_ENTRIES" | grep -q "^$entry$"; then
-    return 0  # Already exists, nothing to do
-  fi
-  
-  # Add the entry
-  if [ -z "$MANIFEST_ENTRIES" ]; then
-    MANIFEST_ENTRIES="$entry"
-  else
-    MANIFEST_ENTRIES="$MANIFEST_ENTRIES
-$entry"
-  fi
-  
-  return 0
-}
-
-# Remove entry from manifest (legacy function)
-#
-# Globals:
-#   MANIFEST_ENTRIES - Modified to exclude specified entry
-#
-# Arguments:
-#   $1 - Entry to remove from manifest (required)
-#
-# Outputs:
-#   None
-#
-# Returns:
-#   0 on success (including if entry doesn't exist)
-#
-remove_manifest_entry() {
-  entry="$1"
-  
-  # Remove the entry
-  MANIFEST_ENTRIES=$(echo "$MANIFEST_ENTRIES" | grep -v "^$entry$" || true)
-  
-  return 0
-}
 
 # Progressive Manifest Utilities  
 # ==============================
@@ -490,36 +351,7 @@ git_sync() {
   return 0
 }
 
-# Detect if we're in local mode (legacy function)
-#
-# Legacy function from single-mode ai-rizz. Use HAS_LOCAL_MODE global instead.
-#
-# Globals:
-#   TARGET_DIR - Target directory to check in git excludes
-#
-# Arguments:
-#   None
-#
-# Outputs:
-#   Stderr: Error message if not in git repository
-#
-# Returns:
-#   0 if target directory is git-excluded (local mode)
-#   1 otherwise
-#
-is_local_mode() {
-  # Check if .git directory exists
-  if [ ! -d ".git" ]; then
-    error "Not in a git repository"
-  fi
-  
-  # Check if target directory is in .git/info/exclude
-  if [ -f ".git/info/exclude" ] && grep -q "$TARGET_DIR" ".git/info/exclude"; then
-    return 0  # true, local mode
-  fi
-  
-  return 1  # false, commit mode
-}
+
 
 # Git Exclude Management  
 # ======================
@@ -825,28 +657,6 @@ cache_manifest_metadata() {
     fi
 }
 
-# Test helper functions (for backward compatibility with test suite)
-#
-# Globals:
-#   HAS_LOCAL_MODE - Local mode state
-#   HAS_COMMIT_MODE - Commit mode state
-#
-# Arguments:
-#   None
-#
-# Outputs:
-#   None
-#
-# Returns:
-#   0 if mode is active, 1 otherwise
-#
-has_local_mode() {
-    [ "$HAS_LOCAL_MODE" = "true" ]
-}
-
-has_commit_mode() {
-    [ "$HAS_COMMIT_MODE" = "true" ]
-}
 
 # Legacy Migration Utilities
 # ==========================
@@ -1660,6 +1470,10 @@ cmd_deinit() {
         fi
     fi
     
+    # Save target directories for cleanup before clearing them
+    local_target_for_cleanup="$LOCAL_TARGET_DIR"
+    commit_target_for_cleanup="$COMMIT_TARGET_DIR"
+    
     # Remove local mode
     if [ "$remove_local" = "true" ] && [ "$HAS_LOCAL_MODE" = "true" ]; then
         # Remove from git excludes
@@ -1691,16 +1505,16 @@ cmd_deinit() {
         echo "Removed commit mode configuration"
     fi
     
-    # Clean up empty parent directories
-    if [ "$remove_local" = "true" ] && [ "$HAS_LOCAL_MODE" = "true" ]; then
-        parent_dir=$(dirname "$LOCAL_TARGET_DIR/$LOCAL_DIR")
+    # Clean up empty parent directories using saved values
+    if [ "$remove_local" = "true" ] && [ -n "$local_target_for_cleanup" ]; then
+        parent_dir=$(dirname "$local_target_for_cleanup/$LOCAL_DIR")
         if [ "$parent_dir" != "." ] && [ "$parent_dir" != "/" ]; then
             cleanup_empty_parents "$parent_dir"
         fi
     fi
     
-    if [ "$remove_commit" = "true" ] && [ "$HAS_COMMIT_MODE" = "true" ]; then
-        parent_dir=$(dirname "$COMMIT_TARGET_DIR/$SHARED_DIR")
+    if [ "$remove_commit" = "true" ] && [ -n "$commit_target_for_cleanup" ]; then
+        parent_dir=$(dirname "$commit_target_for_cleanup/$SHARED_DIR")
         if [ "$parent_dir" != "." ] && [ "$parent_dir" != "/" ]; then
             cleanup_empty_parents "$parent_dir"
         fi

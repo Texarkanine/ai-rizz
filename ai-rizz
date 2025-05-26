@@ -10,8 +10,29 @@ LOCAL_MANIFEST_FILE="ai-rizz.local.inf"
 SHARED_DIR="shared"
 LOCAL_DIR="local" 
 CONFIG_DIR="$HOME/.config/ai-rizz"
-REPO_DIR="$CONFIG_DIR/repo"
 DEFAULT_TARGET_DIR=".cursor/rules"
+
+# Repository Directory Functions
+# ==============================
+
+# Get repository directory for a specific mode and project
+get_repo_dir() {
+    mode="${1}"  # "local" or "commit"
+    project_name=$(basename "$(pwd)")
+    echo "${CONFIG_DIR}/repos/${project_name}/${mode}"
+}
+
+# Helper function to get repo dir from manifest file
+get_repo_dir_for_manifest() {
+    manifest_file="${1}"
+    if [ "${manifest_file}" = "${COMMIT_MANIFEST_FILE}" ]; then
+        get_repo_dir "commit"
+    elif [ "${manifest_file}" = "${LOCAL_MANIFEST_FILE}" ]; then
+        get_repo_dir "local"
+    else
+        error "Unknown manifest file: ${manifest_file}"
+    fi
+}
 
 # Mode state (set once during initialization, read-only afterward)
 HAS_COMMIT_MODE=false
@@ -240,16 +261,19 @@ get_any_manifest_metadata() {
 
 # Clone or update a git repository
 git_sync() {
-  repo_url="$1"
+  repo_url="${1}"
+  mode="${2}"  # "local" or "commit"
+  
+  repo_dir=$(get_repo_dir "${mode}")
   
   # Ensure config directory exists
-  mkdir -p "$CONFIG_DIR"
+  mkdir -p "$(dirname "${repo_dir}")"
   
-  # Clone/update permanent repository
-  if [ ! -d "$CONFIG_DIR/repo" ]; then
-    git clone "$repo_url" "$CONFIG_DIR/repo" || error "Failed to clone repository: $repo_url"
+  # Clone/update mode-specific repository
+  if [ ! -d "${repo_dir}" ]; then
+    git clone "${repo_url}" "${repo_dir}" || error "Failed to clone repository: ${repo_url}"
   else
-    (cd "$CONFIG_DIR/repo" && git pull) || error "Failed to update repository: $repo_url"
+    (cd "${repo_dir}" && git pull) || error "Failed to update repository: ${repo_url}"
   fi
   
   return 0
@@ -570,31 +594,34 @@ needs_lazy_init() {
 # Get all .mdc files that would be deployed by a manifest
 # Returns one filename per line (just the filename, not the full path)
 get_files_from_manifest() {
-    manifest_file="$1"
+    manifest_file="${1}"
     
-    if [ ! -f "$manifest_file" ]; then
+    if [ ! -f "${manifest_file}" ]; then
         return 1
     fi
     
     # Get the source repo from manifest metadata
-    source_repo=$(read_manifest_metadata "$manifest_file" | cut -f1)
+    source_repo=$(read_manifest_metadata "${manifest_file}" | cut -f1)
+    
+    # Get the appropriate repository directory for this manifest
+    repo_dir=$(get_repo_dir_for_manifest "${manifest_file}")
     
     # Get all entries from the manifest
-    entries=$(read_manifest_entries "$manifest_file" 2>/dev/null || true)
+    entries=$(read_manifest_entries "${manifest_file}" 2>/dev/null || true)
     
-    if [ -n "$entries" ]; then
-        echo "$entries" | while IFS= read -r entry; do
-            if [ -n "$entry" ]; then
+    if [ -n "${entries}" ]; then
+        echo "${entries}" | while IFS= read -r entry; do
+            if [ -n "${entry}" ]; then
                 # Get the source path for this entry
-                source_path="$REPO_DIR/$entry"
+                source_path="${repo_dir}/${entry}"
                 
-                if [ -f "$source_path" ]; then
+                if [ -f "${source_path}" ]; then
                     # Single file - extract just the filename
-                    basename "$source_path"
-                elif [ -d "$source_path" ]; then
+                    basename "${source_path}"
+                elif [ -d "${source_path}" ]; then
                     # Directory (ruleset) - list all .mdc files in it
-                    find "$source_path" -name "*.mdc" -type f -o -name "*.mdc" -type l | while IFS= read -r rule_file; do
-                        basename "$rule_file"
+                    find "${source_path}" -name "*.mdc" -type f -o -name "*.mdc" -type l | while IFS= read -r rule_file; do
+                        basename "${rule_file}"
                     done
                 fi
             fi
@@ -605,83 +632,89 @@ get_files_from_manifest() {
 # Remove any local manifest entries that would deploy the given filename
 # For rulesets, this will remove the entire ruleset and add back individual rules for non-conflicting files
 remove_local_entries_deploying_file() {
-    filename="$1"
+    filename="${1}"
     
     # Get all local entries
-    local_entries=$(read_manifest_entries "$LOCAL_MANIFEST_FILE" 2>/dev/null || true)
+    local_entries=$(read_manifest_entries "${LOCAL_MANIFEST_FILE}" 2>/dev/null || true)
     
-    if [ -n "$local_entries" ]; then
+    # Get the local repository directory
+    local_repo_dir=$(get_repo_dir "local")
+    
+    if [ -n "${local_entries}" ]; then
         # Use a temporary file to avoid subshell issues
         temp_entries=$(mktemp)
-        echo "$local_entries" > "$temp_entries"
+        echo "${local_entries}" > "${temp_entries}"
         
         while IFS= read -r entry; do
-            if [ -n "$entry" ]; then
+            if [ -n "${entry}" ]; then
                 # Check if this entry would deploy the target filename
-                source_path="$REPO_DIR/$entry"
+                source_path="${local_repo_dir}/${entry}"
                 
-                if [ -f "$source_path" ]; then
+                if [ -f "${source_path}" ]; then
                     # Single file - check if it matches
-                    if [ "$(basename "$source_path")" = "$filename" ]; then
-                        remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$entry"
+                    if [ "$(basename "${source_path}")" = "${filename}" ]; then
+                        remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${entry}"
                     fi
-                elif [ -d "$source_path" ]; then
+                elif [ -d "${source_path}" ]; then
                     # Directory (ruleset) - check if it contains the file
-                    if find "$source_path" -name "$filename" -type f -o -name "$filename" -type l | grep -q .; then
+                    if find "${source_path}" -name "${filename}" -type f -o -name "${filename}" -type l | grep -q .; then
                         # Remove the entire ruleset entry
-                        remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$entry"
+                        remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${entry}"
                         
                         # Add back individual rules from this ruleset that don't conflict
-                        restore_non_conflicting_rules_from_ruleset "$entry"
+                        restore_non_conflicting_rules_from_ruleset "${entry}"
                     fi
                 fi
             fi
-        done < "$temp_entries"
+        done < "${temp_entries}"
         
         # Clean up temporary file
-        rm -f "$temp_entries"
+        rm -f "${temp_entries}"
     fi
 }
 
 # Restore individual rules from a ruleset that don't conflict with commit manifest
 restore_non_conflicting_rules_from_ruleset() {
-    ruleset_entry="$1"
+    ruleset_entry="${1}"
     
     # Get all files that commit manifest would deploy
-    commit_files=$(get_files_from_manifest "$COMMIT_MANIFEST_FILE" 2>/dev/null || true)
+    commit_files=$(get_files_from_manifest "${COMMIT_MANIFEST_FILE}" 2>/dev/null || true)
+    
+    # Get the local repository directory
+    local_repo_dir=$(get_repo_dir "local")
     
     # Get all files in this ruleset
-    ruleset_path="$REPO_DIR/$ruleset_entry"
+    ruleset_path="${local_repo_dir}/${ruleset_entry}"
     
-    if [ -d "$ruleset_path" ]; then
+    if [ -d "${ruleset_path}" ]; then
         # Use temporary file to avoid subshell issues
         temp_rules=$(mktemp)
-        find "$ruleset_path" -name "*.mdc" -type f -o -name "*.mdc" -type l > "$temp_rules"
+        find "${ruleset_path}" -name "*.mdc" -type f -o -name "*.mdc" -type l > "${temp_rules}"
         
         while IFS= read -r rule_file; do
-            if [ -n "$rule_file" ]; then
-                rule_filename=$(basename "$rule_file")
+            if [ -n "${rule_file}" ]; then
+                rule_filename=$(basename "${rule_file}")
                 
                 # Check if this rule conflicts with commit manifest
                 rule_conflicts=false
-                if [ -n "$commit_files" ]; then
+                if [ -n "${commit_files}" ]; then
                     # Use grep to check for conflict
-                    if echo "$commit_files" | grep -q "^$rule_filename$"; then
+                    if echo "${commit_files}" | grep -q "^${rule_filename}$"; then
                         rule_conflicts=true
                     fi
                 fi
                 
                 # If no conflict, add this rule individually to local manifest
-                if [ "$rule_conflicts" = "false" ]; then
+                if [ "${rule_conflicts}" = "false" ]; then
                     # Convert absolute path back to relative path from repo root
-                    relative_path=$(echo "$rule_file" | sed "s|^$REPO_DIR/||")
-                    add_manifest_entry_to_file "$LOCAL_MANIFEST_FILE" "$relative_path"
+                    relative_path=$(echo "${rule_file}" | sed "s|^${local_repo_dir}/||")
+                    add_manifest_entry_to_file "${LOCAL_MANIFEST_FILE}" "${relative_path}"
                 fi
             fi
-        done < "$temp_rules"
+        done < "${temp_rules}"
         
         # Clean up temporary file
-        rm -f "$temp_rules"
+        rm -f "${temp_rules}"
     fi
 }
 
@@ -704,31 +737,31 @@ restore_non_conflicting_rules_from_ruleset() {
 # 3. If so, remove the local manifest entry that would deploy that file
 # 4. Handle both individual rule entries and ruleset entries appropriately
 resolve_conflicts() {
-    if [ "$HAS_COMMIT_MODE" = "false" ] || [ "$HAS_LOCAL_MODE" = "false" ]; then
+    if [ "${HAS_COMMIT_MODE}" = "false" ] || [ "${HAS_LOCAL_MODE}" = "false" ]; then
         return 0  # No conflicts possible with single mode
     fi
     
-    if [ ! -f "$COMMIT_MANIFEST_FILE" ] || [ ! -f "$LOCAL_MANIFEST_FILE" ]; then
+    if [ ! -f "${COMMIT_MANIFEST_FILE}" ] || [ ! -f "${LOCAL_MANIFEST_FILE}" ]; then
         return 0  # Can't have conflicts if manifests don't exist
     fi
     
     # Get all .mdc files that would be deployed by commit manifest
-    commit_files=$(get_files_from_manifest "$COMMIT_MANIFEST_FILE" 2>/dev/null || true)
+    commit_files=$(get_files_from_manifest "${COMMIT_MANIFEST_FILE}" 2>/dev/null || true)
     
-    if [ -n "$commit_files" ]; then
+    if [ -n "${commit_files}" ]; then
         # Use a temporary file to avoid subshell issues
         temp_file=$(mktemp)
-        echo "$commit_files" > "$temp_file"
+        echo "${commit_files}" > "${temp_file}"
         
         # For each file that commit would deploy, remove any local entries that would deploy the same file
         while IFS= read -r filename; do
-            if [ -n "$filename" ]; then
-                remove_local_entries_deploying_file "$filename"
+            if [ -n "${filename}" ]; then
+                remove_local_entries_deploying_file "${filename}"
             fi
-        done < "$temp_file"
+        done < "${temp_file}"
         
         # Clean up temporary file
-        rm -f "$temp_file"
+        rm -f "${temp_file}"
     fi
 }
 

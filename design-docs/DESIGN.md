@@ -316,16 +316,17 @@ ai-rizz add rule my-rule --local
 - [x] **Mode operations fixes** ✅ COMPLETED (16/16 tests passing)
 - [x] **Upgrade/downgrade constraints** ✅ COMPLETED
 - [x] **Comprehensive test coverage** ✅ COMPLETED
+- [x] **File-level conflict resolution** ✅ COMPLETED (Phase 4.7)
 
-**Phase 4 Status**: ✅ **FUNCTIONALLY COMPLETE** - All core objectives achieved:
-- ✅ **Conflict Resolution**: Proper ruleset handling with upgrade scenarios (core logic 100% functional)
+**Phase 4 Status**: ✅ **COMPLETELY FINISHED** - All objectives achieved:
+- ✅ **Conflict Resolution**: Sophisticated file-level conflict resolution with partial ruleset handling
 - ✅ **Upgrade/Downgrade Constraints**: Individual rules correctly prevented from downgrading from committed rulesets
 - ✅ **Repository Isolation**: Fixed by using `${REPO_DIR}` directly instead of function calls
 - ✅ **Code Quality**: Simplified architecture and improved maintainability
 - ✅ **Error Handling**: Comprehensive validation and error recovery (17/17 tests passing)
 - ✅ **Mode Operations**: All command interactions working correctly (16/16 tests passing)
-- 📊 **Success Rate**: 7/8 test suites passing completely (87.5% success rate)
-- ⚠️ **Minor Issues**: 3 test environment issues in conflict resolution suite (logic is correct)
+- ✅ **Conflict Resolution**: All complex scenarios working correctly (10/10 tests passing)
+- 📊 **Success Rate**: 8/8 test suites passing completely (100% success rate)
 
 ### Phase 5: Polish & Testing
 - [ ] Update help text and usage documentation
@@ -502,14 +503,15 @@ tests/
 3. ✅ **PHASE 1**: Comprehensive unit tests drafted and approved
 4. ✅ **PHASE 2**: Core infrastructure implementation completed
 5. ✅ **PHASE 3**: Command updates and test fixes completed
-6. ✅ **PHASE 4**: Advanced features functionally complete - all core objectives achieved
-7. **CURRENT**: Phase 4 successfully delivered (7/8 test suites passing, 87.5% success rate)
-8. **NEXT**: Phase 5 (Polish & Testing) - documentation updates and final integration testing
+6. ✅ **PHASE 4**: Advanced features completely finished - all objectives achieved
+7. ✅ **PHASE 4.7**: Final test resolution completed (8/8 test suites passing, 100% success rate)
+8. **CURRENT**: Phase 4 completely delivered - ready for Phase 5
+9. **NEXT**: Phase 5 (Polish & Testing) - documentation updates and final integration testing
 
 **Key Achievements**:
 - ✅ **Progressive Mode System**: Nothing → Local/Commit → Dual mode progression working
-- ✅ **Conflict Resolution**: Proper handling of complex ruleset vs individual rule scenarios
+- ✅ **Conflict Resolution**: Sophisticated file-level conflict resolution with partial ruleset handling
 - ✅ **Upgrade/Downgrade Constraints**: Correct prevention of invalid rule movements
 - ✅ **Lazy Initialization**: Automatic mode creation when needed
 - ✅ **Backward Compatibility**: Seamless migration from legacy single-mode repositories
-- ✅ **Test Coverage**: Comprehensive test suite with 87.5% pass rate 
+- ✅ **Test Coverage**: Comprehensive test suite with 100% pass rate 

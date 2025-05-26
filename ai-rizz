@@ -658,21 +658,20 @@ remove_local_entries_deploying_file() {
                 elif [ -d "${source_path}" ]; then
                     # Directory (ruleset) - check if it contains the file
                     if find "${source_path}" -name "${filename}" -type f -o -name "${filename}" -type l | grep -q .; then
-                        # For rulesets containing a conflicting file, we need to check if the
-                        # individual rule is also being added to commit mode as a standalone rule.
-                        # If so, this is an "upgrade" scenario and we should NOT remove the entire
-                        # local ruleset - it should remain for other rules it contains.
-                        
-                        # Check if the commit manifest has the individual rule (not the ruleset)
-                        rule_path="rules/${filename}"
-                        if [ -f "${COMMIT_MANIFEST_FILE}" ] && read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${rule_path}$"; then
-                            # This is an upgrade scenario - individual rule promoted to commit
-                            # Keep the local ruleset for other rules it contains
-                            # The conflict will be resolved by the glyph display logic
-                            continue
-                        else
-                            # This is a true conflict - remove the entire local ruleset
+                        # For rulesets containing a conflicting file, we have a partial conflict.
+                        # We should NOT remove the entire local ruleset because it may contain
+                        # other rules that should remain local. Instead, let the sync process
+                        # handle the file-level conflict (commit wins for individual files).
+                        #
+                        # The only case where we remove the entire local ruleset is if the
+                        # commit manifest contains the exact same ruleset entry.
+                        ruleset_path="${entry}"
+                        if [ -f "${COMMIT_MANIFEST_FILE}" ] && read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${ruleset_path}$"; then
+                            # Exact same ruleset in both modes - remove from local (commit wins)
                             remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${entry}"
+                        else
+                            # Partial conflict - keep local ruleset, let sync handle file-level conflicts
+                            continue
                         fi
                     fi
                 fi
@@ -1702,6 +1701,24 @@ sync_manifest_to_directory() {
     fi
 }
 
+# Check if a filename would be deployed by commit mode
+file_exists_in_commit_mode() {
+    filename="$1"
+    
+    if [ "$HAS_COMMIT_MODE" = "false" ] || [ ! -f "$COMMIT_MANIFEST_FILE" ]; then
+        return 1  # No commit mode, so no conflict
+    fi
+    
+    # Check if commit mode would deploy this filename
+    commit_files=$(get_files_from_manifest "$COMMIT_MANIFEST_FILE" 2>/dev/null || true)
+    if [ -n "$commit_files" ]; then
+        echo "$commit_files" | grep -q "^${filename}$"
+        return $?
+    fi
+    
+    return 1  # Not found in commit mode
+}
+
 # Copy a single entry (rule or ruleset) to target directory
 copy_entry_to_target() {
     entry="$1"
@@ -1709,14 +1726,36 @@ copy_entry_to_target() {
     
     source_path="$REPO_DIR/$entry"
     
+    # Check if we're syncing to local directory and need to avoid commit conflicts
+    is_local_sync=false
+    case "$target_directory" in
+        */"$LOCAL_DIR")
+            is_local_sync=true
+            ;;
+    esac
+    
     if [ -f "$source_path" ]; then
         # Single file (rule)
+        filename=$(basename "$source_path")
+        
+        # Skip if file would conflict with commit mode (commit wins)
+        if [ "$is_local_sync" = "true" ] && file_exists_in_commit_mode "$filename"; then
+            return 0  # Skip this file
+        fi
+        
         cp "$source_path" "$target_directory/"
     elif [ -d "$source_path" ]; then
         # Directory (ruleset) - copy individual .mdc files from ruleset to target directory
         # Handle symlinks correctly by following them and copying actual content
         find "$source_path" -name "*.mdc" -type f -o -name "*.mdc" -type l | while IFS= read -r rule_file; do
             if [ -f "$rule_file" ] || [ -L "$rule_file" ]; then
+                filename=$(basename "$rule_file")
+                
+                # Skip if file would conflict with commit mode (commit wins)
+                if [ "$is_local_sync" = "true" ] && file_exists_in_commit_mode "$filename"; then
+                    continue  # Skip this file
+                fi
+                
                 # Copy the file (following symlinks to get actual content)
                 cp -L "$rule_file" "$target_directory/"
             fi

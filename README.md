@@ -102,7 +102,7 @@ Command-specific options:
 
 ### Configuration
 
-ai-rizz stores a permanent copy of the source repository in `$HOME/.config/ai-rizz/repo`.
+ai-rizz stores copies of source repositories in `$HOME/.config/ai-rizz/repos/PROJECT-NAME/repo/` where PROJECT-NAME is the current directory name. This allows different projects to use different source repositories without conflicts.
 
 ### Rule Modes
 

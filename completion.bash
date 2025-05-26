@@ -11,15 +11,29 @@ _ai_rizz_completion() {
             COMPREPLY=( $(compgen -W "rule ruleset" -- "$cur") )
             ;;
         rule)
-            # Get available rules from the repo
-            if [ -d "$HOME/.config/ai-rizz/repo/rules" ]; then
-                COMPREPLY=( $(compgen -W "$(find "$HOME/.config/ai-rizz/repo/rules" -name "*.mdc" -printf "%f\n" | sed 's/\.mdc$//')" -- "$cur") )
+            # Get available rules from the current project's repo
+            # Use git root directory name as project name, fallback to current directory
+            if git_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+                project_name=$(basename "${git_root}")
+            else
+                project_name=$(basename "$(pwd)")
+            fi
+            repo_dir="${HOME}/.config/ai-rizz/repos/${project_name}/repo"
+            if [ -d "${repo_dir}/rules" ]; then
+                COMPREPLY=( $(compgen -W "$(find "${repo_dir}/rules" -name "*.mdc" -printf "%f\n" | sed 's/\.mdc$//')" -- "${cur}") )
             fi
             ;;
         ruleset)
-            # Get available rulesets from the repo
-            if [ -d "$HOME/.config/ai-rizz/repo/rulesets" ]; then
-                COMPREPLY=( $(compgen -W "$(find "$HOME/.config/ai-rizz/repo/rulesets" -mindepth 1 -maxdepth 1 -type d -printf "%f\n")" -- "$cur") )
+            # Get available rulesets from the current project's repo
+            # Use git root directory name as project name, fallback to current directory
+            if git_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+                project_name=$(basename "${git_root}")
+            else
+                project_name=$(basename "$(pwd)")
+            fi
+            repo_dir="${HOME}/.config/ai-rizz/repos/${project_name}/repo"
+            if [ -d "${repo_dir}/rulesets" ]; then
+                COMPREPLY=( $(compgen -W "$(find "${repo_dir}/rulesets" -mindepth 1 -maxdepth 1 -type d -printf "%f\n")" -- "${cur}") )
             fi
             ;;
     esac

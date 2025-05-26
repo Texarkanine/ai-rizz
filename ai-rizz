@@ -15,20 +15,22 @@ DEFAULT_TARGET_DIR=".cursor/rules"
 # Repository Directory Functions
 # ==============================
 
-# Get repository directory for a specific mode and project
+# Get repository directory for the current project
 get_repo_dir() {
-    mode="${1}"  # "local" or "commit"
-    project_name=$(basename "$(pwd)")
-    echo "${CONFIG_DIR}/repos/${project_name}/${mode}"
+    # Use git root directory name as project name, fallback to current directory
+    if git_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+        project_name=$(basename "${git_root}")
+    else
+        project_name=$(basename "$(pwd)")
+    fi
+    echo "${CONFIG_DIR}/repos/${project_name}/repo"
 }
 
-# Helper function to get repo dir from manifest file
+# Helper function to get repo dir from manifest file (now just calls get_repo_dir)
 get_repo_dir_for_manifest() {
     manifest_file="${1}"
-    if [ "${manifest_file}" = "${COMMIT_MANIFEST_FILE}" ]; then
-        get_repo_dir "commit"
-    elif [ "${manifest_file}" = "${LOCAL_MANIFEST_FILE}" ]; then
-        get_repo_dir "local"
+    if [ "${manifest_file}" = "${COMMIT_MANIFEST_FILE}" ] || [ "${manifest_file}" = "${LOCAL_MANIFEST_FILE}" ]; then
+        get_repo_dir
     else
         error "Unknown manifest file: ${manifest_file}"
     fi
@@ -43,6 +45,9 @@ COMMIT_SOURCE_REPO=""
 LOCAL_SOURCE_REPO=""
 COMMIT_TARGET_DIR=""
 LOCAL_TARGET_DIR=""
+
+# Repository directory (set during initialization)
+REPO_DIR=""
 
 # Display formatting variables  
 COMMITTED_GLYPH="●"
@@ -262,14 +267,13 @@ get_any_manifest_metadata() {
 # Clone or update a git repository
 git_sync() {
   repo_url="${1}"
-  mode="${2}"  # "local" or "commit"
   
-  repo_dir=$(get_repo_dir "${mode}")
+  repo_dir=$(get_repo_dir)
   
   # Ensure config directory exists
   mkdir -p "$(dirname "${repo_dir}")"
   
-  # Clone/update mode-specific repository
+  # Clone/update project repository
   if [ ! -d "${repo_dir}" ]; then
     git clone "${repo_url}" "${repo_dir}" || error "Failed to clone repository: ${repo_url}"
   else
@@ -637,8 +641,8 @@ remove_local_entries_deploying_file() {
     # Get all local entries
     local_entries=$(read_manifest_entries "${LOCAL_MANIFEST_FILE}" 2>/dev/null || true)
     
-    # Get the local repository directory
-    local_repo_dir=$(get_repo_dir "local")
+    # Get the repository directory
+    local_repo_dir=$(get_repo_dir)
     
     if [ -n "${local_entries}" ]; then
         # Use a temporary file to avoid subshell issues
@@ -680,8 +684,8 @@ restore_non_conflicting_rules_from_ruleset() {
     # Get all files that commit manifest would deploy
     commit_files=$(get_files_from_manifest "${COMMIT_MANIFEST_FILE}" 2>/dev/null || true)
     
-    # Get the local repository directory
-    local_repo_dir=$(get_repo_dir "local")
+    # Get the repository directory
+    local_repo_dir=$(get_repo_dir)
     
     # Get all files in this ruleset
     ruleset_path="${local_repo_dir}/${ruleset_entry}"
@@ -792,6 +796,15 @@ validate_manifest_format() {
     return 0
 }
 
+# Validate that both manifests use the same source repository (hard error)
+validate_manifest_integrity() {
+    if [ "${HAS_COMMIT_MODE}" = "true" ] && [ "${HAS_LOCAL_MODE}" = "true" ]; then
+        if [ "${COMMIT_SOURCE_REPO}" != "${LOCAL_SOURCE_REPO}" ]; then
+            error "Manifest integrity error: Local and commit modes use different source repositories (${LOCAL_SOURCE_REPO} vs ${COMMIT_SOURCE_REPO}). This is not supported. Use 'ai-rizz deinit' to reset."
+        fi
+    fi
+}
+
 # Commands
 # ========
 
@@ -850,7 +863,7 @@ cmd_init() {
         fi
     fi
     
-    # Validate mode
+        # Validate mode
     case "$mode" in
         local|commit)
             ;;
@@ -858,7 +871,20 @@ cmd_init() {
             error "Invalid mode: $mode. Must be 'local' or 'commit'"
             ;;
     esac
-    
+
+    # If one mode already exists, use its source_repo (no override allowed)
+    if [ "${HAS_COMMIT_MODE}" = "true" ] || [ "${HAS_LOCAL_MODE}" = "true" ]; then
+        existing_source_repo=""
+        if [ "${HAS_COMMIT_MODE}" = "true" ]; then
+            existing_source_repo="${COMMIT_SOURCE_REPO}"
+        else
+            existing_source_repo="${LOCAL_SOURCE_REPO}"
+        fi
+        
+        # Override user input silently
+        source_repo="${existing_source_repo}"
+    fi
+
     # Check if repository is already initialized in the requested mode
     case "$mode" in
         local)
@@ -1103,6 +1129,9 @@ cmd_list() {
         error "No ai-rizz configuration found. Run 'ai-rizz init' first."
     fi
     
+    # Validate manifest integrity (hard error for mismatched source repos)
+    validate_manifest_integrity
+    
     # Get source repo from any available mode
     source_repo=""
     if [ "$HAS_COMMIT_MODE" = "true" ]; then
@@ -1261,6 +1290,9 @@ cmd_add_rule() {
         error "No ai-rizz configuration found. Run 'ai-rizz init' first."
     fi
     
+    # Validate manifest integrity (hard error for mismatched source repos)
+    validate_manifest_integrity
+    
     # Smart mode selection
     if [ -z "$mode" ]; then
         if [ "$HAS_LOCAL_MODE" = "true" ] && [ "$HAS_COMMIT_MODE" = "false" ]; then
@@ -1402,6 +1434,9 @@ cmd_add_ruleset() {
         error "No ai-rizz configuration found. Run 'ai-rizz init' first."
     fi
     
+    # Validate manifest integrity (hard error for mismatched source repos)
+    validate_manifest_integrity
+    
     # Smart mode selection
     if [ -z "$mode" ]; then
         if [ "$HAS_LOCAL_MODE" = "true" ] && [ "$HAS_COMMIT_MODE" = "false" ]; then
@@ -1510,6 +1545,9 @@ cmd_remove_rule() {
         error "No ai-rizz configuration found. Run 'ai-rizz init' first."
     fi
     
+    # Validate manifest integrity (hard error for mismatched source repos)
+    validate_manifest_integrity
+    
     # Process each rule
     for rule in "$@"; do
         # Add .mdc extension if not present
@@ -1555,6 +1593,9 @@ cmd_remove_ruleset() {
     if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
         error "No ai-rizz configuration found. Run 'ai-rizz init' first."
     fi
+    
+    # Validate manifest integrity (hard error for mismatched source repos)
+    validate_manifest_integrity
     
     # Process each ruleset
     for ruleset in "$@"; do
@@ -1695,6 +1736,9 @@ cmd_sync() {
         error "No ai-rizz configuration found. Run 'ai-rizz init' first."
     fi
     
+    # Validate manifest integrity (hard error for mismatched source repos)
+    validate_manifest_integrity
+    
     # Get source repo from any available manifest
     source_repo=""
     if [ -n "$COMMIT_SOURCE_REPO" ]; then
@@ -1757,6 +1801,9 @@ initialize_ai_rizz() {
     # Phase 2: Full initialization with directory checking  
     detect_initialized_modes
     cache_manifest_metadata
+    
+    # Phase 3: Set repository directory for current project
+    REPO_DIR=$(get_repo_dir)
 }
 
 # Main

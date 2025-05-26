@@ -132,7 +132,7 @@ read_manifest_metadata() {
 	
 	# Validate format
 	if ! echo "$first_line" | grep -q "	"; then
-	    error "Invalid manifest format in $manifest_file: First line must be 'source_repo<tab>target_dir'"
+		error "Invalid manifest format in $manifest_file: First line must be 'source_repo<tab>target_dir'"
 	fi
 	
 	echo "$first_line"
@@ -924,7 +924,8 @@ get_files_from_manifest() {
 	                basename "${source_path}"
 	            elif [ -d "${source_path}" ]; then
 	                # Directory (ruleset) - list all .mdc files in it
-	                find "${source_path}" -name "*.mdc" -type f -o -name "*.mdc" -type l | while IFS= read -r rule_file; do
+	                find "${source_path}" -name "*.mdc" -type f -o -name "*.mdc" -type l | \
+	                    while IFS= read -r rule_file; do
 	                    basename "${rule_file}"
 	                done
 	            fi
@@ -980,7 +981,8 @@ remove_local_entries_deploying_file() {
 	                fi
 	            elif [ -d "${source_path}" ]; then
 	                # Directory (ruleset) - check if it contains the file
-	                if find "${source_path}" -name "${filename}" -type f -o -name "${filename}" -type l | grep -q .; then
+	                if find "${source_path}" -name "${filename}" -type f -o -name "${filename}" -type l | \
+	                       grep -q .; then
 	                    # For rulesets containing a conflicting file, we have a partial conflict.
 	                    # We should NOT remove the entire local ruleset because it may contain
 	                    # other rules that should remain local. Instead, let the sync process
@@ -1123,7 +1125,9 @@ validate_manifest_format() {
 validate_manifest_integrity() {
 	if [ "${HAS_COMMIT_MODE}" = "true" ] && [ "${HAS_LOCAL_MODE}" = "true" ]; then
 	    if [ "${COMMIT_SOURCE_REPO}" != "${LOCAL_SOURCE_REPO}" ]; then
-	        error "Manifest integrity error: Local and commit modes use different source repositories (${LOCAL_SOURCE_REPO} vs ${COMMIT_SOURCE_REPO}). This is not supported. Use 'ai-rizz deinit' to reset."
+	        error "Manifest integrity error: Local and commit modes use different source repositories" \
+	              "(${LOCAL_SOURCE_REPO} vs ${COMMIT_SOURCE_REPO}). This is not supported." \
+	              "Use 'ai-rizz deinit' to reset."
 	    fi
 	fi
 }
@@ -2397,7 +2401,8 @@ copy_entry_to_target() {
 	elif [ -d "$source_path" ]; then
 	    # Directory (ruleset) - copy individual .mdc files from ruleset to target directory
 	    # Handle symlinks correctly by following them and copying actual content
-	    find "$source_path" -name "*.mdc" -type f -o -name "*.mdc" -type l | while IFS= read -r rule_file; do
+	    	        find "$source_path" -name "*.mdc" -type f -o -name "*.mdc" -type l | \
+	            while IFS= read -r rule_file; do
 	        if [ -f "$rule_file" ] || [ -L "$rule_file" ]; then
 	            filename=$(basename "$rule_file")
 	            

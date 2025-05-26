@@ -26,15 +26,7 @@ get_repo_dir() {
     echo "${CONFIG_DIR}/repos/${project_name}/repo"
 }
 
-# Helper function to get repo dir from manifest file (now just calls get_repo_dir)
-get_repo_dir_for_manifest() {
-    manifest_file="${1}"
-    if [ "${manifest_file}" = "${COMMIT_MANIFEST_FILE}" ] || [ "${manifest_file}" = "${LOCAL_MANIFEST_FILE}" ]; then
-        get_repo_dir
-    else
-        error "Unknown manifest file: ${manifest_file}"
-    fi
-}
+
 
 # Mode state (set once during initialization, read-only afterward)
 HAS_COMMIT_MODE=false
@@ -268,16 +260,14 @@ get_any_manifest_metadata() {
 git_sync() {
   repo_url="${1}"
   
-  repo_dir=$(get_repo_dir)
-  
   # Ensure config directory exists
-  mkdir -p "$(dirname "${repo_dir}")"
+  mkdir -p "$(dirname "${REPO_DIR}")"
   
   # Clone/update project repository
-  if [ ! -d "${repo_dir}" ]; then
-    git clone "${repo_url}" "${repo_dir}" || error "Failed to clone repository: ${repo_url}"
+  if [ ! -d "${REPO_DIR}" ]; then
+    git clone "${repo_url}" "${REPO_DIR}" || error "Failed to clone repository: ${repo_url}"
   else
-    (cd "${repo_dir}" && git pull) || error "Failed to update repository: ${repo_url}"
+    (cd "${REPO_DIR}" && git pull) || error "Failed to update repository: ${repo_url}"
   fi
   
   return 0
@@ -641,9 +631,6 @@ remove_local_entries_deploying_file() {
     # Get all local entries
     local_entries=$(read_manifest_entries "${LOCAL_MANIFEST_FILE}" 2>/dev/null || true)
     
-    # Use the global repository directory
-    local_repo_dir="${REPO_DIR}"
-    
     if [ -n "${local_entries}" ]; then
         # Use a temporary file to avoid subshell issues
         temp_entries=$(mktemp)
@@ -652,7 +639,7 @@ remove_local_entries_deploying_file() {
         while IFS= read -r entry; do
             if [ -n "${entry}" ]; then
                 # Check if this entry would deploy the target filename
-                source_path="${local_repo_dir}/${entry}"
+                source_path="${REPO_DIR}/${entry}"
                 
                 if [ -f "${source_path}" ]; then
                     # Single file - check if it matches
@@ -684,11 +671,8 @@ restore_non_conflicting_rules_from_ruleset() {
     # Get all files that commit manifest would deploy
     commit_files=$(get_files_from_manifest "${COMMIT_MANIFEST_FILE}" 2>/dev/null || true)
     
-    # Use the global repository directory
-    local_repo_dir="${REPO_DIR}"
-    
     # Get all files in this ruleset
-    ruleset_path="${local_repo_dir}/${ruleset_entry}"
+    ruleset_path="${REPO_DIR}/${ruleset_entry}"
     
     if [ -d "${ruleset_path}" ]; then
         # Use temporary file to avoid subshell issues
@@ -711,7 +695,7 @@ restore_non_conflicting_rules_from_ruleset() {
                 # If no conflict, add this rule individually to local manifest
                 if [ "${rule_conflicts}" = "false" ]; then
                     # Convert absolute path back to relative path from repo root
-                    relative_path=$(echo "${rule_file}" | sed "s|^${local_repo_dir}/||")
+                    relative_path=$(echo "${rule_file}" | sed "s|^${REPO_DIR}/||")
                     add_manifest_entry_to_file "${LOCAL_MANIFEST_FILE}" "${relative_path}"
                 fi
             fi
@@ -1316,20 +1300,19 @@ cmd_add_rule() {
         local)
             manifest_file="$LOCAL_MANIFEST_FILE"
             target_dir="$LOCAL_TARGET_DIR/$LOCAL_DIR"
-            source_repo="$LOCAL_SOURCE_REPO"
+            # Update source repository
+            git_sync "$LOCAL_SOURCE_REPO"
             ;;
         commit)
             manifest_file="$COMMIT_MANIFEST_FILE"
             target_dir="$COMMIT_TARGET_DIR/$SHARED_DIR"
-            source_repo="$COMMIT_SOURCE_REPO"
+            # Update source repository
+            git_sync "$COMMIT_SOURCE_REPO"
             ;;
         *)
             error "Invalid mode: $mode"
             ;;
     esac
-    
-    # Update source repository
-    git_sync "$source_repo"
     
     # Process each rule
     for rule in $rules; do
@@ -1459,19 +1442,18 @@ cmd_add_ruleset() {
     case "$mode" in
         local)
             manifest_file="$LOCAL_MANIFEST_FILE"
-            source_repo="$LOCAL_SOURCE_REPO"
+            # Update source repository
+            git_sync "$LOCAL_SOURCE_REPO"
             ;;
         commit)
             manifest_file="$COMMIT_MANIFEST_FILE"
-            source_repo="$COMMIT_SOURCE_REPO"
+            # Update source repository
+            git_sync "$COMMIT_SOURCE_REPO"
             ;;
         *)
             error "Invalid mode: $mode"
             ;;
     esac
-    
-    # Update source repository
-    git_sync "$source_repo"
     
     # Process each ruleset
     for ruleset in $rulesets; do

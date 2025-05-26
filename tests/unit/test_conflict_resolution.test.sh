@@ -98,6 +98,8 @@ test_resolve_duplicate_entries_commit_wins() {
     
     local_content=$(cat "$LOCAL_MANIFEST_FILE")
     echo "$local_content" | grep -q "rule1.mdc" && fail "Duplicate should be removed from local"
+    # Test passes if duplicate is correctly removed (grep returns 1, which is what we want)
+    return 0
 }
 
 test_migrate_updates_git_tracking() {
@@ -105,8 +107,7 @@ test_migrate_updates_git_tracking() {
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     
-    # Initialize git tracking to verify changes
-    git add .git/info/exclude >/dev/null 2>&1
+    # Initialize git tracking to verify changes  
     git commit -m "Initial local setup" >/dev/null 2>&1
     
     # Test: Migrate to commit mode
@@ -117,6 +118,8 @@ test_migrate_updates_git_tracking() {
     
     # The file should be eligible for git tracking (not ignored)
     git check-ignore "$TARGET_DIR/$SHARED_DIR/rule1.mdc" 2>/dev/null && fail "File should not be git-ignored after migration"
+    # Test passes if file is correctly NOT git-ignored (git check-ignore returns 1, which is what we want)
+    return 0
 }
 
 test_migrate_complex_ruleset_scenario() {

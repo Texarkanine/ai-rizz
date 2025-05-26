@@ -69,6 +69,11 @@ setUp() {
   mkdir -p .git/info
   touch .git/info/exclude
   
+  # Make initial commit to fully initialize the git repository
+  echo "Test repository" > README.md
+  git add README.md >/dev/null 2>&1
+  git commit -m "Initial test setup" >/dev/null 2>&1
+  
   # Initialize manifest with source repo and target dir
   echo "$SOURCE_REPO	$TARGET_DIR" > "$MANIFEST_FILE"
 }
@@ -82,22 +87,7 @@ tearDown() {
   rm -rf "$TEST_DIR"
 }
 
-# Mock git_sync function for testing
-git_sync() {
-  repo_url="$1"
-  
-  # Simulate failure for invalid URLs
-  case "$repo_url" in
-    invalid://*|*nonexistent*)
-      warn "Failed to clone repository: $repo_url (repository unavailable or invalid URL)"
-      return 1
-      ;;
-    *)
-      # Return success for valid-looking URLs
-      return 0
-      ;;
-  esac
-}
+# Mock git_sync function is defined inside source_ai_rizz() function below
 
 # Read and validate manifest file
 # Sets: SOURCE_REPO, TARGET_DIR, MANIFEST_ENTRIES
@@ -305,9 +295,6 @@ source_ai_rizz() {
         ;;
     esac
   }
-  
-  # Override git command with silent function that always succeeds
-  git() { return 0; }
   
   # Reset ai-rizz state to ensure clean state between tests
   reset_ai_rizz_state

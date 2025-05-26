@@ -1125,12 +1125,50 @@ validate_manifest_format() {
 #   Never returns on error (calls error() function)
 #   0 if valid or single mode
 #
+# Show detailed manifest integrity error with fix options
+#
+# Displays comprehensive error message for repository mismatches with
+# copy-pasteable commands to resolve the issue. Provides three clear
+# options for users to sync their manifests.
+#
+# Globals:
+#   LOCAL_SOURCE_REPO - Local mode source repository
+#   COMMIT_SOURCE_REPO - Commit mode source repository
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stderr: Detailed error message with fix options
+#
+# Returns:
+#   None (function only outputs error message)
+#
+show_manifest_integrity_error() {
+	cat >&2 << EOF
+Error: Manifest integrity error - different source repositories detected:
+
+  Local mode:  ${LOCAL_SOURCE_REPO}
+  Commit mode: ${COMMIT_SOURCE_REPO}
+
+To fix this, choose which repository you want to use for both modes:
+
+Option 1: Switch local mode to match commit mode
+  ai-rizz deinit --local -y && ai-rizz init ${COMMIT_SOURCE_REPO} --local
+
+Option 2: Switch commit mode to match local mode  
+  ai-rizz deinit --commit -y && ai-rizz init ${LOCAL_SOURCE_REPO} --commit
+
+Option 3: Reset everything and start fresh
+  ai-rizz deinit --all -y && ai-rizz init
+EOF
+}
+
 validate_manifest_integrity() {
 	if [ "${HAS_COMMIT_MODE}" = "true" ] && [ "${HAS_LOCAL_MODE}" = "true" ]; then
 	    if [ "${COMMIT_SOURCE_REPO}" != "${LOCAL_SOURCE_REPO}" ]; then
-	        error "Manifest integrity error: Local and commit modes use different source repositories" \
-	              "(${LOCAL_SOURCE_REPO} vs ${COMMIT_SOURCE_REPO}). This is not supported." \
-	              "Use 'ai-rizz deinit' to reset."
+	        show_manifest_integrity_error
+	        exit 1
 	    fi
 	fi
 }

@@ -331,9 +331,12 @@ ai-rizz add rule my-rule --local
 ### Phase 5: Polish & Testing
 - [ ] Update help text and usage documentation
 - [ ] Error handling improvements
-- [ ] Integration testing
-- [ ] **README update** (post unit test approval)
-- [ ] Documentation updates
+- [ ] **README update**
+- [ ] in-script Documentation updates
+
+### Phase 6: Integration Testing
+
+- [ ] integration tests of the user-facing commands
 
 ## Data Structures
 

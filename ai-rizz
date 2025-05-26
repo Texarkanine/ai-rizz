@@ -16,6 +16,19 @@ DEFAULT_TARGET_DIR=".cursor/rules"
 # ==============================
 
 # Get repository directory for the current project
+#
+# Globals:
+#   CONFIG_DIR - Base configuration directory path
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stdout: Repository directory path for current project
+#
+# Returns:
+#   0 on success
+#
 get_repo_dir() {
     # Use git root directory name as project name, fallback to current directory
     if git_root=$(git rev-parse --show-toplevel 2>/dev/null); then
@@ -49,19 +62,62 @@ LOCAL_GLYPH="◐"       # For Phase 3 (list command)
 # Utilities
 # =========
 
-# Print error to stderr and exit
+# Print error message to stderr and exit with specified code
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Error message to display (required)
+#   $2 - Exit code (optional, defaults to 1)
+#
+# Outputs:
+#   Stderr: Error message prefixed with "Error: "
+#
+# Returns:
+#   Never returns (exits with specified code)
+#
 error() {
   echo "Error: $1" >&2
   exit "${2:-1}"
 }
 
-# Print warning to stderr
+# Print warning message to stderr
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Warning message to display (required)
+#
+# Outputs:
+#   Stderr: Warning message prefixed with "Warning: "
+#
+# Returns:
+#   0 on success
+#
 warn() {
   echo "Warning: $1" >&2
 }
 
-# Read and validate manifest file
-# Sets: SOURCE_REPO, TARGET_DIR, MANIFEST_ENTRIES
+# Read and validate manifest file (legacy function)
+#
+# Globals:
+#   MANIFEST_FILE - Path to manifest file to read
+#   SOURCE_REPO - Set to source repository URL from manifest
+#   TARGET_DIR - Set to target directory from manifest  
+#   MANIFEST_ENTRIES - Set to newline-separated list of entries
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stderr: Error messages if file not found or invalid format
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
 read_manifest() {
   if [ ! -f "$MANIFEST_FILE" ]; then
     error "Manifest file '$MANIFEST_FILE' not found"
@@ -94,7 +150,24 @@ $line"
   return 0
 }
 
-# Write manifest file
+# Write manifest file (legacy function)
+#
+# Globals:
+#   MANIFEST_FILE - Path to manifest file to write
+#   SOURCE_REPO - Source repository URL to write to manifest
+#   TARGET_DIR - Target directory to write to manifest
+#   MANIFEST_ENTRIES - Newline-separated list of entries to write
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stderr: Error message if required globals not set
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
 write_manifest() {
   if [ -z "$SOURCE_REPO" ] || [ -z "$TARGET_DIR" ]; then
     error "SOURCE_REPO and TARGET_DIR must be set before writing manifest"
@@ -111,7 +184,20 @@ write_manifest() {
   return 0
 }
 
-# Add entry to manifest
+# Add entry to manifest (legacy function)
+#
+# Globals:
+#   MANIFEST_ENTRIES - Modified to include new entry if not already present
+#
+# Arguments:
+#   $1 - Entry to add to manifest (required)
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 on success (including if entry already exists)
+#
 add_manifest_entry() {
   entry="$1"
   
@@ -131,7 +217,20 @@ $entry"
   return 0
 }
 
-# Remove entry from manifest
+# Remove entry from manifest (legacy function)
+#
+# Globals:
+#   MANIFEST_ENTRIES - Modified to exclude specified entry
+#
+# Arguments:
+#   $1 - Entry to remove from manifest (required)
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 on success (including if entry doesn't exist)
+#
 remove_manifest_entry() {
   entry="$1"
   
@@ -144,7 +243,22 @@ remove_manifest_entry() {
 # Progressive Manifest Utilities  
 # ==============================
 
-# Read manifest metadata line (returns "source_repo\ttarget_dir" via stdout)
+# Read manifest metadata line from specified file
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Path to manifest file (required)
+#
+# Outputs:
+#   Stdout: Tab-separated "source_repo\ttarget_dir" line
+#   Stderr: Error message if invalid format
+#
+# Returns:
+#   0 on success
+#   1 if file doesn't exist or on error (via error() function)
+#
 read_manifest_metadata() {
     manifest_file="$1"
     
@@ -163,7 +277,21 @@ read_manifest_metadata() {
     echo "$first_line"
 }
 
-# Read manifest entries (returns entries via stdout, one per line)
+# Read manifest entries from specified file
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Path to manifest file (required)
+#
+# Outputs:
+#   Stdout: Manifest entries, one per line (excluding metadata line)
+#
+# Returns:
+#   0 on success (including empty manifests)
+#   1 if file doesn't exist
+#
 read_manifest_entries() {
     manifest_file="$1"
     
@@ -175,7 +303,22 @@ read_manifest_entries() {
     tail -n +2 "$manifest_file" | grep -v '^$' || true
 }
 
-# Write manifest with metadata and entries from stdin
+# Write manifest file with metadata header and entries from stdin
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Path to manifest file to write (required)
+#   $2 - Source repository URL (required)
+#   $3 - Target directory path (required)
+#
+# Outputs:
+#   None (writes to file)
+#
+# Returns:
+#   0 on success
+#
 write_manifest_with_entries() {
     manifest_file="$1"
     source_repo="$2"
@@ -192,7 +335,22 @@ write_manifest_with_entries() {
     done
 }
 
-# Add entry to manifest file
+# Add entry to specified manifest file
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Path to manifest file (required)
+#   $2 - Entry to add (required)
+#
+# Outputs:
+#   Stderr: Error message if write fails
+#
+# Returns:
+#   0 on success (including if entry already exists)
+#   1 on error (via error() function)
+#
 add_manifest_entry_to_file() {
     target_manifest_file="$1"
     entry="$2"
@@ -210,7 +368,22 @@ add_manifest_entry_to_file() {
     fi
 }
 
-# Remove entry from manifest file
+# Remove entry from specified manifest file
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Path to manifest file (required)
+#   $2 - Entry to remove (required)
+#
+# Outputs:
+#   Stderr: Error message if metadata read fails
+#
+# Returns:
+#   0 on success (including if file doesn't exist or entry not found)
+#   1 on error (via error() function)
+#
 remove_manifest_entry_from_file() {
     local_manifest_file="$1"
     entry="$2"
@@ -240,7 +413,22 @@ remove_manifest_entry_from_file() {
     fi
 }
 
-# Get any available manifest metadata (for lazy initialization)
+# Get metadata from any available manifest file for lazy initialization
+#
+# Globals:
+#   COMMIT_MANIFEST_FILE - Path to commit manifest file
+#   LOCAL_MANIFEST_FILE - Path to local manifest file
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stdout: Tab-separated "source_repo\ttarget_dir" line from first available manifest
+#
+# Returns:
+#   0 on success (manifest found and read)
+#   1 if no manifests available
+#
 get_any_manifest_metadata() {
     # Try commit manifest first
     if [ -f "$COMMIT_MANIFEST_FILE" ]; then
@@ -258,7 +446,28 @@ get_any_manifest_metadata() {
     return 1
 }
 
-# Clone or update a git repository
+# Clone or update the rules repository cache
+#
+# This is the core sync function - all rule operations depend on having
+# an up-to-date local cache of the rules repository. Uses graceful error
+# handling so ai-rizz can work offline with cached content.
+#
+# Suppresses git output to avoid cluttering user interface while preserving
+# error detection for proper failure reporting.
+#
+# Globals:
+#   REPO_DIR - Target directory for repository cache
+#
+# Arguments:
+#   $1 - Repository URL to clone/update
+#
+# Outputs:
+#   Stderr: Warning messages on failure
+#
+# Returns:
+#   0 on success
+#   1 on failure (network issues, invalid URL, permissions)
+#
 git_sync() {
   repo_url="${1}"
   
@@ -281,7 +490,23 @@ git_sync() {
   return 0
 }
 
-# Detect if we're in local mode
+# Detect if we're in local mode (legacy function)
+#
+# Legacy function from single-mode ai-rizz. Use HAS_LOCAL_MODE global instead.
+#
+# Globals:
+#   TARGET_DIR - Target directory to check in git excludes
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stderr: Error message if not in git repository
+#
+# Returns:
+#   0 if target directory is git-excluded (local mode)
+#   1 otherwise
+#
 is_local_mode() {
   # Check if .git directory exists
   if [ ! -d ".git" ]; then
@@ -300,6 +525,23 @@ is_local_mode() {
 # ======================
 
 # Update .git/info/exclude for specific paths
+#
+# Uses exact line matching to avoid partial matches. Idempotent.
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Path to add/remove from git excludes
+#   $2 - Action: "add" or "remove"
+#
+# Outputs:
+#   Stderr: Error message if invalid action
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
 update_git_exclude() {
     path="$1"
     action="$2"  # "add" or "remove"
@@ -333,6 +575,20 @@ update_git_exclude() {
 }
 
 # Setup git excludes for local mode
+#
+# Globals:
+#   LOCAL_MANIFEST_FILE - Local manifest filename to exclude
+#   LOCAL_DIR - Local directory name to exclude
+#
+# Arguments:
+#   $1 - Target directory base path
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 on success
+#
 setup_local_mode_excludes() {
     target_dir="$1"
     
@@ -341,6 +597,20 @@ setup_local_mode_excludes() {
 }
 
 # Remove all local mode excludes
+#
+# Globals:
+#   LOCAL_MANIFEST_FILE - Local manifest filename to unexclude
+#   LOCAL_DIR - Local directory name to unexclude
+#
+# Arguments:
+#   $1 - Target directory base path
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 on success
+#
 remove_local_mode_excludes() {
     target_dir="$1"
     
@@ -349,6 +619,27 @@ remove_local_mode_excludes() {
 }
 
 # Validate git exclude state matches mode configuration
+#
+# Warns about mismatched git exclude state - helps debug when users
+# manually edit .git/info/exclude and break mode separation.
+#
+# Globals:
+#   HAS_LOCAL_MODE - Whether local mode is initialized
+#   HAS_COMMIT_MODE - Whether commit mode is initialized
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   LOCAL_DIR - Local directory name
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   SHARED_DIR - Shared directory name
+#
+# Arguments:
+#   $1 - Target directory base path
+#
+# Outputs:
+#   Stderr: Warning messages for mismatched state
+#
+# Returns:
+#   0 always
+#
 validate_git_exclude_state() {
     target_dir="$1"
     
@@ -377,6 +668,25 @@ validate_git_exclude_state() {
 # ========================
 
 # Phase 1: Minimal manifest file detection (no directory dependency)
+#
+# Quick file-only check used during initialization before directories
+# are validated. Avoids circular dependencies in startup sequence.
+#
+# Globals:
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   HAS_LOCAL_MODE - Set to true/false based on file existence
+#   HAS_COMMIT_MODE - Set to true/false based on file existence
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 always
+#
 detect_manifest_files_only() {
     # Quick check - just look for files, don't validate directories yet
     if [ -f "$LOCAL_MANIFEST_FILE" ]; then
@@ -393,6 +703,27 @@ detect_manifest_files_only() {
 }
 
 # Phase 2: Full mode detection including directory validation
+#
+# Complete mode detection that validates both manifest files and target
+# directories exist. Used after migration to get accurate mode state.
+#
+# Globals:
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   LOCAL_DIR - Local directory name
+#   SHARED_DIR - Shared directory name
+#   HAS_LOCAL_MODE - Set based on manifest + directory existence
+#   HAS_COMMIT_MODE - Set based on manifest + directory existence
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 always
+#
 detect_initialized_modes() {
     HAS_LOCAL_MODE=false
     HAS_COMMIT_MODE=false
@@ -411,7 +742,25 @@ detect_initialized_modes() {
     fi
 }
 
-# Get target directory from available manifests (returns via stdout)
+# Get target directory from available manifests
+#
+# Tries commit manifest first, then local, then default. The default
+# is only used during initialization when no manifests exist yet.
+#
+# Globals:
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   DEFAULT_TARGET_DIR - Default target directory
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stdout: Target directory path
+#
+# Returns:
+#   0 always
+#
 get_target_directory() {
     # Try commit manifest first
     if [ -f "$COMMIT_MANIFEST_FILE" ]; then
@@ -436,6 +785,26 @@ get_target_directory() {
 }
 
 # Cache manifest metadata in globals for efficiency
+#
+# Avoids repeatedly parsing manifest files during operations.
+#
+# Globals:
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   COMMIT_SOURCE_REPO - Set from commit manifest
+#   COMMIT_TARGET_DIR - Set from commit manifest
+#   LOCAL_SOURCE_REPO - Set from local manifest
+#   LOCAL_TARGET_DIR - Set from local manifest
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 always
+#
 cache_manifest_metadata() {
     # Cache commit manifest metadata
     if [ -f "$COMMIT_MANIFEST_FILE" ]; then
@@ -457,6 +826,20 @@ cache_manifest_metadata() {
 }
 
 # Test helper functions (for backward compatibility with test suite)
+#
+# Globals:
+#   HAS_LOCAL_MODE - Local mode state
+#   HAS_COMMIT_MODE - Commit mode state
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 if mode is active, 1 otherwise
+#
 has_local_mode() {
     [ "$HAS_LOCAL_MODE" = "true" ]
 }
@@ -469,6 +852,22 @@ has_commit_mode() {
 # ==========================
 
 # Detect if repository needs migration from single-mode to progressive format
+#
+# Detects legacy local mode by checking if commit manifest is git-excluded.
+#
+# Globals:
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 if migration needed
+#   1 if no migration needed
+#
 needs_migration() {
     # Legacy local mode: ai-rizz.inf exists but is in .git/info/exclude
     if [ -f "$COMMIT_MANIFEST_FILE" ] && [ -f ".git/info/exclude" ]; then
@@ -480,7 +879,20 @@ needs_migration() {
     return 1  # false, no migration needed
 }
 
-# Migrate legacy repository to progressive format  
+# Migrate legacy repository to progressive format
+#
+# Globals:
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 always
+#
 migrate_legacy_repository_if_needed() {
     if ! needs_migration; then
         return 0  # No migration needed
@@ -499,6 +911,25 @@ migrate_legacy_repository_if_needed() {
 }
 
 # Migrate from legacy local mode (ai-rizz.inf in git exclude) to new format
+#
+# Converts single-mode local setup to progressive format by renaming files,
+# moving directories, and updating git excludes. Preserves all existing rules.
+#
+# Globals:
+#   COMMIT_MANIFEST_FILE - Legacy manifest filename
+#   LOCAL_MANIFEST_FILE - New local manifest filename
+#   LOCAL_DIR - Local directory name
+#   SHARED_DIR - Shared directory name
+#
+# Arguments:
+#   $1 - Legacy target directory path
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 always
+#
 migrate_legacy_local_mode() {
     legacy_target_dir="$1"
     
@@ -526,6 +957,33 @@ migrate_legacy_local_mode() {
 # =============================
 
 # Initialize a mode that doesn't exist yet, copying metadata from existing mode
+#
+# Enables progressive mode switching by creating the missing mode with
+# matching configuration. Copies source repo and target dir from existing
+# mode to maintain consistency.
+#
+# Globals:
+#   LOCAL_DIR - Local directory name
+#   SHARED_DIR - Shared directory name
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   HAS_LOCAL_MODE - Updated based on target mode
+#   HAS_COMMIT_MODE - Updated based on target mode
+#   LOCAL_SOURCE_REPO - Set if creating local mode
+#   LOCAL_TARGET_DIR - Set if creating local mode
+#   COMMIT_SOURCE_REPO - Set if creating commit mode
+#   COMMIT_TARGET_DIR - Set if creating commit mode
+#
+# Arguments:
+#   $1 - Target mode: "local" or "commit"
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
 lazy_init_mode() {
     target_mode="$1"  # "local" or "commit"
     
@@ -573,7 +1031,24 @@ lazy_init_mode() {
     esac
 }
 
-# Check if lazy initialization is needed for a mode (returns 0 if needed)
+# Check if lazy initialization is needed for a mode
+#
+# Returns success only when one mode exists and the other doesn't.
+#
+# Globals:
+#   HAS_LOCAL_MODE - Local mode state
+#   HAS_COMMIT_MODE - Commit mode state
+#
+# Arguments:
+#   $1 - Target mode: "local" or "commit"
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 if lazy initialization needed
+#   1 otherwise
+#
 needs_lazy_init() {
     target_mode="$1"
     
@@ -594,7 +1069,24 @@ needs_lazy_init() {
 # =============================
 
 # Get all .mdc files that would be deployed by a manifest
-# Returns one filename per line (just the filename, not the full path)
+#
+# Core function for conflict resolution - determines which individual files
+# would be deployed by expanding rulesets into their component files.
+# Returns just filenames (not paths) for file-level conflict detection.
+#
+# Globals:
+#   REPO_DIR - Repository directory for resolving entries
+#
+# Arguments:
+#   $1 - Manifest file path
+#
+# Outputs:
+#   Stdout: One filename per line (just filename, not full path)
+#
+# Returns:
+#   0 on success
+#   1 if manifest file doesn't exist
+#
 get_files_from_manifest() {
     manifest_file="${1}"
     
@@ -631,9 +1123,30 @@ get_files_from_manifest() {
     fi
 }
 
-# Remove any local manifest entries that would deploy the given filename
-# Remove local entries that would deploy the same file as commit mode
-# This handles the "upgrade" case (local → commit) by removing conflicting local entries
+# Remove local manifest entries that would deploy the given filename
+#
+# Handles complex conflict resolution logic for partial ruleset conflicts.
+# For individual rules, removes the conflicting entry. For rulesets, only
+# removes if the exact same ruleset exists in commit mode - otherwise
+# preserves the local ruleset and lets sync handle file-level conflicts.
+#
+# This preserves user intent: if they have a local ruleset with extra rules,
+# don't remove the whole thing just because one file conflicts.
+#
+# Globals:
+#   LOCAL_MANIFEST_FILE - Local manifest to modify
+#   COMMIT_MANIFEST_FILE - Commit manifest to check for exact matches
+#   REPO_DIR - Repository directory for resolving paths
+#
+# Arguments:
+#   $1 - Filename that would conflict
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 always
+#
 remove_local_entries_deploying_file() {
     filename="${1}"
     
@@ -685,24 +1198,30 @@ remove_local_entries_deploying_file() {
 
 
 
-# Detect and resolve conflicts (Phase 4)
-# Committed mode wins, local entries silently removed
+# Detect and resolve conflicts between commit and local modes
 #
-# This function resolves conflicts between commit and local manifests by ensuring
-# that any files present in commit mode are removed from local mode. The conflict
-# resolution works at the individual file level, not just the manifest entry level.
+# Implements "commit wins" policy by removing local entries that would deploy
+# the same files as commit mode. Works at file level, not just entry level,
+# so "rules/rule1.mdc" conflicts with "rulesets/set1" if set1 contains rule1.
 #
-# For example:
-# - If local has "rules/rule1.mdc" and commit adds "rulesets/set1" containing rule1.mdc,
-#   then "rules/rule1.mdc" should be removed from local manifest
-# - If local has "rulesets/set1" and commit adds "rules/rule2.mdc" where rule2.mdc
-#   is also in set1, then the entire "rulesets/set1" should be removed from local
+# Uses temporary files to avoid subshell variable issues in the conflict
+# resolution loop.
 #
-# Algorithm:
-# 1. Get all individual .mdc files that would be deployed by commit manifest
-# 2. For each file, check if it would also be deployed by local manifest
-# 3. If so, remove the local manifest entry that would deploy that file
-# 4. Handle both individual rule entries and ruleset entries appropriately
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state
+#   HAS_LOCAL_MODE - Local mode state
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 always
+#
 resolve_conflicts() {
     if [ "${HAS_COMMIT_MODE}" = "false" ] || [ "${HAS_LOCAL_MODE}" = "false" ]; then
         return 0  # No conflicts possible with single mode
@@ -736,6 +1255,20 @@ resolve_conflicts() {
 # ===================
 
 # Validate manifest file format (minimal implementation)
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Manifest file path
+#
+# Outputs:
+#   Stderr: Warning messages for invalid format
+#
+# Returns:
+#   0 if valid format
+#   1 if invalid or missing
+#
 validate_manifest_format() {
     manifest_file="$1"
     
@@ -760,6 +1293,23 @@ validate_manifest_format() {
 }
 
 # Validate that both manifests use the same source repository (hard error)
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state
+#   HAS_LOCAL_MODE - Local mode state
+#   COMMIT_SOURCE_REPO - Commit mode source repository
+#   LOCAL_SOURCE_REPO - Local mode source repository
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   Never returns on error (calls error() function)
+#   0 if valid or single mode
+#
 validate_manifest_integrity() {
     if [ "${HAS_COMMIT_MODE}" = "true" ] && [ "${HAS_LOCAL_MODE}" = "true" ]; then
         if [ "${COMMIT_SOURCE_REPO}" != "${LOCAL_SOURCE_REPO}" ]; then
@@ -772,6 +1322,35 @@ validate_manifest_integrity() {
 # ========
 
 # Initialize the repository (progressive initialization)
+#
+# Creates local or commit mode with manifest file, target directory structure,
+# and git excludes (for local mode). Prompts for missing parameters, validates
+# mode compatibility, syncs source repository, and handles idempotent re-init.
+# Supports progressive dual-mode by preserving existing mode configuration.
+#
+# Globals:
+#   DEFAULT_TARGET_DIR - Default target directory
+#   HAS_COMMIT_MODE - Commit mode state (read/modified)
+#   HAS_LOCAL_MODE - Local mode state (read/modified)
+#   COMMIT_SOURCE_REPO - Set if creating commit mode
+#   LOCAL_SOURCE_REPO - Set if creating local mode
+#   COMMIT_TARGET_DIR - Set if creating commit mode
+#   LOCAL_TARGET_DIR - Set if creating local mode
+#
+# Arguments:
+#   [source_repo]        - Repository URL (prompted if not provided)
+#   [-d target_dir]      - Target directory (defaults to .cursor/rules)
+#   [--local|-l]         - Initialize local mode (git-ignored)
+#   [--commit|-c]        - Initialize commit mode (git-tracked)
+#
+# Outputs:
+#   Stdout: Success message
+#   Stderr: Error messages and prompts
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
 cmd_init() {
     source_repo=""
     target_dir=""
@@ -921,6 +1500,19 @@ cmd_init() {
 }
 
 # Recursively remove empty parent directories
+#
+# Globals:
+#   HOME - User home directory (used as stop condition)
+#
+# Arguments:
+#   $1 - Directory to check and potentially remove
+#
+# Outputs:
+#   Stdout: Messages about removed directories
+#
+# Returns:
+#   0 always
+#
 cleanup_empty_parents() {
   dir="$1"
   # Check if directory exists and is empty
@@ -937,6 +1529,36 @@ cleanup_empty_parents() {
 }
 
 # Deinitialize the repository (progressive mode-aware)
+#
+# Removes specified mode(s) including manifest files, target directories,
+# and git excludes. Prompts for confirmation unless -y flag used. Supports
+# selective removal (--local, --commit) or complete removal (--all).
+# Cleans up empty parent directories after removal.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state (read/modified)
+#   HAS_LOCAL_MODE - Local mode state (read/modified)
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   LOCAL_TARGET_DIR - Local target directory
+#   COMMIT_TARGET_DIR - Commit target directory
+#   LOCAL_DIR - Local directory name
+#   SHARED_DIR - Shared directory name
+#
+# Arguments:
+#   [-y]                 - Skip confirmation prompts
+#   [--local|-l]         - Remove local mode only
+#   [--commit|-c]        - Remove commit mode only
+#   [--all|-a]           - Remove all modes (default if both exist)
+#
+# Outputs:
+#   Stdout: Confirmation prompts and success messages
+#   Stderr: Error messages
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
 cmd_deinit() {
     force=false
     mode=""
@@ -1088,6 +1710,32 @@ cmd_deinit() {
 }
 
 # List available rules and rulesets (multi-mode aware)
+#
+# Shows rules and rulesets with glyphs indicating installation status.
+# Handles dual-mode conflict resolution (commit overrides local), expands
+# rulesets to show contents, and uses tree command when available for
+# better formatting. Syncs repository before listing.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state
+#   HAS_LOCAL_MODE - Local mode state
+#   COMMIT_SOURCE_REPO - Commit mode source repository
+#   LOCAL_SOURCE_REPO - Local mode source repository
+#   REPO_DIR - Repository directory
+#   COMMITTED_GLYPH - Glyph for committed items
+#   LOCAL_GLYPH - Glyph for local items
+#   UNINSTALLED_GLYPH - Glyph for uninstalled items
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stdout: Formatted list of rules and rulesets
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
 cmd_list() {
     # Check if any mode is initialized
     if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
@@ -1232,6 +1880,38 @@ cmd_list() {
 }
 
 # Add rule(s) to the repository (progressive mode-aware)
+#
+# Adds individual rules to specified mode, handling lazy initialization,
+# conflict resolution, and downgrade prevention. Prevents adding individual
+# rules to local mode when they're part of committed rulesets. Auto-detects
+# mode when only one exists, migrates rules between modes on conflicts.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state
+#   HAS_LOCAL_MODE - Local mode state
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   LOCAL_TARGET_DIR - Local target directory
+#   COMMIT_TARGET_DIR - Commit target directory
+#   LOCAL_DIR - Local directory name
+#   SHARED_DIR - Shared directory name
+#   LOCAL_SOURCE_REPO - Local mode source repository
+#   COMMIT_SOURCE_REPO - Commit mode source repository
+#   REPO_DIR - Repository directory
+#
+# Arguments:
+#   <rule>...            - Rule names (.mdc extension optional)
+#   [--local|-l]         - Add to local mode (git-ignored)
+#   [--commit|-c]        - Add to commit mode (git-tracked)
+#
+# Outputs:
+#   Stdout: Success messages for each added rule
+#   Stderr: Warning messages for conflicts or missing rules
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
 cmd_add_rule() {
     mode=""
     rules=""
@@ -1404,6 +2084,34 @@ cmd_add_rule() {
 }
 
 # Add ruleset(s) to the repository (progressive mode-aware)
+#
+# Adds entire rulesets to specified mode, handling lazy initialization and
+# conflict resolution. Auto-detects mode when only one exists, migrates
+# rulesets between modes on conflicts. Rulesets deploy all contained .mdc
+# files as individual rules in the target directory.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state
+#   HAS_LOCAL_MODE - Local mode state
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   LOCAL_SOURCE_REPO - Local mode source repository
+#   COMMIT_SOURCE_REPO - Commit mode source repository
+#   REPO_DIR - Repository directory
+#
+# Arguments:
+#   <ruleset>...         - Ruleset names (directory names under rulesets/)
+#   [--local|-l]         - Add to local mode (git-ignored)
+#   [--commit|-c]        - Add to commit mode (git-tracked)
+#
+# Outputs:
+#   Stdout: Success messages for each added ruleset
+#   Stderr: Warning messages for missing rulesets
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
 cmd_add_ruleset() {
     mode=""
     rulesets=""
@@ -1539,6 +2247,28 @@ cmd_add_ruleset() {
 }
 
 # Remove rule(s) from the repository (mode-aware)
+#
+# Removes individual rules from whichever mode contains them. Auto-detects
+# which mode has each rule and removes from the appropriate manifest.
+# Triggers sync to clean up target directories after removal.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state
+#   HAS_LOCAL_MODE - Local mode state
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#
+# Arguments:
+#   <rule>...            - Rule names (.mdc extension optional)
+#
+# Outputs:
+#   Stdout: Success messages for each removed rule
+#   Stderr: Warning messages for rules not found
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
 cmd_remove_rule() {
     # Check if any mode is initialized
     if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
@@ -1588,6 +2318,28 @@ cmd_remove_rule() {
 }
 
 # Remove ruleset(s) from the repository (mode-aware)
+#
+# Removes entire rulesets from whichever mode contains them. Auto-detects
+# which mode has each ruleset and removes from the appropriate manifest.
+# Triggers sync to clean up target directories after removal.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state
+#   HAS_LOCAL_MODE - Local mode state
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#
+# Arguments:
+#   <ruleset>...         - Ruleset names (directory names under rulesets/)
+#
+# Outputs:
+#   Stdout: Success messages for each removed ruleset
+#   Stderr: Warning messages for rulesets not found
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
 cmd_remove_ruleset() {
     # Check if any mode is initialized
     if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
@@ -1631,6 +2383,30 @@ cmd_remove_ruleset() {
 }
 
 # Sync all available manifests to their target directories
+#
+# Orchestrates complete sync process: resolves conflicts using "commit wins"
+# policy, syncs both modes if initialized, and handles cleanup on failures.
+# Core sync function called by cmd_sync and after rule/ruleset modifications.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state
+#   HAS_LOCAL_MODE - Local mode state
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   COMMIT_TARGET_DIR - Commit target directory
+#   LOCAL_TARGET_DIR - Local target directory
+#   SHARED_DIR - Shared directory name
+#   LOCAL_DIR - Local directory name
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None (delegates to sync_manifest_to_directory)
+#
+# Returns:
+#   0 always (handles failures internally)
+#
 sync_all_modes() {
     sync_success=true
     
@@ -1654,6 +2430,26 @@ sync_all_modes() {
 }
 
 # Sync a single manifest to its target directory
+#
+# Clears target directory of .mdc files and repopulates from manifest entries.
+# Uses safety checks to only operate in managed directories. Handles external
+# manifest corruption gracefully.
+#
+# Globals:
+#   LOCAL_DIR - Local directory name (for safety check)
+#   SHARED_DIR - Shared directory name (for safety check)
+#
+# Arguments:
+#   $1 - Manifest file path
+#   $2 - Target directory path
+#
+# Outputs:
+#   Stderr: Warning messages for failures
+#
+# Returns:
+#   0 on success
+#   1 on failure (unrecognized directory, read errors)
+#
 sync_manifest_to_directory() {
     manifest_file="$1"
     target_directory="$2"
@@ -1702,6 +2498,25 @@ sync_manifest_to_directory() {
 }
 
 # Check if a filename would be deployed by commit mode
+#
+# Used by conflict resolution to implement "commit wins" policy. Checks if
+# commit mode would deploy a file with the given name, considering both
+# individual rules and files within rulesets.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#
+# Arguments:
+#   $1 - Filename to check (just basename, not full path)
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 if file would be deployed by commit mode
+#   1 otherwise
+#
 file_exists_in_commit_mode() {
     filename="$1"
     
@@ -1720,6 +2535,27 @@ file_exists_in_commit_mode() {
 }
 
 # Copy a single entry (rule or ruleset) to target directory
+#
+# Handles both individual rules (single file copy) and rulesets (copy all
+# .mdc files from directory). Implements conflict resolution by skipping
+# files that would conflict with commit mode when syncing to local directory.
+# Follows symlinks to copy actual content, not the links themselves.
+#
+# Globals:
+#   REPO_DIR - Repository directory
+#   LOCAL_DIR - Local directory name (for conflict detection)
+#
+# Arguments:
+#   $1 - Entry path (relative to repository root)
+#   $2 - Target directory path
+#
+# Outputs:
+#   Stderr: Warning messages for missing entries
+#
+# Returns:
+#   0 on success
+#   1 if entry not found in repository
+#
 copy_entry_to_target() {
     entry="$1"
     target_directory="$2"
@@ -1767,6 +2603,23 @@ copy_entry_to_target() {
 }
 
 # Handle cleanup after sync issues
+#
+# Performs recovery actions when sync operations fail. Re-caches manifest
+# metadata to ensure consistency and validates git exclude state to detect
+# manual modifications that might cause issues.
+#
+# Globals:
+#   None (delegates to other functions)
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stderr: Warning messages from validation functions
+#
+# Returns:
+#   0 always
+#
 handle_sync_cleanup() {
     # Re-cache manifest metadata to ensure consistency
     cache_manifest_metadata
@@ -1777,6 +2630,28 @@ handle_sync_cleanup() {
 }
 
 # Sync the repository (multi-mode aware)
+#
+# Updates source repository cache and syncs all manifests to target directories.
+# Resolves conflicts using "commit wins" policy, handles network failures
+# gracefully, and ensures target directories match manifest contents.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state
+#   HAS_LOCAL_MODE - Local mode state
+#   COMMIT_SOURCE_REPO - Commit mode source repository
+#   LOCAL_SOURCE_REPO - Local mode source repository
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stdout: Success message
+#   Stderr: Warning messages for network failures
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
 cmd_sync() {
     # Check if any mode is initialized
     if [ "$HAS_COMMIT_MODE" = "false" ] && [ "$HAS_LOCAL_MODE" = "false" ]; then
@@ -1811,7 +2686,22 @@ cmd_sync() {
 
 
 
-# Help command
+# Display help information
+#
+# Shows usage information for all commands and their options.
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stdout: Help text with command usage and options
+#
+# Returns:
+#   0 always
+#
 cmd_help() {
   cat <<EOF
 Usage: ai-rizz <command> [command-specific options]
@@ -1843,6 +2733,30 @@ EOF
 # ==============
 
 # Initialize ai-rizz state at startup (two-phase to avoid circular dependencies)
+#
+# Bootstraps ai-rizz state in careful order to avoid circular dependencies.
+# Phase 1 does minimal file detection and legacy migration. Phase 2 performs
+# full mode detection with directory validation. Phase 3 sets up repository
+# directory for the current project. Called once at script startup.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Set during initialization
+#   HAS_LOCAL_MODE - Set during initialization
+#   COMMIT_SOURCE_REPO - Set during initialization
+#   LOCAL_SOURCE_REPO - Set during initialization
+#   COMMIT_TARGET_DIR - Set during initialization
+#   LOCAL_TARGET_DIR - Set during initialization
+#   REPO_DIR - Set during initialization
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None (delegates to detection functions)
+#
+# Returns:
+#   0 always
+#
 initialize_ai_rizz() {
     # Phase 1: Minimal detection and migration (file-based only)
     detect_manifest_files_only
@@ -1947,3 +2861,4 @@ if [ "${0##*/}" = "ai-rizz" ]; then
       ;;
   esac
 fi
+

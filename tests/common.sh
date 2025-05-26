@@ -20,6 +20,38 @@ COMMITTED_GLYPH="●"
 LOCAL_GLYPH="◐"
 UNINSTALLED_GLYPH="○"
 
+# Test verbosity control
+VERBOSE_TESTS="${VERBOSE_TESTS:-false}"
+TEST_QUIET_MODE="${TEST_QUIET_MODE:-true}"
+
+# Controlled output functions
+test_echo() {
+	if [ "$VERBOSE_TESTS" = "true" ]; then
+		echo "$@"
+	fi
+}
+
+test_debug() {
+	if [ "$VERBOSE_TESTS" = "true" ]; then
+		echo "DEBUG: $@" >&2
+	fi
+}
+
+test_info() {
+	if [ "$VERBOSE_TESTS" = "true" ]; then
+		echo "INFO: $@" >&2
+	fi
+}
+
+# Always show critical messages (errors, failures)
+test_error() {
+	echo "ERROR: $@" >&2
+}
+
+test_fail() {
+	echo "FAIL: $@" >&2
+}
+
 # Create a temporary test directory and set up test environment
 setUp() {
   # Create a temporary test directory
@@ -243,7 +275,7 @@ source_ai_rizz() {
     return 1
   fi
   
-  echo "Sourcing ai-rizz from: $AI_RIZZ_PATH" >&2
+  test_debug "Sourcing ai-rizz from: $AI_RIZZ_PATH"
   
   # Source the script to get the real implementations
   # shellcheck disable=SC1090

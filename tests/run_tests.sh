@@ -9,75 +9,141 @@ ORIG_DIR="$(pwd)"
 
 # Get the project root directory (parent of the tests directory)
 get_project_root() {
-  # Detect where this script is running from and find project root
-  script_dir="$(dirname "$0")"
-  
-  # If in tests directory, go up one level
-  if [ "$(basename "$script_dir")" = "tests" ]; then
-    cd "$script_dir/.." || exit 1
-  elif [ -d "./tests" ]; then
-    # Already in project root
-    :
-  else
-    echo "Error: Cannot determine project root directory" >&2
-    exit 1
-  fi
-  
-  # Return the absolute path to project root
-  pwd
+	# Detect where this script is running from and find project root
+	script_dir="$(dirname "$0")"
+	
+	# If in tests directory, go up one level
+	if [ "$(basename "$script_dir")" = "tests" ]; then
+		cd "$script_dir/.." || exit 1
+	elif [ -d "./tests" ]; then
+		# Already in project root
+		:
+	else
+		echo "Error: Cannot determine project root directory" >&2
+		exit 1
+	fi
+	
+	# Return the absolute path to project root
+	pwd
 }
 
 # Find all test files (relative to the tests directory)
 find_tests() {
-  find "$PROJECT_ROOT/tests" -name "*.test.sh" | sort
+	find "$PROJECT_ROOT/tests" -name "*.test.sh" | sort
 }
 
-# Run a test file with timeout
+# Enhanced test execution with verbosity control
 run_test() {
-  test_file="$1"
-  echo "==== Running test: ${test_file#$PROJECT_ROOT/tests/} ===="
-  
-  # Run from project root for consistency
-  cd "$PROJECT_ROOT" || exit 1
-  
-  # Set path to ai-rizz script to ensure all tests can find it
-  AI_RIZZ_PATH="$PROJECT_ROOT/ai-rizz"
-  export AI_RIZZ_PATH
-  
-  # Use timeout (prerequisite checked at startup)
-  if timeout 5s sh "$test_file"; then
-    echo "==== PASS: ${test_file#$PROJECT_ROOT/tests/} ===="
-    return 0
-  else
-    exit_code=$?
-    if [ $exit_code -eq 124 ]; then
-      echo "==== TIMEOUT: ${test_file#$PROJECT_ROOT/tests/} (hung waiting for input) ===="
-    else
-      echo "==== FAIL: ${test_file#$PROJECT_ROOT/tests/} ===="
-    fi
-    return 1
-  fi
+	test_file="$1"
+	test_name="${test_file#$PROJECT_ROOT/tests/}"
+	
+	# Run from project root for consistency
+	cd "$PROJECT_ROOT" || exit 1
+	
+	# Set environment for test execution
+	AI_RIZZ_PATH="$PROJECT_ROOT/ai-rizz"
+	export AI_RIZZ_PATH
+	
+	if [ "$VERBOSE_TESTS" = "true" ]; then
+		# Verbose mode: show all output
+		echo "==== Running test: $test_name ===="
+		if timeout 5s sh "$test_file"; then
+			echo "==== PASS: $test_name ===="
+			return 0
+		else
+			exit_code=$?
+			if [ $exit_code -eq 124 ]; then
+				echo "==== TIMEOUT: $test_name (hung waiting for input) ===="
+			else
+				echo "==== FAIL: $test_name ===="
+			fi
+			return 1
+		fi
+	else
+		# Quiet mode: capture output, show only on failure
+		printf "%-50s " "$test_name"
+		
+		if output=$(timeout 5s sh "$test_file" 2>&1); then
+			echo "✓ PASS"
+			return 0
+		else
+			exit_code=$?
+			if [ $exit_code -eq 124 ]; then
+				echo "✗ TIMEOUT"
+				echo "  Test hung waiting for input. Re-running with verbose output:"
+			else
+				echo "✗ FAIL"
+				echo "  Re-running with verbose output for troubleshooting:"
+			fi
+			echo "  ----------------------------------------"
+			VERBOSE_TESTS=true timeout 5s sh "$test_file" || true
+			echo "  ----------------------------------------"
+			return 1
+		fi
+	fi
+}
+
+# Add usage information
+show_usage() {
+	echo "Usage: $0 [options]"
+	echo ""
+	echo "Options:"
+	echo "  -v, --verbose    Run tests with verbose output"
+	echo "  -h, --help       Show this help message"
+	echo ""
+	echo "Environment Variables:"
+	echo "  VERBOSE_TESTS=true    Force verbose output for all tests"
+	echo ""
+	echo "Examples:"
+	echo "  $0                    # Run tests quietly (default)"
+	echo "  $0 --verbose          # Run tests with full output"
+	echo "  VERBOSE_TESTS=true $0 # Run tests with full output"
+}
+
+# Parse command line arguments
+parse_arguments() {
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			-v|--verbose)
+				VERBOSE_TESTS=true
+				export VERBOSE_TESTS
+				shift
+				;;
+			-h|--help)
+				show_usage
+				exit 0
+				;;
+			*)
+				echo "Unknown option: $1" >&2
+				show_usage >&2
+				exit 1
+				;;
+		esac
+	done
 }
 
 # Check test prerequisites
 check_prerequisites() {
-  local missing=""
-  local prereqs="timeout git"  # Space-separated list of required commands
-  
-  for cmd in $prereqs; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-      missing="$missing $cmd"
-    fi
-  done
-  
-  if [ -n "$missing" ]; then
-    echo "ERROR: Missing required test prerequisites:$missing" >&2
-    echo "Please install the missing commands and try again." >&2
-    exit 1
-  fi
+	local missing=""
+	local prereqs="timeout git"  # Space-separated list of required commands
+	
+	for cmd in $prereqs; do
+		if ! command -v "$cmd" >/dev/null 2>&1; then
+			missing="$missing $cmd"
+		fi
+	done
+	
+	if [ -n "$missing" ]; then
+		echo "ERROR: Missing required test prerequisites:$missing" >&2
+		echo "Please install the missing commands and try again." >&2
+		exit 1
+	fi
 }
 
-# Main
+# Main execution
+# Parse command line arguments first
+parse_arguments "$@"
+
 # Find the project root directory
 PROJECT_ROOT="$(get_project_root)"
 echo "Running ai-rizz tests from: $PROJECT_ROOT"
@@ -87,19 +153,21 @@ check_prerequisites
 
 # Verify ai-rizz script exists
 if [ ! -f "$PROJECT_ROOT/ai-rizz" ]; then
-  echo "ERROR: Cannot find ai-rizz script at $PROJECT_ROOT/ai-rizz" >&2
-  exit 1
+	echo "ERROR: Cannot find ai-rizz script at $PROJECT_ROOT/ai-rizz" >&2
+	exit 1
 fi
 
 failed=0
 total=0
 
 for test_file in $(find_tests); do
-  total=$((total + 1))
-  if ! run_test "$test_file"; then
-    failed=$((failed + 1))
-  fi
-  echo
+	total=$((total + 1))
+	if ! run_test "$test_file"; then
+		failed=$((failed + 1))
+	fi
+	if [ "$VERBOSE_TESTS" = "true" ]; then
+		echo
+	fi
 done
 
 # Return to the original directory
@@ -108,7 +176,7 @@ cd "$ORIG_DIR" || exit 1
 echo "Test results: $((total - failed))/$total passed"
 
 if [ "$failed" -gt 0 ]; then
-  exit 1
+	exit 1
 fi
 
 exit 0 

@@ -5,16 +5,14 @@ A command-line tool for managing AI rules and rulesets. Pull rules from a source
 * Locally only (git-ignored, for personal use)
 * Committed (git-tracked, shared with team)
 
-Each rule can be handled independently.
+Each rule can be handled independently. Rule repositories may also choose to bundle rules into "rulesets" for easier management of related rules.
 
 
 ## Quick Start
 
 ### Prerequisites
 - git
-- POSIX-compatible shell (bash, dash, zsh, etc.)
-- Core Unix utilities (find, grep, cat, mktemp, etc.)
-- tree (for displaying directory structures)
+- tree (optional; makes prettier displays easier)
 
 ### Installation
 ```
@@ -27,21 +25,21 @@ make install
 
 **Personal rules only (git-ignored):**
 ```bash
-ai-rizz init https://github.com/example/rules.git --local
+ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
 ai-rizz add rule my-personal-rule.mdc
 ai-rizz list
 ```
 
 **Team rules (committed to repo):**
 ```bash
-ai-rizz init https://github.com/example/rules.git --commit
+ai-rizz init https://github.com/texarkanine/.cursor-rules.git --commit
 ai-rizz add rule team-shared-rule.mdc
 ai-rizz list
 ```
 
 **Mix of both:**
 ```bash
-ai-rizz init https://github.com/example/rules.git --local
+ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
 ai-rizz add rule personal-rule.mdc          # goes to local
 ai-rizz add rule shared-rule.mdc --commit   # creates commit mode
 ai-rizz list                                # shows: ○ ◐ ●
@@ -80,26 +78,6 @@ Command-specific options:
     -y                     Skip confirmation prompts
 ```
 
-### Basic Workflows
-
-**Set up personal rules (won't be committed):**
-1. `cd` into your repository
-2. `ai-rizz init https://github.com/you/your-rules.git --local`
-3. `ai-rizz add rule personal-rule.mdc`
-4. `ai-rizz list` to see what's available
-
-**Set up team rules (will be committed):**
-1. `cd` into your repository  
-2. `ai-rizz init https://github.com/you/your-rules.git --commit`
-3. `ai-rizz add rule team-rule.mdc`
-4. `git add` and `git commit` the results
-
-**Add team rules to personal setup:**
-1. (Starting with local setup above)
-2. `ai-rizz add rule shared-rule.mdc --commit`
-3. `git add` and `git commit` the new shared rule
-4. `ai-rizz list` now shows both types: ◐ (local) ● (committed)
-
 ### Configuration
 
 ai-rizz stores copies of source repositories in `$HOME/.config/ai-rizz/repos/PROJECT-NAME/repo/` where PROJECT-NAME is the current directory name. This allows different projects to use different source repositories without conflicts.
@@ -108,15 +86,13 @@ ai-rizz stores copies of source repositories in `$HOME/.config/ai-rizz/repos/PRO
 
 #### Local mode (`--local`)
 - Rules stored in `.cursor/rules/local/`
-- Git ignores these files automatically
+- Files ignored by bit
 - Personal rules that don't get committed
-- Other team members won't see them
 
 #### Commit mode (`--commit`)
 - Rules stored in `.cursor/rules/shared/`
 - Files are committed to git
-- Shared with team
-- Other team members get them when they clone/pull
+- Other developers get them when they clone/pull
 
 #### Status Display
 What `ai-rizz list` shows:
@@ -166,14 +142,14 @@ If you don't specify `--local` or `--commit`, ai-rizz will ask which you want.
 
 Examples:
 
-Local-only setup (git-ignored rules):
+**Local-only setup (git-ignored rules):**
 ```bash
-ai-rizz init https://github.com/example/rules.git --local
+ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
 ```
 
-Commit-only setup (git-tracked rules):
+**Commit-only setup (git-tracked rules):**
 ```bash
-ai-rizz init https://github.com/example/rules.git --commit
+ai-rizz init https://github.com/texarkanine/.cursor-rules.git --commit
 ```
 
 #### Adding Rules and Rulesets
@@ -184,7 +160,7 @@ ai-rizz add ruleset <ruleset>... [--local|-l|--commit|-c]
 ```
 
 ```bash
-ai-rizz add rule foo.mdc              # Uses your current mode
+ai-rizz add rule foo.mdc              # Uses your current mode if only one mode active
 ai-rizz add rule bar.mdc --local      # Force local (git-ignored)
 ai-rizz add rule baz.mdc --commit     # Force commit (git-tracked)
 ```
@@ -242,116 +218,156 @@ ai-rizz deinit                       # Interactive: ask which to remove
 
 ai-rizz enforces certain constraints to maintain data integrity and prevent conflicts between local and committed modes. Understanding these constraints helps you work effectively with complex rule management scenarios.
 
+#### Example Repository Structure
+
+For the examples below, assume your source repository has this structure:
+
+```
+rules/
+├── personal-productivity.mdc
+├── code-review.mdc
+└── documentation.mdc
+
+rulesets/
+├── shell/
+│   ├── bash-style.mdc
+│   ├── posix-style.mdc
+│   └── shell-tdd.mdc
+└── python/
+    ├── pep8-style.mdc
+    ├── type-hints.mdc
+    └── testing.mdc
+```
+
 #### Upgrade/Downgrade Rules
 
 **Upgrade (Individual → Ruleset)**: ✅ Always allowed
-- Adding a ruleset that contains an individually-installed rule
-- The individual rule is automatically removed
-- The entire ruleset is installed in the target mode
+
+*Scenario*: You have `bash-style.mdc` installed individually, then add the `shell` ruleset:
+
+```bash
+# Starting state: individual rule installed
+ai-rizz add rule bash-style.mdc --local
+ai-rizz list
+# Shows: ◐ bash-style.mdc
+
+# Add the ruleset containing that rule
+ai-rizz add ruleset shell --local
+ai-rizz list  
+# Shows: ◐ shell (contains bash-style.mdc, posix-style.mdc, shell-tdd.mdc)
+# The individual bash-style.mdc entry is automatically removed
+```
 
 **Downgrade (Ruleset → Individual)**: ⚠️ Conditionally blocked
-- Adding an individual rule that's part of a committed ruleset to local mode
-- Blocked to maintain ruleset integrity in commit mode
-- Use `ai-rizz add-ruleset <name> --local` to move the entire ruleset instead
+
+*Scenario*: You have the `shell` ruleset committed, then try to add just `bash-style.mdc` locally:
+
+```bash
+# Starting state: ruleset committed
+ai-rizz add ruleset shell --commit
+ai-rizz list
+# Shows: ● shell (contains bash-style.mdc, posix-style.mdc, shell-tdd.mdc)
+
+# Try to add individual rule locally - BLOCKED
+ai-rizz add rule bash-style.mdc --local
+# Error: Cannot add individual rule 'bash-style.mdc' to local mode: 
+# it's part of committed ruleset 'rulesets/shell'. 
+# Use 'ai-rizz add-ruleset shell --local' to move the entire ruleset.
+```
+
+*Why blocked*: Prevents fragmenting committed rulesets, which could lead to incomplete team configurations.
 
 #### Valid Operations
 
 **Same-mode operations**: ✅ Always allowed
 ```bash
-# These always work
-ai-rizz add rule foo.mdc --local      # Add to local mode
-ai-rizz add rule foo.mdc --commit     # Move to commit mode
-ai-rizz add ruleset bar --local       # Add ruleset to local mode
-ai-rizz add ruleset bar --commit      # Move ruleset to commit mode
+# Add individual rules from our example repository
+ai-rizz add rule personal-productivity.mdc --local    # Add to local mode
+ai-rizz add rule code-review.mdc --commit             # Add to commit mode
+
+# Add rulesets from our example repository  
+ai-rizz add ruleset python --local                    # Add ruleset to local mode
+ai-rizz add ruleset shell --commit                    # Add ruleset to commit mode
 ```
 
 **Cross-mode migrations**: ✅ Always allowed
 ```bash
-# Moving between modes always works
-ai-rizz add rule foo.mdc --local      # Rule in local mode
-ai-rizz add rule foo.mdc --commit     # Now in commit mode
-ai-rizz add ruleset bar --commit      # Ruleset in commit mode  
-ai-rizz add ruleset bar --local       # Now in local mode
+# Moving individual rules between modes
+ai-rizz add rule documentation.mdc --local           # Rule in local mode
+ai-rizz add rule documentation.mdc --commit          # Now in commit mode
+
+# Moving rulesets between modes
+ai-rizz add ruleset python --commit                  # Ruleset in commit mode  
+ai-rizz add ruleset python --local                   # Now in local mode
 ```
 
 **Ruleset upgrades**: ✅ Always allowed
 ```bash
 # Individual rule gets absorbed into ruleset
-ai-rizz add rule shell-style.mdc --local     # Individual rule
-ai-rizz add ruleset shell --local            # Ruleset contains shell-style.mdc
-# Result: Only the ruleset remains, individual rule removed
+ai-rizz add rule bash-style.mdc --local              # Individual rule
+ai-rizz add ruleset shell --local                    # Ruleset contains bash-style.mdc
+# Result: Only the ruleset remains, individual bash-style.mdc entry removed
 ```
 
 #### Blocked Operations
 
 **Downgrade from committed ruleset**: ❌ Blocked
 ```bash
-ai-rizz add ruleset shell --commit            # Ruleset in commit mode
-ai-rizz add rule shell-style.mdc --local     # ❌ BLOCKED
-# Error: Cannot add individual rule 'shell-style.mdc' to local mode: 
+# Set up: shell ruleset committed (contains bash-style.mdc, posix-style.mdc, shell-tdd.mdc)
+ai-rizz add ruleset shell --commit            
+ai-rizz list
+# Shows: ● shell
+
+# Try to extract individual rule to local mode - BLOCKED
+ai-rizz add rule bash-style.mdc --local       # ❌ BLOCKED
+# Error: Cannot add individual rule 'bash-style.mdc' to local mode: 
 # it's part of committed ruleset 'rulesets/shell'. 
 # Use 'ai-rizz add-ruleset shell --local' to move the entire ruleset.
 ```
 
 **Why this is blocked**: Prevents fragmenting committed rulesets, which could lead to:
-- Incomplete rulesets in commit mode
+- Incomplete rulesets in commit mode (team missing some rules)
 - Confusion about which rules are shared vs. personal
 - Merge conflicts when team members have different rule subsets
 
 #### Workarounds for Complex Scenarios
 
-**Scenario**: You want one rule from a committed ruleset in local mode
+**Scenario**: You want only `bash-style.mdc` from the committed `shell` ruleset in local mode
 
-**Solution 1**: Move entire ruleset to local mode
+**Solution 1**: Move entire ruleset to local mode, then remove unwanted rules
 ```bash
-ai-rizz add-ruleset shell --local     # Move whole ruleset
-ai-rizz remove rule unwanted.mdc      # Remove unwanted rules
+ai-rizz add ruleset shell --local           # Move whole ruleset to local
+ai-rizz remove rule posix-style.mdc         # Remove unwanted rules
+ai-rizz remove rule shell-tdd.mdc           # Remove unwanted rules
+# Result: Only bash-style.mdc remains in local mode
 ```
 
-**Solution 2**: Create custom local ruleset
+**Solution 2**: Remove ruleset and add individual rules separately
 ```bash
-ai-rizz remove ruleset shell          # Remove committed ruleset
-ai-rizz add rule wanted.mdc --local   # Add desired rule locally
-ai-rizz add rule other-rules.mdc --commit  # Re-add others to commit mode
+ai-rizz remove ruleset shell                # Remove committed ruleset
+ai-rizz add rule bash-style.mdc --local     # Add desired rule locally
+ai-rizz add rule posix-style.mdc --commit   # Re-add others to commit mode
+ai-rizz add rule shell-tdd.mdc --commit     # Re-add others to commit mode
 ```
 
-**Scenario**: Team wants to adopt your local ruleset
+**Scenario**: Team wants to adopt your local `python` ruleset
 
 **Solution**: Promote local ruleset to commit mode
 ```bash
-ai-rizz add-ruleset my-local-set --commit   # Moves to commit mode
+ai-rizz add ruleset python --commit         # Moves to commit mode
 git add ai-rizz.inf .cursor/rules/shared/   # Stage for commit
-git commit -m "Add team ruleset"            # Share with team
+git commit -m "Add team Python ruleset"    # Share with team
 ```
 
 ### Repository Integrity
 
 #### Source Repository Consistency
-Both modes must use the same source repository. If they differ:
-
-```
-Error: Manifest integrity error - different source repositories detected:
-
-  Local mode:  https://github.com/user/.cursor-rules2.git
-  Commit mode: https://github.com/user/.cursor-rules.git
-
-To fix this, choose which repository you want to use for both modes:
-
-Option 1: Switch local mode to match commit mode
-  ai-rizz deinit --local -y && ai-rizz init https://github.com/user/.cursor-rules.git --local
-
-Option 2: Switch commit mode to match local mode  
-  ai-rizz deinit --commit -y && ai-rizz init https://github.com/user/.cursor-rules2.git --commit
-
-Option 3: Reset everything and start fresh
-  ai-rizz deinit --all -y && ai-rizz init
-```
+Both modes must use the same source repository. If they differ, `ai-rizz` will complain and ask you to resolve it.
 
 #### Conflict Resolution
 When both modes contain the same rule/ruleset:
 - **Commit mode wins**: Committed rules take precedence
 - **Automatic cleanup**: Conflicting local entries are silently removed
-- **No data loss**: Files remain until next sync
 
 ### Best Practices
 
@@ -439,18 +455,7 @@ The project uses [shunit2](https://github.com/kward/shunit2) for unit and integr
 tests/
 ├── common.sh                        # Common test utilities and helper functions  
 ├── run_tests.sh                     # Test runner script
-├── unit/
-│   ├── test_progressive_init.sh        # Single-mode initialization
-│   ├── test_lazy_initialization.sh     # Auto-mode-creation logic
-│   ├── test_mode_detection.sh          # Mode state detection
-│   ├── test_mode_operations.sh         # Add/remove with mode detection
-│   ├── test_conflict_resolution.sh     # Conflict resolution
-│   ├── test_migration.sh               # Legacy repository migration
-│   └── test_error_handling.sh          # Error cases and edge conditions
-└── integration/
-    ├── test_complete_workflows.sh      # End-to-end scenarios
-    ├── test_backward_compat.sh         # Migration scenarios
-    └── test_progressive_usage.sh       # Progressive workflows
+└── unit/                            # Unit tests
 ```
 
 #### Running Tests

@@ -1,5 +1,20 @@
 #!/bin/sh
-# Tests for enhanced command behavior with progressive modes using shunit2
+#
+# test_mode_operations.test.sh - Mode-aware operations test suite
+#
+# Tests all mode-aware operations including add/remove rules and rulesets,
+# lazy initialization, upgrade/downgrade constraints, and cross-mode
+# interactions. Validates the complete command interface with proper mode
+# handling and constraint enforcement.
+#
+# Test Coverage:
+# Validates all mode-aware command operations including add/remove behavior,
+# progressive display systems, lazy initialization triggers, constraint
+# enforcement, and proper sync coordination across various operational
+# scenarios and edge cases.
+#
+# Dependencies: shunit2, common test utilities
+# Usage: sh test_mode_operations.test.sh
 
 # Load common test utilities
 # shellcheck disable=SC1091

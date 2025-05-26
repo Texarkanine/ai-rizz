@@ -1,5 +1,19 @@
 #!/bin/sh
-# Tests for backward compatibility migration using shunit2
+#
+# test_migration.test.sh - Backward compatibility migration test suite
+#
+# Tests the migration system that automatically converts legacy single-mode
+# repositories to the new progressive format. Validates detection of legacy
+# configurations, proper file and directory migration, git exclude updates,
+# and preservation of all existing rules and rulesets during the transition.
+#
+# Test Coverage:
+# Validates seamless migration from legacy single-mode format to progressive
+# dual-mode format with proper preservation of all data, correct git exclude
+# management, and robust error handling during the migration process.
+#
+# Dependencies: shunit2, common test utilities
+# Usage: sh test_migration.test.sh
 
 # Load common test utilities
 # shellcheck disable=SC1091

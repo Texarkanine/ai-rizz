@@ -1,5 +1,19 @@
 #!/bin/sh
-# Tests for error handling and graceful degradation using shunit2
+#
+# test_error_handling.test.sh - Error handling and edge cases test suite
+#
+# Tests comprehensive error handling throughout ai-rizz including invalid
+# inputs, missing files, network failures, permission issues, and edge cases.
+# Validates graceful degradation, helpful error messages, and system recovery.
+#
+# Test Coverage:
+# Validates comprehensive error handling and graceful degradation across
+# all failure modes including network issues, permission problems, corrupted
+# data, and edge cases while ensuring helpful error messages and system
+# state consistency.
+#
+# Dependencies: shunit2, common test utilities
+# Usage: sh test_error_handling.test.sh
 
 # Load common test utilities
 # shellcheck disable=SC1091

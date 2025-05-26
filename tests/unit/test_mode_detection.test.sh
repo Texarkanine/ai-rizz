@@ -1,5 +1,19 @@
 #!/bin/sh
-# Tests for mode detection and smart defaults using shunit2
+#
+# test_mode_detection.test.sh - Mode detection and smart defaults test suite
+#
+# Tests the mode detection system that determines which modes (local/commit)
+# are initialized and provides smart defaults for commands. Validates automatic
+# mode selection when only one mode exists, dual-mode detection, and proper
+# prompting when mode specification is required.
+#
+# Test Coverage:
+# Validates mode detection accuracy and smart command behavior across
+# single-mode, dual-mode, and transitional scenarios with proper handling
+# of user prompts and automatic mode selection.
+#
+# Dependencies: shunit2, common test utilities
+# Usage: sh test_mode_detection.test.sh
 
 # Load common test utilities
 # shellcheck disable=SC1091

@@ -1,5 +1,20 @@
 #!/bin/sh
-# Tests for mode migration and conflict resolution using shunit2
+#
+# test_conflict_resolution.test.sh - Conflict resolution test suite
+#
+# Tests the sophisticated conflict resolution system that handles overlapping
+# rules and rulesets between local and commit modes. Implements "commit wins"
+# policy with file-level conflict detection and partial ruleset handling.
+# Validates rule migration, duplicate cleanup, and complex conflict scenarios.
+#
+# Test Coverage:
+# Validates the sophisticated conflict resolution system that implements
+# "commit wins" policy with file-level detection, handles complex scenarios
+# involving overlapping rules and rulesets, and maintains system integrity
+# during migrations and manual editing recovery.
+#
+# Dependencies: shunit2, common test utilities
+# Usage: sh test_conflict_resolution.test.sh
 
 # Load common test utilities
 # shellcheck disable=SC1091

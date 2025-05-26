@@ -1,5 +1,19 @@
 #!/bin/sh
-# Tests for lazy initialization functionality using shunit2
+#
+# test_lazy_initialization.test.sh - Lazy initialization test suite
+#
+# Tests the lazy initialization system that automatically creates missing
+# modes when users target them with add operations. Validates seamless
+# transition from single-mode to dual-mode, metadata copying, and proper
+# directory structure creation.
+#
+# Test Coverage:
+# Validates the lazy initialization system that seamlessly transitions from
+# single-mode to dual-mode by automatically creating missing modes with
+# proper metadata copying, directory setup, and git exclude management.
+#
+# Dependencies: shunit2, common test utilities
+# Usage: sh test_lazy_initialization.test.sh
 
 # Load common test utilities
 # shellcheck disable=SC1091

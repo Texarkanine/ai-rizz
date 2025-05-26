@@ -1,5 +1,19 @@
 #!/bin/sh
-# Tests for progressive initialization functionality using shunit2
+#
+# test_progressive_init.test.sh - Progressive initialization test suite
+#
+# Tests the progressive initialization system that allows ai-rizz to start
+# with a single mode (local or commit) and later expand to dual-mode through
+# lazy initialization. Validates manifest creation, directory structure,
+# git exclude management, and idempotent re-initialization behavior.
+#
+# Test Coverage:
+# Validates all aspects of progressive initialization including mode setup,
+# directory creation, manifest formatting, git exclude management, and
+# idempotent behavior across various configuration scenarios.
+#
+# Dependencies: shunit2, common test utilities
+# Usage: sh test_progressive_init.test.sh
 
 # Load common test utilities
 # shellcheck disable=SC1091

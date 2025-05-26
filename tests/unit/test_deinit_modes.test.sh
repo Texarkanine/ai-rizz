@@ -1,5 +1,19 @@
 #!/bin/sh
-# Tests for deinit command mode selection using shunit2
+#
+# test_deinit_modes.test.sh - Deinit mode selection test suite
+#
+# Tests the deinit command's mode-selective removal capabilities including
+# individual mode removal, complete cleanup, confirmation prompts, and
+# proper cleanup of manifests, directories, and git excludes.
+#
+# Test Coverage:
+# Validates the deinit command's mode-selective removal capabilities with
+# proper cleanup of manifests, directories, and git excludes while handling
+# confirmation prompts and maintaining system integrity during partial and
+# complete removal scenarios.
+#
+# Dependencies: shunit2, common test utilities
+# Usage: sh test_deinit_modes.test.sh
 
 # Load common test utilities
 # shellcheck disable=SC1091

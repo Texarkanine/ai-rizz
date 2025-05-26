@@ -118,7 +118,7 @@ remove_manifest_entry() {
   entry="$1"
   
   # Remove the entry
-  MANIFEST_ENTRIES=$(echo "$MANIFEST_ENTRIES" | grep -v "^$entry$")
+  MANIFEST_ENTRIES=$(echo "$MANIFEST_ENTRIES" | grep -v "^$entry$" || true)
   
   return 0
 }
@@ -166,48 +166,58 @@ write_manifest_with_entries() {
     # Write header
     echo "$source_repo	$target_dir" > "$manifest_file"
     
-    # Append entries from stdin (if any)
-    cat >> "$manifest_file"
+    # Read from stdin and append if there's content
+    while IFS= read -r line; do
+        if [ -n "$line" ]; then
+            echo "$line" >> "$manifest_file"
+        fi
+    done
 }
 
 # Add entry to manifest file
 add_manifest_entry_to_file() {
-    manifest_file="$1"
+    target_manifest_file="$1"
     entry="$2"
     
     # Check if entry already exists
-    if [ -f "$manifest_file" ]; then
-        if read_manifest_entries "$manifest_file" | grep -q "^$entry$"; then
+    if [ -f "$target_manifest_file" ]; then
+        if read_manifest_entries "$target_manifest_file" | grep -q "^$entry$"; then
             return 0  # Already exists
         fi
     fi
     
     # Add the entry
-    echo "$entry" >> "$manifest_file"
+    echo "$entry" >> "$target_manifest_file"
 }
 
 # Remove entry from manifest file
 remove_manifest_entry_from_file() {
-    manifest_file="$1"
+    local_manifest_file="$1"
     entry="$2"
     
-    if [ ! -f "$manifest_file" ]; then
+    if [ ! -f "$local_manifest_file" ]; then
         return 0  # Nothing to remove
     fi
     
     # Get metadata
-    metadata=$(read_manifest_metadata "$manifest_file") || {
-        error "Failed to read manifest metadata from $manifest_file"
+    metadata=$(read_manifest_metadata "$local_manifest_file") || {
+        error "Failed to read manifest metadata from $local_manifest_file"
     }
     
     # Get entries excluding the one to remove
-    entries=$(read_manifest_entries "$manifest_file" | grep -v "^$entry$")
+    entries=$(read_manifest_entries "$local_manifest_file" | grep -v "^$entry$" || true)
     
     # Rewrite manifest
     source_repo=$(echo "$metadata" | cut -f1)
     target_dir=$(echo "$metadata" | cut -f2)
     
-    echo "$entries" | write_manifest_with_entries "$manifest_file" "$source_repo" "$target_dir"
+    # Write header first
+    echo "$source_repo	$target_dir" > "$local_manifest_file"
+    
+    # Append entries if any exist (avoid hanging cat with empty input)
+    if [ -n "$entries" ]; then
+        echo "$entries" >> "$local_manifest_file"
+    fi
 }
 
 # Get any available manifest metadata (for lazy initialization)
@@ -284,7 +294,7 @@ update_git_exclude() {
             # Create a temporary file
             tmp_file=$(mktemp)
             # Filter out the path
-            grep -v "^$path$" ".git/info/exclude" > "$tmp_file"
+            grep -v "^$path$" ".git/info/exclude" > "$tmp_file" || true
             # Replace the original file
             cat "$tmp_file" > ".git/info/exclude"
             # Remove the temporary file
@@ -625,12 +635,24 @@ cmd_init() {
     case "$mode" in
         local)
             if [ "$HAS_LOCAL_MODE" = "true" ]; then
-                error "Local mode already initialized. Use 'ai-rizz deinit --local' first."
+                # Check if parameters match existing configuration
+                if [ "$LOCAL_SOURCE_REPO" = "$source_repo" ] && [ "$LOCAL_TARGET_DIR" = "$target_dir" ]; then
+                    echo "Initialized ai-rizz with source: $source_repo, target: $target_dir, mode: $mode"
+                    return 0  # Idempotent success
+                else
+                    error "Local mode already initialized with different parameters. Use 'ai-rizz deinit --local' first."
+                fi
             fi
             ;;
         commit)
             if [ "$HAS_COMMIT_MODE" = "true" ]; then
-                error "Commit mode already initialized. Use 'ai-rizz deinit --commit' first."
+                # Check if parameters match existing configuration
+                if [ "$COMMIT_SOURCE_REPO" = "$source_repo" ] && [ "$COMMIT_TARGET_DIR" = "$target_dir" ]; then
+                    echo "Initialized ai-rizz with source: $source_repo, target: $target_dir, mode: $mode"
+                    return 0  # Idempotent success
+                else
+                    error "Commit mode already initialized with different parameters. Use 'ai-rizz deinit --commit' first."
+                fi
             fi
             ;;
     esac
@@ -806,6 +828,11 @@ cmd_deinit() {
         rm -rf "$LOCAL_TARGET_DIR/$LOCAL_DIR"
         rm -f "$LOCAL_MANIFEST_FILE"
         
+        # Update mode state
+        HAS_LOCAL_MODE=false
+        LOCAL_SOURCE_REPO=""
+        LOCAL_TARGET_DIR=""
+        
         echo "Removed local mode configuration"
     fi
     
@@ -814,6 +841,11 @@ cmd_deinit() {
         # Remove files (no git exclude changes needed for commit mode)
         rm -rf "$COMMIT_TARGET_DIR/$SHARED_DIR"
         rm -f "$COMMIT_MANIFEST_FILE"
+        
+        # Update mode state
+        HAS_COMMIT_MODE=false
+        COMMIT_SOURCE_REPO=""
+        COMMIT_TARGET_DIR=""
         
         echo "Removed commit mode configuration"
     fi
@@ -856,24 +888,51 @@ cmd_list() {
     
     # Helper function to check if an item is installed in any mode
     is_installed() {
-        local item="$1"
-        local status="uninstalled"
+        _is_installed_item="$1"
+        _is_installed_status="uninstalled"
         
-        # Check commit mode
-        if [ "$HAS_COMMIT_MODE" = "true" ]; then
-            if read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null | grep -q "^$item$"; then
-                status="committed"
-            fi
-        fi
+        # Helper to check if item is covered by rulesets in a manifest
+        check_rulesets_for_item() {
+            _check_manifest_file="$1"
+            _check_item_basename=$(basename "$_is_installed_item")
+            _check_entries=""
+            
+            _check_entries=$(read_manifest_entries "$_check_manifest_file" 2>/dev/null) || return 1
+            
+            # Use a for loop instead of while to avoid subshell issues
+            for _check_entry in $_check_entries; do
+                if [ -n "$_check_entry" ] && echo "$_check_entry" | grep -q "^rulesets/"; then
+                    # Check if this ruleset contains the item
+                    _check_ruleset_dir="$REPO_DIR/$_check_entry"
+                    if [ -d "$_check_ruleset_dir" ] && [ -f "$_check_ruleset_dir/$_check_item_basename" ]; then
+                        return 0  # Found in ruleset
+                    fi
+                fi
+            done
+            return 1  # Not found in any ruleset
+        }
         
-        # Check local mode (overrides commit status for display)
+        # Check local mode first (weaker glyph)
         if [ "$HAS_LOCAL_MODE" = "true" ]; then
-            if read_manifest_entries "$LOCAL_MANIFEST_FILE" 2>/dev/null | grep -q "^$item$"; then
-                status="local"
+            # Check if item is directly in manifest
+            if read_manifest_entries "$LOCAL_MANIFEST_FILE" 2>/dev/null | grep -q "^$_is_installed_item$"; then
+                _is_installed_status="local"
+            elif check_rulesets_for_item "$LOCAL_MANIFEST_FILE"; then
+                _is_installed_status="local"
             fi
         fi
         
-        echo "$status"
+        # Check commit mode (stronger glyph - overrides local)
+        if [ "$HAS_COMMIT_MODE" = "true" ]; then
+            # Check if item is directly in manifest
+            if read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null | grep -q "^$_is_installed_item$"; then
+                _is_installed_status="committed"
+            elif check_rulesets_for_item "$COMMIT_MANIFEST_FILE"; then
+                _is_installed_status="committed"
+            fi
+        fi
+        
+        echo "$_is_installed_status"
     }
     
     # Display rules
@@ -985,9 +1044,11 @@ cmd_add_rule() {
         fi
     fi
     
-    # Check if lazy initialization is needed
+    # Check if lazy initialization is needed and track it
+    lazy_init_occurred=false
     if needs_lazy_init "$mode"; then
         lazy_init_mode "$mode"
+        lazy_init_occurred=true
     fi
     
     # Select manifest and target based on mode
@@ -1027,24 +1088,47 @@ cmd_add_rule() {
         fi
         
         # Check if rule exists in opposite mode (conflict resolution)
-        case "$mode" in
-            local)
-                if [ "$HAS_COMMIT_MODE" = "true" ]; then
-                    if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-                        # Remove from commit mode, add to local mode
-                        remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
+        # Skip migration check if we just lazy-initialized the target mode (it's empty)
+        if [ "$lazy_init_occurred" = "false" ]; then
+            case "$mode" in
+                local)
+                    if [ "$HAS_COMMIT_MODE" = "true" ]; then
+                        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+                            # Remove from commit mode, add to local mode
+                            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
+                        fi
                     fi
-                fi
-                ;;
-            commit)
-                if [ "$HAS_LOCAL_MODE" = "true" ]; then
-                    if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-                        # Remove from local mode, add to commit mode
-                        remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
+                    ;;
+                commit)
+                    if [ "$HAS_LOCAL_MODE" = "true" ]; then
+                        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+                            # Remove from local mode, add to commit mode
+                            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
+                        fi
                     fi
-                fi
-                ;;
-        esac
+                    ;;
+            esac
+        else
+            # Lazy initialization occurred - need to migrate from opposite mode
+            case "$mode" in
+                local)
+                    # We just created local mode, migrate from commit mode if rule exists there
+                    if [ "$HAS_COMMIT_MODE" = "true" ]; then
+                        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+                            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
+                        fi
+                    fi
+                    ;;
+                commit)
+                    # We just created commit mode, migrate from local mode if rule exists there
+                    if [ "$HAS_LOCAL_MODE" = "true" ]; then
+                        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+                            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
+                        fi
+                    fi
+                    ;;
+            esac
+        fi
         
         # Add to target manifest
         add_manifest_entry_to_file "$manifest_file" "$rule_path"
@@ -1101,9 +1185,11 @@ cmd_add_ruleset() {
         fi
     fi
     
-    # Check if lazy initialization is needed
+    # Check if lazy initialization is needed and track it
+    lazy_init_occurred=false
     if needs_lazy_init "$mode"; then
         lazy_init_mode "$mode"
+        lazy_init_occurred=true
     fi
     
     # Select manifest and target based on mode
@@ -1135,24 +1221,47 @@ cmd_add_ruleset() {
         fi
         
         # Check if ruleset exists in opposite mode (conflict resolution)
-        case "$mode" in
-            local)
-                if [ "$HAS_COMMIT_MODE" = "true" ]; then
-                    if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-                        # Remove from commit mode, add to local mode
-                        remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
+        # Skip migration check if we just lazy-initialized the target mode (it's empty)
+        if [ "$lazy_init_occurred" = "false" ]; then
+            case "$mode" in
+                local)
+                    if [ "$HAS_COMMIT_MODE" = "true" ]; then
+                        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+                            # Remove from commit mode, add to local mode
+                            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
+                        fi
                     fi
-                fi
-                ;;
-            commit)
-                if [ "$HAS_LOCAL_MODE" = "true" ]; then
-                    if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-                        # Remove from local mode, add to commit mode
-                        remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
+                    ;;
+                commit)
+                    if [ "$HAS_LOCAL_MODE" = "true" ]; then
+                        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+                            # Remove from local mode, add to commit mode
+                            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
+                        fi
                     fi
-                fi
-                ;;
-        esac
+                    ;;
+            esac
+        else
+            # Lazy initialization occurred - need to migrate from opposite mode
+            case "$mode" in
+                local)
+                    # We just created local mode, migrate from commit mode if ruleset exists there
+                    if [ "$HAS_COMMIT_MODE" = "true" ]; then
+                        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+                            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
+                        fi
+                    fi
+                    ;;
+                commit)
+                    # We just created commit mode, migrate from local mode if ruleset exists there
+                    if [ "$HAS_LOCAL_MODE" = "true" ]; then
+                        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+                            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
+                        fi
+                    fi
+                    ;;
+            esac
+        fi
         
         # Add to target manifest
         add_manifest_entry_to_file "$manifest_file" "$ruleset_path"
@@ -1284,6 +1393,19 @@ sync_manifest_to_directory() {
     # Create target directory if needed
     mkdir -p "$target_directory"
     
+    # Safety check: Only operate in our managed directories (local or shared)
+    case "$target_directory" in
+        */"$LOCAL_DIR"|*/"$SHARED_DIR")
+            # Clear existing .mdc files to ensure removed rules are deleted
+            # Only delete regular .mdc files, never directories or other files
+            find "$target_directory" -maxdepth 1 -name "*.mdc" -type f -delete 2>/dev/null || true
+            ;;
+        *)
+            warn "Refusing to clear unrecognized target directory: $target_directory"
+            return 1
+            ;;
+    esac
+    
     # Get entries from manifest
     entries=$(read_manifest_entries "$manifest_file") || {
         warn "Failed to read entries from $manifest_file"
@@ -1311,8 +1433,14 @@ copy_entry_to_target() {
         # Single file (rule)
         cp "$source_path" "$target_directory/"
     elif [ -d "$source_path" ]; then
-        # Directory (ruleset) - copy recursively
-        cp -r "$source_path" "$target_directory/"
+        # Directory (ruleset) - copy individual .mdc files from ruleset to target directory
+        # Handle symlinks correctly by following them and copying actual content
+        find "$source_path" -name "*.mdc" -type f -o -name "*.mdc" -type l | while IFS= read -r rule_file; do
+            if [ -f "$rule_file" ] || [ -L "$rule_file" ]; then
+                # Copy the file (following symlinks to get actual content)
+                cp -L "$rule_file" "$target_directory/"
+            fi
+        done
     else
         warn "Entry not found in repository: $entry"
         return 1

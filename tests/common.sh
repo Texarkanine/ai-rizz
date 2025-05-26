@@ -245,12 +245,6 @@ source_ai_rizz() {
   _TEST_TARGET_DIR="$TARGET_DIR"
   _TEST_REPO_DIR="$REPO_DIR"
   
-  # Mock git operations silently
-  git_sync() { return 0; }
-  
-  # Override git command with silent function that always succeeds
-  git() { return 0; }
-  
   # Find path to ai-rizz script using best available method
   # 1. Use AI_RIZZ_PATH from environment if provided
   # 2. Try project root paths (run_tests.sh runs tests from project root)
@@ -274,11 +268,24 @@ source_ai_rizz() {
   # shellcheck disable=SC1090
   . "$AI_RIZZ_PATH"
   
-  # Restore test environment variables
+  # Restore test environment variables (CRITICAL: must override ai-rizz globals)
   MANIFEST_FILE="$_TEST_MANIFEST_FILE"
   SOURCE_REPO="$_TEST_SOURCE_REPO"
   TARGET_DIR="$_TEST_TARGET_DIR"
   REPO_DIR="$_TEST_REPO_DIR"
+  
+  # Override functions that interact with external systems for testing
+  git_sync() { 
+    # For tests, just ensure the test repo directory exists
+    if [ ! -d "$REPO_DIR" ]; then
+      echo "ERROR: Test repo directory not found: $REPO_DIR" >&2
+      return 1
+    fi
+    return 0
+  }
+  
+  # Override git command with silent function that always succeeds
+  git() { return 0; }
   
   # Reset ai-rizz state to ensure clean state between tests
   reset_ai_rizz_state

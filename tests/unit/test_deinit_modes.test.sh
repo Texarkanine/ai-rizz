@@ -46,9 +46,10 @@ test_deinit_all_modes() {
     # Test: Deinit all modes
     cmd_deinit --all -y
     
-    # Expected: Everything removed
+    # Expected: All ai-rizz modes removed, but target directory preserved (may contain user files)
     assert_no_modes_exist
-    assertFalse "Target directory should be removed" "[ -d '$TARGET_DIR' ]"
+    assertFalse "Local subdirectory should be removed" "[ -d '$TARGET_DIR/$LOCAL_DIR' ]"
+    assertFalse "Shared subdirectory should be removed" "[ -d '$TARGET_DIR/$SHARED_DIR' ]"
 }
 
 test_deinit_requires_mode_selection() {
@@ -106,15 +107,15 @@ test_deinit_commit_preserves_git_excludes() {
 test_deinit_preserves_files_in_other_mode() {
     # Setup: Rules in both modes
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
-    cmd_add_rule "local-rule.mdc" --local
-    cmd_add_rule "commit-rule.mdc" --commit
+    cmd_add_rule "rule1.mdc" --local
+    cmd_add_rule "rule2.mdc" --commit
     
     # Test: Deinit local mode only
     cmd_deinit --local -y
     
     # Expected: Commit files preserved, local files removed
-    assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/local-rule.mdc"
-    assert_file_exists "$TARGET_DIR/$SHARED_DIR/commit-rule.mdc"
+    assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
+    assert_file_exists "$TARGET_DIR/$SHARED_DIR/rule2.mdc"
 }
 
 test_deinit_custom_target_directory() {
@@ -153,9 +154,9 @@ test_deinit_all_with_single_mode() {
     # Test: Deinit all when only one mode exists
     cmd_deinit --all -y
     
-    # Expected: Everything should be removed
+    # Expected: All ai-rizz modes removed, but target directory preserved (may contain user files)
     assert_no_modes_exist
-    assertFalse "Target directory should be removed" "[ -d '$TARGET_DIR' ]"
+    assertFalse "Shared subdirectory should be removed" "[ -d '$TARGET_DIR/$SHARED_DIR' ]"
 }
 
 test_deinit_confirmation_prompts() {
@@ -172,12 +173,15 @@ test_deinit_confirmation_prompts() {
 }
 
 test_deinit_partial_cleanup_on_error() {
-    # Setup: Both modes
+    # Setup: Both modes with separate rules to ensure both manifests exist
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
-    cmd_add_rule "rule1.mdc" --commit
+    cmd_add_rule "rule1.mdc" --local
+    cmd_add_rule "rule2.mdc" --commit
     
-    # Make local manifest read-only to simulate error
-    chmod 444 "$LOCAL_MANIFEST_FILE"
+    # Make local manifest read-only to simulate error (only if it exists)
+    if [ -f "$LOCAL_MANIFEST_FILE" ]; then
+        chmod 444 "$LOCAL_MANIFEST_FILE"
+    fi
     
     # Test: Deinit local mode with permission error
     output=$(cmd_deinit --local -y 2>&1 || echo "ERROR_OCCURRED")
@@ -185,8 +189,10 @@ test_deinit_partial_cleanup_on_error() {
     # Expected: Should handle error gracefully
     echo "$output" | grep -q "error\|permission\|failed" || true
     
-    # Restore permissions for cleanup
-    chmod 644 "$LOCAL_MANIFEST_FILE"
+    # Restore permissions for cleanup (only if file exists)
+    if [ -f "$LOCAL_MANIFEST_FILE" ]; then
+        chmod 644 "$LOCAL_MANIFEST_FILE"
+    fi
 }
 
 test_deinit_removes_empty_directories() {

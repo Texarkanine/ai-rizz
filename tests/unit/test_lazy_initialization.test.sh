@@ -68,7 +68,7 @@ test_lazy_init_no_mode_error() {
     output=$(cmd_add_rule "rule1.mdc" --local 2>&1 || echo "ERROR_OCCURRED")
     
     # Expected: Error message about running init first
-    echo "$output" | grep -q "please run.*init" || fail "Should suggest running init"
+    echo "$output" | grep -q "Run.*init.*first" || fail "Should suggest running init"
 }
 
 test_lazy_init_with_rulesets() {
@@ -132,15 +132,15 @@ test_lazy_init_preserves_manifest_entries() {
 test_lazy_init_no_cross_contamination() {
     # Setup: Both modes via lazy init
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
-    cmd_add_rule "local-rule.mdc" --local
-    cmd_add_rule "commit-rule.mdc" --commit
+    cmd_add_rule "rule1.mdc" --local
+    cmd_add_rule "rule2.mdc" --commit
     
     # Test: Rules should be in correct modes only
-    assert_file_exists "$TARGET_DIR/$LOCAL_DIR/local-rule.mdc"
-    assert_file_not_exists "$TARGET_DIR/$SHARED_DIR/local-rule.mdc"
+    assert_file_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
+    assert_file_not_exists "$TARGET_DIR/$SHARED_DIR/rule1.mdc"
     
-    assert_file_exists "$TARGET_DIR/$SHARED_DIR/commit-rule.mdc"
-    assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/commit-rule.mdc"
+    assert_file_exists "$TARGET_DIR/$SHARED_DIR/rule2.mdc"
+    assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/rule2.mdc"
 }
 
 # Load and run shunit2

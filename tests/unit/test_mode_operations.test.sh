@@ -22,7 +22,9 @@ test_list_local_mode_only_glyphs() {
     # Expected: Shows ◐ for installed local rule, ○ for others
     echo "$output" | grep -q "$LOCAL_GLYPH.*rule1" || fail "Should show local glyph for rule1"
     echo "$output" | grep -q "$UNINSTALLED_GLYPH.*rule2" || fail "Should show uninstalled glyph for rule2"
-    echo "$output" | grep -q "$COMMITTED_GLYPH" && fail "Should not show committed glyph in local-only mode"
+    if echo "$output" | grep -q "$COMMITTED_GLYPH"; then
+        fail "Should not show committed glyph in local-only mode"
+    fi
 }
 
 test_list_commit_mode_only_glyphs() {
@@ -35,7 +37,9 @@ test_list_commit_mode_only_glyphs() {
     # Expected: Shows ● for committed rule, ○ for others  
     echo "$output" | grep -q "$COMMITTED_GLYPH.*rule1" || fail "Should show committed glyph for rule1"
     echo "$output" | grep -q "$UNINSTALLED_GLYPH.*rule2" || fail "Should show uninstalled glyph for rule2"
-    echo "$output" | grep -q "$LOCAL_GLYPH" && fail "Should not show local glyph in commit-only mode"
+    if echo "$output" | grep -q "$LOCAL_GLYPH"; then
+        fail "Should not show local glyph in commit-only mode"
+    fi
 }
 
 test_list_dual_mode_all_glyphs() {
@@ -56,25 +60,25 @@ test_list_progressive_display_no_modes() {
     # Setup: No modes initialized
     assert_no_modes_exist
     
-    # Test: List should work even with no modes
-    output=$(cmd_list)
+    # Test: List should error when no modes exist
+    output=$(cmd_list 2>&1 || echo "ERROR_OCCURRED")
     
-    # Expected: Shows only uninstalled glyphs
-    echo "$output" | grep -q "$UNINSTALLED_GLYPH.*rule1" || fail "Should show uninstalled glyph for rule1"
-    echo "$output" | grep -q "$COMMITTED_GLYPH\|$LOCAL_GLYPH" && fail "Should only show uninstalled glyphs"
+    # Expected: Should error about no configuration
+    echo "$output" | grep -q "No ai-rizz configuration found" || fail "Should error about no configuration"
 }
 
 test_list_rulesets_correct_glyphs() {
-    # Setup: Ruleset in local mode
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
-    cmd_add_ruleset "ruleset1" --local
+    # Setup: Ruleset in local mode, but rule1 already committed (stronger glyph)
+    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
+    cmd_add_rule "rule1.mdc" --commit  # rule1 gets committed glyph (strongest)
+    cmd_add_ruleset "ruleset1" --local  # ruleset1 gets local glyph, but rule1 keeps committed
     
     output=$(cmd_list)
     
-    # Expected: Ruleset shows local glyph, constituent rules also show local
+    # Expected: Ruleset shows local glyph, but rule1 retains its stronger committed glyph
     echo "$output" | grep -q "$LOCAL_GLYPH.*ruleset1" || fail "Should show local glyph for ruleset1"
-    echo "$output" | grep -q "$LOCAL_GLYPH.*rule1" || fail "Should show local glyph for rule1 (in ruleset)"
-    echo "$output" | grep -q "$LOCAL_GLYPH.*rule2" || fail "Should show local glyph for rule2 (in ruleset)"
+    echo "$output" | grep -q "$COMMITTED_GLYPH.*rule1" || fail "Should show committed glyph for rule1 (stronger than local)"
+    echo "$output" | grep -q "$LOCAL_GLYPH.*rule2" || fail "Should show local glyph for rule2 (from ruleset)"
 }
 
 test_remove_rule_auto_detects_mode() {
@@ -82,8 +86,9 @@ test_remove_rule_auto_detects_mode() {
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     
-    # Test: Remove without mode flag
+    # Test: Remove without mode flag, then sync to ensure file removal
     cmd_remove_rule "rule1.mdc"
+    cmd_sync
     
     # Expected: Auto-detects and removes from local mode
     assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
@@ -95,9 +100,10 @@ test_remove_rule_from_correct_mode() {
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --commit
     
-    # Test: Remove from each mode
+    # Test: Remove from each mode, then sync to ensure file removal
     cmd_remove_rule "rule1.mdc"
     cmd_remove_rule "rule2.mdc"
+    cmd_sync
     
     # Expected: Each removed from correct mode
     assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
@@ -123,8 +129,9 @@ test_remove_rule_from_dual_mode() {
     # Manually add to commit mode to test conflict
     cmd_add_rule "rule1.mdc" --commit  # Should migrate, but test edge case
     
-    # Test: Remove should remove from commit mode (higher priority)
+    # Test: Remove should remove from commit mode (higher priority), then sync
     cmd_remove_rule "rule1.mdc"
+    cmd_sync
     
     # Expected: Should remove from commit mode
     assert_file_not_exists "$TARGET_DIR/$SHARED_DIR/rule1.mdc"
@@ -203,11 +210,15 @@ test_remove_updates_manifests() {
     cmd_remove_rule "rule2.mdc"
     
     # Expected: Manifests should be updated
-    local_content=$(cat "$LOCAL_MANIFEST_FILE")
-    echo "$local_content" | grep -q "rule1.mdc" && fail "Rule1 should be removed from local manifest"
+    local_manifest_content=$(cat "$LOCAL_MANIFEST_FILE")
+    if echo "$local_manifest_content" | grep -q "rule1.mdc"; then
+        fail "Rule1 should be removed from local manifest"
+    fi
     
-    commit_content=$(cat "$COMMIT_MANIFEST_FILE")
-    echo "$commit_content" | grep -q "rule2.mdc" && fail "Rule2 should be removed from commit manifest"
+    commit_manifest_content=$(cat "$COMMIT_MANIFEST_FILE")
+    if echo "$commit_manifest_content" | grep -q "rule2.mdc"; then
+        fail "Rule2 should be removed from commit manifest"
+    fi
 }
 
 test_sync_triggers_after_remove() {

@@ -122,14 +122,14 @@ test_mode_detection_after_deinit() {
 test_smart_mode_selection_prefers_existing() {
     # Setup: Local mode with existing rules
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
-    cmd_add_rule "existing-rule.mdc" --local
+    cmd_add_rule "rule1.mdc" --local
     
     # Test: Adding without mode flag should use existing mode
-    cmd_add_rule "new-rule.mdc"
+    cmd_add_rule "rule2.mdc"
     
     # Expected: New rule added to existing local mode
-    assert_file_exists "$TARGET_DIR/$LOCAL_DIR/new-rule.mdc"
-    assert_file_not_exists "$TARGET_DIR/$SHARED_DIR/new-rule.mdc"
+    assert_file_exists "$TARGET_DIR/$LOCAL_DIR/rule2.mdc"
+    assert_file_not_exists "$TARGET_DIR/$SHARED_DIR/rule2.mdc"
 }
 
 test_mode_detection_git_exclude_accuracy() {

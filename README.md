@@ -236,6 +236,140 @@ ai-rizz deinit --all                 # Remove everything
 ai-rizz deinit                       # Interactive: ask which to remove
 ```
 
+## Advanced Usage
+
+### Rule and Ruleset Constraints
+
+ai-rizz enforces certain constraints to maintain data integrity and prevent conflicts between local and committed modes. Understanding these constraints helps you work effectively with complex rule management scenarios.
+
+#### Upgrade/Downgrade Rules
+
+**Upgrade (Individual → Ruleset)**: ✅ Always allowed
+- Adding a ruleset that contains an individually-installed rule
+- The individual rule is automatically removed
+- The entire ruleset is installed in the target mode
+
+**Downgrade (Ruleset → Individual)**: ⚠️ Conditionally blocked
+- Adding an individual rule that's part of a committed ruleset to local mode
+- Blocked to maintain ruleset integrity in commit mode
+- Use `ai-rizz add-ruleset <name> --local` to move the entire ruleset instead
+
+#### Valid Operations
+
+**Same-mode operations**: ✅ Always allowed
+```bash
+# These always work
+ai-rizz add rule foo.mdc --local      # Add to local mode
+ai-rizz add rule foo.mdc --commit     # Move to commit mode
+ai-rizz add ruleset bar --local       # Add ruleset to local mode
+ai-rizz add ruleset bar --commit      # Move ruleset to commit mode
+```
+
+**Cross-mode migrations**: ✅ Always allowed
+```bash
+# Moving between modes always works
+ai-rizz add rule foo.mdc --local      # Rule in local mode
+ai-rizz add rule foo.mdc --commit     # Now in commit mode
+ai-rizz add ruleset bar --commit      # Ruleset in commit mode  
+ai-rizz add ruleset bar --local       # Now in local mode
+```
+
+**Ruleset upgrades**: ✅ Always allowed
+```bash
+# Individual rule gets absorbed into ruleset
+ai-rizz add rule shell-style.mdc --local     # Individual rule
+ai-rizz add ruleset shell --local            # Ruleset contains shell-style.mdc
+# Result: Only the ruleset remains, individual rule removed
+```
+
+#### Blocked Operations
+
+**Downgrade from committed ruleset**: ❌ Blocked
+```bash
+ai-rizz add ruleset shell --commit            # Ruleset in commit mode
+ai-rizz add rule shell-style.mdc --local     # ❌ BLOCKED
+# Error: Cannot add individual rule 'shell-style.mdc' to local mode: 
+# it's part of committed ruleset 'rulesets/shell'. 
+# Use 'ai-rizz add-ruleset shell --local' to move the entire ruleset.
+```
+
+**Why this is blocked**: Prevents fragmenting committed rulesets, which could lead to:
+- Incomplete rulesets in commit mode
+- Confusion about which rules are shared vs. personal
+- Merge conflicts when team members have different rule subsets
+
+#### Workarounds for Complex Scenarios
+
+**Scenario**: You want one rule from a committed ruleset in local mode
+
+**Solution 1**: Move entire ruleset to local mode
+```bash
+ai-rizz add-ruleset shell --local     # Move whole ruleset
+ai-rizz remove rule unwanted.mdc      # Remove unwanted rules
+```
+
+**Solution 2**: Create custom local ruleset
+```bash
+ai-rizz remove ruleset shell          # Remove committed ruleset
+ai-rizz add rule wanted.mdc --local   # Add desired rule locally
+ai-rizz add rule other-rules.mdc --commit  # Re-add others to commit mode
+```
+
+**Scenario**: Team wants to adopt your local ruleset
+
+**Solution**: Promote local ruleset to commit mode
+```bash
+ai-rizz add-ruleset my-local-set --commit   # Moves to commit mode
+git add ai-rizz.inf .cursor/rules/shared/   # Stage for commit
+git commit -m "Add team ruleset"            # Share with team
+```
+
+### Repository Integrity
+
+#### Source Repository Consistency
+Both modes must use the same source repository. If they differ:
+
+```
+Error: Manifest integrity error - different source repositories detected:
+
+  Local mode:  https://github.com/user/.cursor-rules2.git
+  Commit mode: https://github.com/user/.cursor-rules.git
+
+To fix this, choose which repository you want to use for both modes:
+
+Option 1: Switch local mode to match commit mode
+  ai-rizz deinit --local -y && ai-rizz init https://github.com/user/.cursor-rules.git --local
+
+Option 2: Switch commit mode to match local mode  
+  ai-rizz deinit --commit -y && ai-rizz init https://github.com/user/.cursor-rules2.git --commit
+
+Option 3: Reset everything and start fresh
+  ai-rizz deinit --all -y && ai-rizz init
+```
+
+#### Conflict Resolution
+When both modes contain the same rule/ruleset:
+- **Commit mode wins**: Committed rules take precedence
+- **Automatic cleanup**: Conflicting local entries are silently removed
+- **No data loss**: Files remain until next sync
+
+### Best Practices
+
+#### For Individual Contributors
+- Start with local mode for experimentation
+- Promote stable rules to commit mode for team sharing
+- Use rulesets for related rules that should stay together
+
+#### For Teams
+- Establish team rulesets in commit mode early
+- Avoid fragmenting team rulesets across modes
+- Use local mode for personal productivity rules
+
+#### For Rule Authors
+- Group related rules into logical rulesets
+- Include README.md files in rulesets for documentation
+- Use semantic naming for rules and rulesets
+
 ## Developer Guide
 
 ### Progressive Manifest System
@@ -320,10 +454,48 @@ tests/
 ```
 
 #### Running Tests
+
 ```bash
-# Run all tests
+# Run all tests (quiet mode - default)
 make test
 
-# Run specific test file
+# Run tests with verbose output
+VERBOSE_TESTS=true make test
+
+# Run specific test file (quiet)
 sh tests/unit/test_progressive_init.sh
+
+# Run specific test file (verbose)
+VERBOSE_TESTS=true sh tests/unit/test_progressive_init.sh
 ```
+
+#### Test Output Modes
+
+**Quiet Mode (Default)**:
+- Shows only test names and PASS/FAIL status
+- Failed tests automatically re-run with verbose output for debugging
+- Provides clean, summary-focused output for CI/CD and regular development
+
+**Verbose Mode**:
+- Shows all test setup, execution, and diagnostic information
+- Useful for test development and troubleshooting
+- Activated with `VERBOSE_TESTS=true`
+
+#### Testing Best Practices
+
+**For Test Development**:
+- Use `test_echo` for setup and progress messages
+- Use `test_debug` for detailed diagnostic information  
+- Use `test_info` for general informational messages
+- Keep `echo` for test assertions and critical errors
+- Test in both quiet and verbose modes during development
+
+**For Troubleshooting**:
+- Failed tests automatically show verbose output
+- Use `VERBOSE_TESTS=true` to see all test details
+- Individual test files can be run directly with verbose output
+
+**For CI/CD**:
+- Default quiet mode provides clean, parseable output
+- Failed tests include full diagnostic information
+- Exit codes properly indicate success/failure

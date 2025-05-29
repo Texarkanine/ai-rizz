@@ -2,7 +2,7 @@
 # Common test utilities for shunit2 tests
 
 # Global variables for test environment
-MANIFEST_FILE="test_manifest.inf"
+MANIFEST_FILE="test_manifest.skbd"
 SOURCE_REPO="test_repo"
 TARGET_DIR="test_target"
 SHARED_DIR="shared"
@@ -247,9 +247,6 @@ assert_git_exclude_not_exists() {
 
 # Reset ai-rizz global state (call after sourcing to ensure clean state)
 reset_ai_rizz_state() {
-  # Reset mode detection state
-  HAS_LOCAL_MODE=false
-  HAS_COMMIT_MODE=false
   
   # Reset cached metadata
   COMMIT_SOURCE_REPO=""

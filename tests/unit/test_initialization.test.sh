@@ -43,8 +43,8 @@ test_init_local_mode_only() {
     assert_git_exclude_contains "$TARGET_DIR/$LOCAL_DIR"
     
     # Verify mode detection
-    assertTrue "Should detect local mode" "[ \"$HAS_LOCAL_MODE\" = \"true\" ]"
-    assertFalse "Should not detect commit mode" "[ \"$HAS_COMMIT_MODE\" = \"true\" ]"
+    assertTrue "Should detect local mode" "[ \"$(is_mode_active local)\" = \"true\" ]"
+    assertFalse "Should not detect commit mode" "[ \"$(is_mode_active commit)\" = \"true\" ]"
 }
 
 test_init_commit_mode_only() {
@@ -59,8 +59,8 @@ test_init_commit_mode_only() {
     assert_git_exclude_not_contains "$TARGET_DIR/$SHARED_DIR"
     
     # Verify mode detection
-    assertTrue "Should detect commit mode" "[ \"$HAS_COMMIT_MODE\" = \"true\" ]"
-    assertFalse "Should not detect local mode" "[ \"$HAS_LOCAL_MODE\" = \"true\" ]"
+    assertTrue "Should detect commit mode" "[ \"$(is_mode_active commit)\" = \"true\" ]"
+    assertFalse "Should not detect local mode" "[ \"$(is_mode_active local)\" = \"true\" ]"
 }
 
 test_init_requires_mode_flag() {
@@ -84,7 +84,7 @@ test_init_custom_target_dir() {
     assert_git_exclude_contains "$custom_dir/$LOCAL_DIR"
     
     # Verify mode detection works with custom paths
-    assertTrue "Should detect local mode with custom dir" "[ \"$HAS_LOCAL_MODE\" = \"true\" ]"
+    assertTrue "Should detect local mode with custom dir" "[ \"$(is_mode_active local)\" = \"true\" ]"
 }
 
 test_init_creates_correct_manifest_headers() {
@@ -115,7 +115,7 @@ test_init_twice_same_mode_idempotent() {
     
     # Should still only have local mode
     assert_file_not_exists "$COMMIT_MANIFEST_FILE"
-    assertFalse "Should not create commit mode" "[ \"$HAS_COMMIT_MODE\" = \"true\" ]"
+    assertFalse "Should not create commit mode" "[ \"$(is_mode_active commit)\" = \"true\" ]"
 }
 
 test_init_different_modes_creates_dual_mode() {
@@ -129,7 +129,7 @@ test_init_different_modes_creates_dual_mode() {
     # Verify both modes exist
     assert_local_mode_exists
     assert_commit_mode_exists
-    assertTrue "Should detect both modes" "[ \"$HAS_LOCAL_MODE\" = \"true\" ] && [ \"$HAS_COMMIT_MODE\" = \"true\" ]"
+    assertTrue "Should detect both modes" "[ \"$(is_mode_active local)\" = \"true\" ] && [ \"$(is_mode_active commit)\" = \"true\" ]"
 }
 
 # ============================================================================
@@ -156,7 +156,7 @@ test_lazy_init_local_from_commit() {
     assertEquals "Headers should match" "$commit_header" "$local_header"
     
     # Verify mode detection updated
-    assertTrue "Should detect both modes" "[ \"$HAS_LOCAL_MODE\" = \"true\" ] && [ \"$HAS_COMMIT_MODE\" = \"true\" ]"
+    assertTrue "Should detect both modes" "[ \"$(is_mode_active local)\" = \"true\" ] && [ \"$(is_mode_active commit)\" = \"true\" ]"
 }
 
 test_lazy_init_commit_from_local() {
@@ -174,7 +174,7 @@ test_lazy_init_commit_from_local() {
     assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
     
     # Verify mode detection updated
-    assertTrue "Should detect both modes" "[ \"$HAS_LOCAL_MODE\" = \"true\" ] && [ \"$HAS_COMMIT_MODE\" = \"true\" ]"
+    assertTrue "Should detect both modes" "[ \"$(is_mode_active local)\" = \"true\" ] && [ \"$(is_mode_active commit)\" = \"true\" ]"
 }
 
 test_lazy_init_preserves_existing_rules() {
@@ -283,8 +283,8 @@ test_mode_detection_no_modes() {
     assert_no_modes_exist
     
     # Test mode detection with no manifests
-    assertFalse "Should not detect local mode" "[ \"$HAS_LOCAL_MODE\" = \"true\" ]"
-    assertFalse "Should not detect commit mode" "[ \"$HAS_COMMIT_MODE\" = \"true\" ]"
+    assertFalse "Should not detect local mode" "[ \"$(is_mode_active local)\" = \"true\" ]"
+    assertFalse "Should not detect commit mode" "[ \"$(is_mode_active commit)\" = \"true\" ]"
 }
 
 test_add_rule_single_mode_auto_select() {
@@ -339,14 +339,14 @@ test_mode_detection_after_deinit() {
     # Setup: Both modes exist
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit
-    assertTrue "Should detect both modes" "[ \"$HAS_LOCAL_MODE\" = \"true\" ] && [ \"$HAS_COMMIT_MODE\" = \"true\" ]"
+    assertTrue "Should detect both modes" "[ \"$(is_mode_active local)\" = \"true\" ] && [ \"$(is_mode_active commit)\" = \"true\" ]"
     
     # Test: Deinit one mode
     cmd_deinit --local -y
     
     # Expected: Should only detect commit mode
-    assertFalse "Should not detect local mode after deinit" "[ \"$HAS_LOCAL_MODE\" = \"true\" ]"
-    assertTrue "Should still detect commit mode" "[ \"$HAS_COMMIT_MODE\" = \"true\" ]"
+    assertFalse "Should not detect local mode after deinit" "[ \"$(is_mode_active local)\" = \"true\" ]"
+    assertTrue "Should still detect commit mode" "[ \"$(is_mode_active commit)\" = \"true\" ]"
 }
 
 test_smart_mode_selection_prefers_existing() {

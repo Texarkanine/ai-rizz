@@ -28,13 +28,16 @@ source_ai_rizz
 
 test_migrate_rule_local_to_commit() {
     # Setup: Rule in local mode
+    ls -hal
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    ls -hal
     cmd_add_rule "rule1.mdc" --local
+    ls -hal
     assert_file_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
     
     # Test: Add same rule to commit mode
     cmd_add_rule "rule1.mdc" --commit
-    
+    ls -hal
     # Expected: Rule moved from local to commit
     assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
     assert_file_exists "$TARGET_DIR/$SHARED_DIR/rule1.mdc"

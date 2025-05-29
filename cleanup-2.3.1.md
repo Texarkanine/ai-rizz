@@ -294,4 +294,50 @@ Create the following helper functions just before the Commands section:
    - Carefully identify start/end of duplicated blocks
    - Include necessary context in helper functions
 
-By implementing this comprehensive plan, we will successfully consolidate all duplicated logic patterns in the ai-rizz script, significantly improving maintainability while preserving functionality. 
+By implementing this comprehensive plan, we will successfully consolidate all duplicated logic patterns in the ai-rizz script, significantly improving maintainability while preserving functionality.
+
+# Cleanup 2.3.1 Progress Report
+
+## Summary of Completed Work
+
+We've successfully implemented the core logic consolidation planned in this cleanup phase:
+
+1. **Created 7 Helper Functions** to eliminate code duplication:
+   - `ensure_initialized_and_valid()` - Combined initialization check and manifest integrity validation
+   - `select_mode()` - Smart mode selection based on available modes
+   - `initialize_mode_if_needed()` - Lazy initialization with tracking
+   - `get_manifest_and_target()` - Mode-based manifest and target directory selection
+   - `ensure_mdc_extension()` - Normalize file extensions
+   - `check_repository_item()` - Validate item existence in repository
+   - `migrate_from_opposite_mode()` - Complex conflict resolution migration
+
+2. **Refactored Command Functions** to use these helper functions:
+   - Updated `cmd_list`, `cmd_add_rule`, `cmd_add_ruleset`, `cmd_remove_rule`, etc.
+   - Eliminated large blocks of duplicated code in command functions
+   - Improved clarity and maintainability of complex logic
+
+3. **Fixed Critical Implementation Issues**:
+   - Corrected helper function design to return values via stdout instead of using `eval` to set variables
+   - Fixed manifest delimiter issues by ensuring consistent tab character usage with `printf`
+   - Added proper debug diagnostics to trace execution flow
+   - Fixed target directory path initialization and validation
+
+## Current Status
+
+The consolidation is functionally complete but tests are still revealing edge cases that need to be addressed:
+
+- Tests that involve mode transitions (local to commit or vice versa) are failing in some cases
+- There are path resolution issues when target directories are combined with mode subdirectories
+- Manifest format and delimiter consistency needs additional work
+
+## Next Steps
+
+To complete this phase fully:
+
+1. Fix remaining test failures by addressing target path construction
+2. Ensure manifest file format is consistent and properly parsed in all cases
+3. Add additional test coverage for the refactored helper functions
+4. Complete validation of all user flows involving mode transitions
+5. Document the consolidated patterns for future maintainers
+
+The code is already significantly more maintainable with these changes, with duplicated logic successfully consolidated into reusable helper functions as planned. 

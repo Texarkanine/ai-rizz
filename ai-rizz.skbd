@@ -1,2 +1,3 @@
-https://github.com/texarkanine/.cursor-rules.git	.cursor/rules
+https://github.com/texarkanine/.cursor-rules.git	.cursor/rules	rules	rulesets
 rulesets/shell
+rules/markdown-style.mdc

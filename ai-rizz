@@ -337,7 +337,6 @@ get_any_manifest_metadata() {
 #
 # Arguments:
 #   $1 - Path to manifest file (required)
-#   $2 - Mode: "local" or "commit" (required)
 #
 # Outputs:
 #   None (sets global variables)
@@ -348,7 +347,6 @@ get_any_manifest_metadata() {
 #
 parse_manifest_metadata() {
 	pmm_manifest_file="${1}"
-	pmm_mode="${2}"  # "local" or "commit"
 	
 	if [ ! -f "${pmm_manifest_file}" ]; then
 		return 1
@@ -419,12 +417,12 @@ git_sync() {
   
   # Clone/update project repository
   if [ ! -d "${REPO_DIR}" ]; then
-	if ! git clone "${gs_repo_url}" "${REPO_DIR}" 2>&1 >/dev/null; then
+	if ! git clone "${gs_repo_url}" "${REPO_DIR}" >/dev/null; then
 	  warn "Failed to clone repository: ${gs_repo_url} (repository unavailable or invalid URL)"
 	  return 1
 	fi
   else
-	if ! (cd "${REPO_DIR}" && git pull 2>&1 >/dev/null); then
+	if ! (cd "${REPO_DIR}" && git pull >/dev/null); then
 	  warn "Failed to update repository: ${gs_repo_url} (repository unavailable or network issue)"
 	  return 1
 	fi
@@ -1485,9 +1483,11 @@ ensure_initialized() {
 # Initialize the repository (progressive initialization)
 #
 # Creates local or commit mode with manifest file, target directory structure,
-# and git excludes (for local mode). Prompts for missing parameters, validates
-# mode compatibility, syncs source repository, and handles idempotent re-init.
-# Supports progressive dual-mode by preserving existing mode configuration.
+# and git excludes (for local mode). 
+#
+# Prompts for missing parameters, validates mode compatibility, syncs source 
+# repository, and handles idempotent re-init. Supports progressive dual-mode 
+# by preserving existing mode configuration.
 #
 # Key behaviors:
 # • Prompts for missing source repo, target dir, and mode
@@ -2095,6 +2095,8 @@ check_rule_downgrade_conflict() {
 			temp_file=$(mktemp)
 			echo "$commit_entries" > "$temp_file"
 			
+			conflict_found=false
+			
 			while IFS= read -r entry; do
 				if [ -n "$entry" ]; then
 					entry_path="$REPO_DIR/$entry"
@@ -2102,14 +2104,20 @@ check_rule_downgrade_conflict() {
 						# This is a ruleset - check if it contains our rule
 						if find "$entry_path" -name "$rule_filename" -type f -o -name "$rule_filename" -type l | grep -q .; then
 							warn "Cannot add individual rule '$crdc_rule' to local mode: it's part of committed ruleset '$entry'. Use 'ai-rizz add-ruleset $(basename "$entry") --local' to move the entire ruleset."
-							rm -f "$temp_file"
-							return 1
+							conflict_found=true
+							break
 						fi
 					fi
 				fi
 			done < "$temp_file"
 			
+			# Close file handle before removing file
 			rm -f "$temp_file"
+			
+			# Return conflict status after cleanup
+			if [ "$conflict_found" = "true" ]; then
+				return 1
+			fi
 		fi
 	fi
 	
@@ -2290,7 +2298,6 @@ cmd_add_ruleset() {
 	# Select manifest and target based on mode using helper function
 	cars_manifest_and_target=$(get_manifest_and_target "${cars_mode}")
 	cars_manifest_file=$(echo "${cars_manifest_and_target}" | cut -f1 -d"	") # Using literal tab as delimiter
-	cars_target_dir=$(echo "${cars_manifest_and_target}" | cut -f2 -d"	") # Using literal tab as delimiter
 
 	# Process each ruleset
 	for cars_ruleset in ${cars_rulesets}; do
@@ -2688,7 +2695,6 @@ handle_sync_cleanup() {
 # gracefully, and ensures target directories match manifest contents.
 #
 # Globals:
-#   HAS_LOCAL_MODE - Local mode state
 #   COMMIT_SOURCE_REPO - Commit mode source repository
 #   LOCAL_SOURCE_REPO - Local mode source repository
 #
@@ -2785,22 +2791,17 @@ EOF
 # Initialize ai-rizz state at startup (two-phase to avoid circular dependencies)
 #
 # Bootstraps ai-rizz state in careful order to avoid circular dependencies.
-# Phase 1 does minimal file detection. Phase 2 performs
-# full mode detection with directory validation. Phase 3 sets up repository
-# directory for the current project. Called once at script startup.
+# Sets up default paths and caches manifest metadata for the current project.
+# Called once at script startup.
 #
 # Globals:
-#   COMMIT_SOURCE_REPO - Set during initialization
-#   LOCAL_SOURCE_REPO - Set during initialization
-#   COMMIT_TARGET_DIR - Set during initialization
-#   LOCAL_TARGET_DIR - Set during initialization
-#   COMMIT_RULES_PATH - Set during initialization
-#   LOCAL_RULES_PATH - Set during initialization
-#   COMMIT_RULESETS_PATH - Set during initialization
-#   LOCAL_RULESETS_PATH - Set during initialization
-#   SOURCE_REPO_RULES_PATH - Set during initialization
-#   SOURCE_REPO_RULESETS_PATH - Set during initialization
-#   REPO_DIR - Set during initialization
+#   RULES_PATH - Set to default rules path
+#   RULESETS_PATH - Set to default rulesets path
+#   REPO_DIR - Set to the repository directory for current project
+#   COMMIT_SOURCE_REPO - Set during cache_manifest_metadata
+#   LOCAL_SOURCE_REPO - Set during cache_manifest_metadata
+#   COMMIT_TARGET_DIR - Set during cache_manifest_metadata
+#   LOCAL_TARGET_DIR - Set during cache_manifest_metadata
 #
 # Arguments:
 #   None
@@ -2910,7 +2911,7 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 	done
 	
 	# Set the processed arguments back for command processing
-	# shellcheck disable=SC2086
+	# shellcheck disable=SC2086 # Intentional word splitting to restore original argument structure
 	set -- $PROCESSED_ARGS
 	
 	# Initialize ai-rizz state for production use
@@ -2922,74 +2923,74 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 
 	case "${main_command}" in
 	init)
-	  cmd_init "$@"
-	  ;;
+		cmd_init "$@"
+		;;
 	deinit)
-	  cmd_deinit "$@"
-	  ;;
+		cmd_deinit "$@"
+		;;
 	list)
-	  cmd_list "$@"
-	  ;;
+		cmd_list "$@"
+		;;
 	add)
-	  if [ $# -eq 0 ]; then
-		error "Missing type: 'rule' or 'ruleset'"
-	  fi
-	  
-	  main_type=$1
-	  shift
-	  
-	  case "${main_type}" in
-		rule)
-		  if [ $# -eq 0 ]; then
-			error "Missing rule name"
-		  fi
-		  cmd_add_rule "$@"
-		  ;;
-		ruleset)
-		  if [ $# -eq 0 ]; then
-			error "Missing ruleset name"
-		  fi
-		  cmd_add_ruleset "$@"
-		  ;;
-		*)
-		  error "Invalid type: ${main_type}. Must be 'rule' or 'ruleset'"
-		  ;;
-	  esac
-	  ;;
+		if [ $# -eq 0 ]; then
+			error "Missing type: 'rule' or 'ruleset'"
+		fi
+		
+		main_type=$1
+		shift
+		
+		case "${main_type}" in
+			rule)
+				if [ $# -eq 0 ]; then
+					error "Missing rule name"
+				fi
+				cmd_add_rule "$@"
+				;;
+			ruleset)
+				if [ $# -eq 0 ]; then
+					error "Missing ruleset name"
+				fi
+				cmd_add_ruleset "$@"
+				;;
+			*)
+				error "Invalid type: ${main_type}. Must be 'rule' or 'ruleset'"
+				;;
+		esac
+		;;
 	remove)
-	  if [ $# -eq 0 ]; then
-		error "Missing type: 'rule' or 'ruleset'"
-	  fi
-	  
-	  main_type=$1
-	  shift
-	  
-	  case "${main_type}" in
-		rule)
-		  if [ $# -eq 0 ]; then
-			error "Missing rule name"
-		  fi
-		  cmd_remove_rule "$@"
-		  ;;
-		ruleset)
-		  if [ $# -eq 0 ]; then
-			error "Missing ruleset name"
-		  fi
-		  cmd_remove_ruleset "$@"
-		  ;;
-		*)
-		  error "Invalid type: ${main_type}. Must be 'rule' or 'ruleset'"
-		  ;;
-	  esac
-	  ;;
+		if [ $# -eq 0 ]; then
+			error "Missing type: 'rule' or 'ruleset'"
+		fi
+		
+		main_type=$1
+		shift
+		
+		case "${main_type}" in
+			rule)
+				if [ $# -eq 0 ]; then
+					error "Missing rule name"
+				fi
+				cmd_remove_rule "$@"
+				;;
+			ruleset)
+				if [ $# -eq 0 ]; then
+					error "Missing ruleset name"
+				fi
+				cmd_remove_ruleset "$@"
+				;;
+			*)
+				error "Invalid type: ${main_type}. Must be 'rule' or 'ruleset'"
+				;;
+		esac
+		;;
 	sync)
-	  cmd_sync "$@"
-	  ;;
+		cmd_sync "$@"
+		;;
 	help)
-	  cmd_help "$@"
-	  ;;
+		cmd_help "$@"
+		;;
 	*)
-	  error "Unknown command: ${main_command}. Run 'ai-rizz help' for usage"
-	  ;;
-  esac
+		error "Unknown command: ${main_command}. Run 'ai-rizz help' for usage"
+		;;
+	esac
 fi

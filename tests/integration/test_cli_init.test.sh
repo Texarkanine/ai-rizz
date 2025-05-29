@@ -32,21 +32,21 @@ test_init_local_mode_creates_proper_structure() {
     assertEquals "Init local mode should succeed" 0 $?
     
     # Verify local mode structure created
-    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.inf' ]"
+    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.skbd' ]"
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
     
     # Verify commit mode not created
-    assertFalse "Commit manifest should not exist" "[ -f 'ai-rizz.inf' ]"
+    assertFalse "Commit manifest should not exist" "[ -f 'ai-rizz.skbd' ]"
     assertFalse "Shared directory should not exist" "[ -d '.cursor/rules/shared' ]"
     
     # Verify git excludes
-    assert_git_excludes "ai-rizz.local.inf"
+    assert_git_excludes "ai-rizz.local.skbd"
     assert_git_excludes ".cursor/rules/local"
     
-    # Verify manifest header
+    # Verify manifest header (new 4-field format with defaults)
     local first_line
-    first_line=$(head -n1 ai-rizz.local.inf)
-    assertEquals "Local manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules" "$first_line"
+    first_line=$(head -n1 ai-rizz.local.skbd)
+    assertEquals "Local manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
 
 # Test: ai-rizz init <repo> --commit
@@ -57,21 +57,21 @@ test_init_commit_mode_creates_proper_structure() {
     assertEquals "Init commit mode should succeed" 0 $?
     
     # Verify commit mode structure created
-    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.inf' ]"
+    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.skbd' ]"
     assertTrue "Shared directory should exist" "[ -d '.cursor/rules/shared' ]"
     
     # Verify local mode not created
-    assertFalse "Local manifest should not exist" "[ -f 'ai-rizz.local.inf' ]"
+    assertFalse "Local manifest should not exist" "[ -f 'ai-rizz.local.skbd' ]"
     assertFalse "Local directory should not exist" "[ -d '.cursor/rules/local' ]"
     
     # Verify no git excludes for commit mode
-    assert_git_tracks "ai-rizz.inf"
+    assert_git_tracks "ai-rizz.skbd"
     assert_git_tracks ".cursor/rules/shared"
     
-    # Verify manifest header
+    # Verify manifest header (new 4-field format with defaults)
     local first_line
-    first_line=$(head -n1 ai-rizz.inf)
-    assertEquals "Commit manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules" "$first_line"
+    first_line=$(head -n1 ai-rizz.skbd)
+    assertEquals "Commit manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
 
 # Test: ai-rizz init <repo> (no mode flag)
@@ -106,8 +106,8 @@ test_init_custom_target_directory() {
     
     # Verify manifest uses custom directory
     local first_line
-    first_line=$(head -n1 ai-rizz.local.inf)
-    assertEquals "Manifest should use custom directory" "file://$MOCK_REPO_DIR	$custom_dir" "$first_line"
+    first_line=$(head -n1 ai-rizz.local.skbd)
+    assertEquals "Manifest should use custom directory" "file://$MOCK_REPO_DIR	$custom_dir	rules	rulesets" "$first_line"
 }
 
 # Test: ai-rizz init invalid://repo --local
@@ -121,7 +121,7 @@ test_init_invalid_repository_url() {
     assert_output_contains "$output" "COMMAND_FAILED"
     
     # Should not create any files on failure
-    assertFalse "Should not create manifest on failure" "[ -f 'ai-rizz.local.inf' ]"
+    assertFalse "Should not create manifest on failure" "[ -f 'ai-rizz.local.skbd' ]"
     assertFalse "Should not create directory on failure" "[ -d '.cursor/rules/local' ]"
 }
 
@@ -133,7 +133,7 @@ test_init_twice_same_mode_idempotent() {
     assertEquals "First init should succeed" 0 $?
     
     # Verify initial state
-    assertTrue "Local manifest should exist after first init" "[ -f 'ai-rizz.local.inf' ]"
+    assertTrue "Local manifest should exist after first init" "[ -f 'ai-rizz.local.skbd' ]"
     assertTrue "Local directory should exist after first init" "[ -d '.cursor/rules/local' ]"
     
     # Second init with same mode
@@ -141,12 +141,12 @@ test_init_twice_same_mode_idempotent() {
     assertEquals "Second init should succeed (idempotent)" 0 $?
     
     # Verify state unchanged
-    assertTrue "Local manifest should still exist" "[ -f 'ai-rizz.local.inf' ]"
+    assertTrue "Local manifest should still exist" "[ -f 'ai-rizz.local.skbd' ]"
     assertTrue "Local directory should still exist" "[ -d '.cursor/rules/local' ]"
-    assertFalse "Commit mode should not be created" "[ -f 'ai-rizz.inf' ]"
+    assertFalse "Commit mode should not be created" "[ -f 'ai-rizz.skbd' ]"
     
     # Verify git excludes still correct
-    assert_git_excludes "ai-rizz.local.inf"
+    assert_git_excludes "ai-rizz.local.skbd"
     assert_git_excludes ".cursor/rules/local"
 }
 
@@ -162,15 +162,15 @@ test_init_different_modes_creates_dual_mode() {
     assertEquals "Commit init should succeed" 0 $?
     
     # Verify both modes exist
-    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.inf' ]"
-    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.inf' ]"
+    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.skbd' ]"
+    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.skbd' ]"
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
     assertTrue "Shared directory should exist" "[ -d '.cursor/rules/shared' ]"
     
     # Verify git excludes correct for dual mode
-    assert_git_excludes "ai-rizz.local.inf"
+    assert_git_excludes "ai-rizz.local.skbd"
     assert_git_excludes ".cursor/rules/local"
-    assert_git_tracks "ai-rizz.inf"
+    assert_git_tracks "ai-rizz.skbd"
     assert_git_tracks ".cursor/rules/shared"
 }
 
@@ -186,7 +186,7 @@ test_init_with_extensionless_manifest_root() {
     # Manifest header should be correct
     local first_line
     first_line=$(head -n1 Gyattfile.local)
-    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules" "$first_line"
+    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
 
 # Test: ai-rizz init <repo> -f foo.bar --commit
@@ -201,7 +201,7 @@ test_init_with_single_extension_manifest_root() {
     # Manifest header should be correct
     local first_line
     first_line=$(head -n1 foo.bar)
-    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules" "$first_line"
+    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
 
 # Test: ai-rizz init <repo> -f foo.baz.bar --local
@@ -216,7 +216,7 @@ test_init_with_multi_dot_manifest_root() {
     # Manifest header should be correct
     local first_line
     first_line=$(head -n1 foo.baz.local.bar)
-    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules" "$first_line"
+    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
 
 # Test: ai-rizz init <repo> -f "manifest with spaces.conf" --local
@@ -231,7 +231,7 @@ test_init_with_spaces_in_manifest_name() {
     # Manifest header should be correct
     local first_line
     first_line=$(head -n1 "manifest with spaces.local.conf")
-    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules" "$first_line"
+    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
 
 # Load and run shunit2

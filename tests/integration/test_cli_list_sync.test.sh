@@ -151,7 +151,7 @@ test_sync_handles_repository_failures() {
     assertEquals "Init should succeed" 0 $?
     
     # Manually corrupt the manifest to point to invalid repository
-    echo "invalid://nonexistent	.cursor/rules" > ai-rizz.local.inf
+    echo "invalid://nonexistent	.cursor/rules" > ai-rizz.local.skbd
     
     # Remove repository cache to force fresh clone attempt with invalid URL
     # The repository cache is at ~/.config/ai-rizz/repos/{project_name}/repo
@@ -187,8 +187,8 @@ test_sync_resolves_conflicts_commit_wins() {
     # So we expect the rule to be in commit mode only after the second add
     
     # Verify the rule was migrated to commit mode
-    assert_manifest_not_contains "ai-rizz.local.inf" "rules/rule2.mdc"
-    assert_manifest_contains "ai-rizz.inf" "rules/rule2.mdc"
+    assert_manifest_not_contains "ai-rizz.local.skbd" "rules/rule2.mdc"
+    assert_manifest_contains "ai-rizz.skbd" "rules/rule2.mdc"
     
     # Rule should be deployed to shared directory
     assert_rule_deployed ".cursor/rules/shared" "rule2"

@@ -74,7 +74,7 @@ test_init_creates_correct_manifest_headers() {
     
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
     first_line=$(head -n1 "$LOCAL_MANIFEST_FILE")
-    assertEquals "Local manifest header incorrect" "$SOURCE_REPO	$TARGET_DIR" "$first_line"
+    assertEquals "Local manifest header incorrect" "$SOURCE_REPO	$TARGET_DIR	rules	rulesets" "$first_line"
     
     # Clean up and test commit mode in separate directory
     tearDown
@@ -82,7 +82,7 @@ test_init_creates_correct_manifest_headers() {
     
     cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit  
     first_line=$(head -n1 "$COMMIT_MANIFEST_FILE")
-    assertEquals "Commit manifest header incorrect" "$SOURCE_REPO	$TARGET_DIR" "$first_line"
+    assertEquals "Commit manifest header incorrect" "$SOURCE_REPO	$TARGET_DIR	rules	rulesets" "$first_line"
 }
 
 test_init_local_creates_git_excludes() {

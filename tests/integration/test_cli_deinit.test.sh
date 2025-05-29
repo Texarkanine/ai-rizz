@@ -35,8 +35,8 @@ test_deinit_local_mode_only() {
     assertEquals "Setup should succeed" 0 $?
     
     # Verify both modes exist
-    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.inf' ]"
-    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.inf' ]"
+    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.skbd' ]"
+    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.skbd' ]"
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
     assertTrue "Shared directory should exist" "[ -d '.cursor/rules/shared' ]"
     
@@ -45,16 +45,16 @@ test_deinit_local_mode_only() {
     assertEquals "Deinit local should succeed" 0 $?
     
     # Verify local mode removed
-    assertFalse "Local manifest should be removed" "[ -f 'ai-rizz.local.inf' ]"
+    assertFalse "Local manifest should be removed" "[ -f 'ai-rizz.local.skbd' ]"
     assertFalse "Local directory should be removed" "[ -d '.cursor/rules/local' ]"
     
     # Verify commit mode intact
-    assertTrue "Commit manifest should remain" "[ -f 'ai-rizz.inf' ]"
+    assertTrue "Commit manifest should remain" "[ -f 'ai-rizz.skbd' ]"
     assertTrue "Shared directory should remain" "[ -d '.cursor/rules/shared' ]"
     assert_rule_deployed ".cursor/rules/shared" "rule2"
     
     # Verify git excludes cleaned up
-    assert_git_tracks "ai-rizz.local.inf"
+    assert_git_tracks "ai-rizz.local.skbd"
     assert_git_tracks ".cursor/rules/local"
 }
 
@@ -69,8 +69,8 @@ test_deinit_commit_mode_only() {
     assertEquals "Setup should succeed" 0 $?
     
     # Verify both modes exist
-    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.inf' ]"
-    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.inf' ]"
+    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.skbd' ]"
+    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.skbd' ]"
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
     assertTrue "Shared directory should exist" "[ -d '.cursor/rules/shared' ]"
     
@@ -79,16 +79,16 @@ test_deinit_commit_mode_only() {
     assertEquals "Deinit commit should succeed" 0 $?
     
     # Verify commit mode removed
-    assertFalse "Commit manifest should be removed" "[ -f 'ai-rizz.inf' ]"
+    assertFalse "Commit manifest should be removed" "[ -f 'ai-rizz.skbd' ]"
     assertFalse "Shared directory should be removed" "[ -d '.cursor/rules/shared' ]"
     
     # Verify local mode intact
-    assertTrue "Local manifest should remain" "[ -f 'ai-rizz.local.inf' ]"
+    assertTrue "Local manifest should remain" "[ -f 'ai-rizz.local.skbd' ]"
     assertTrue "Local directory should remain" "[ -d '.cursor/rules/local' ]"
     assert_rule_deployed ".cursor/rules/local" "rule1"
     
     # Verify git excludes still correct for local mode
-    assert_git_excludes "ai-rizz.local.inf"
+    assert_git_excludes "ai-rizz.local.skbd"
     assert_git_excludes ".cursor/rules/local"
 }
 
@@ -103,8 +103,8 @@ test_deinit_all_modes() {
     assertEquals "Setup should succeed" 0 $?
     
     # Verify both modes exist
-    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.inf' ]"
-    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.inf' ]"
+    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.skbd' ]"
+    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.skbd' ]"
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
     assertTrue "Shared directory should exist" "[ -d '.cursor/rules/shared' ]"
     
@@ -113,13 +113,13 @@ test_deinit_all_modes() {
     assertEquals "Deinit all should succeed" 0 $?
     
     # Verify everything removed
-    assertFalse "Local manifest should be removed" "[ -f 'ai-rizz.local.inf' ]"
-    assertFalse "Commit manifest should be removed" "[ -f 'ai-rizz.inf' ]"
+    assertFalse "Local manifest should be removed" "[ -f 'ai-rizz.local.skbd' ]"
+    assertFalse "Commit manifest should be removed" "[ -f 'ai-rizz.skbd' ]"
     assertFalse "Local directory should be removed" "[ -d '.cursor/rules/local' ]"
     assertFalse "Shared directory should be removed" "[ -d '.cursor/rules/shared' ]"
     
     # Verify git excludes cleaned up
-    assert_git_tracks "ai-rizz.local.inf"
+    assert_git_tracks "ai-rizz.local.skbd"
     assert_git_tracks ".cursor/rules/local"
 }
 
@@ -160,7 +160,7 @@ test_deinit_requires_confirmation() {
     # Should either show confirmation prompt or require -y flag
     if echo "$output" | grep -q "DEINIT_CANCELLED"; then
         # Command was cancelled or failed - files should remain
-        assertTrue "Local manifest should remain after cancellation" "[ -f 'ai-rizz.local.inf' ]"
+        assertTrue "Local manifest should remain after cancellation" "[ -f 'ai-rizz.local.skbd' ]"
         assertTrue "Local directory should remain after cancellation" "[ -d '.cursor/rules/local' ]"
     else
         # Command showed prompt - should contain confirmation text
@@ -177,7 +177,7 @@ test_deinit_with_yes_flag_skips_confirmation() {
     assertEquals "Setup should succeed" 0 $?
     
     # Verify initial state
-    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.inf' ]"
+    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.skbd' ]"
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
     
     # Deinit with -y flag (should not prompt)
@@ -189,7 +189,7 @@ test_deinit_with_yes_flag_skips_confirmation() {
     assert_output_not_contains "$output" "confirm\|sure\|yes\|no"
     
     # Verify removal completed
-    assertFalse "Local manifest should be removed" "[ -f 'ai-rizz.local.inf' ]"
+    assertFalse "Local manifest should be removed" "[ -f 'ai-rizz.local.skbd' ]"
     assertFalse "Local directory should be removed" "[ -d '.cursor/rules/local' ]"
 }
 
@@ -202,19 +202,19 @@ test_deinit_single_mode_repository() {
     assertEquals "Setup should succeed" 0 $?
     
     # Verify only local mode exists
-    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.inf' ]"
-    assertFalse "Commit manifest should not exist" "[ -f 'ai-rizz.inf' ]"
+    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.skbd' ]"
+    assertFalse "Commit manifest should not exist" "[ -f 'ai-rizz.skbd' ]"
     
     # Deinit local mode
     run_ai_rizz deinit --local -y
     assertEquals "Deinit should succeed" 0 $?
     
     # Verify complete removal
-    assertFalse "Local manifest should be removed" "[ -f 'ai-rizz.local.inf' ]"
+    assertFalse "Local manifest should be removed" "[ -f 'ai-rizz.local.skbd' ]"
     assertFalse "Local directory should be removed" "[ -d '.cursor/rules/local' ]"
     
     # Verify git excludes cleaned up
-    assert_git_tracks "ai-rizz.local.inf"
+    assert_git_tracks "ai-rizz.local.skbd"
     assert_git_tracks ".cursor/rules/local"
 }
 
@@ -236,7 +236,7 @@ test_deinit_nonexistent_mode() {
     fi
     
     # Local mode should remain untouched
-    assertTrue "Local manifest should remain" "[ -f 'ai-rizz.local.inf' ]"
+    assertTrue "Local manifest should remain" "[ -f 'ai-rizz.local.skbd' ]"
     assertTrue "Local directory should remain" "[ -d '.cursor/rules/local' ]"
 }
 

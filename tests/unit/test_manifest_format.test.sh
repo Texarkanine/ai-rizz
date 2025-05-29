@@ -168,8 +168,48 @@ test_current_manifest_capabilities() {
     
     # Test that parse_manifest_metadata works with the new format
     parse_manifest_metadata "ai-rizz.skbd" "commit"
-    assertEquals "Should parse custom rules path" "docs" "$COMMIT_RULES_PATH"
-    assertEquals "Should parse custom rulesets path" "examples" "$COMMIT_RULESETS_PATH"
+    assertEquals "Should parse custom rules path" "docs" "$RULES_PATH"
+    assertEquals "Should parse custom rulesets path" "examples" "$RULESETS_PATH"
+}
+
+# Test smart manifest filename parsing for CLI arguments
+test_smart_manifest_filename_parsing() {
+    # Test detecting local manifest names and deriving root
+    
+    # Test 1: ai-rizz.local.inf -> root: ai-rizz.inf, local: ai-rizz.local.inf
+    result=$(parse_manifest_filename_argument "ai-rizz.local.inf")
+    root=$(echo "$result" | cut -f1)
+    local_name=$(echo "$result" | cut -f2)
+    assertEquals "Should extract root from .local.ext" "ai-rizz.inf" "$root"
+    assertEquals "Should keep local name" "ai-rizz.local.inf" "$local_name"
+    
+    # Test 2: foo.local.bar -> root: foo.bar, local: foo.local.bar
+    result=$(parse_manifest_filename_argument "foo.local.bar")
+    root=$(echo "$result" | cut -f1)
+    local_name=$(echo "$result" | cut -f2)
+    assertEquals "Should extract root from multi-extension" "foo.bar" "$root"
+    assertEquals "Should keep local name" "foo.local.bar" "$local_name"
+    
+    # Test 3: Gyattfile.local -> root: Gyattfile, local: Gyattfile.local  
+    result=$(parse_manifest_filename_argument "Gyattfile.local")
+    root=$(echo "$result" | cut -f1)
+    local_name=$(echo "$result" | cut -f2)
+    assertEquals "Should extract root from extensionless" "Gyattfile" "$root"
+    assertEquals "Should keep local name" "Gyattfile.local" "$local_name"
+    
+    # Test 4: ai-rizz.inf -> root: ai-rizz.inf, local: ai-rizz.local.inf
+    result=$(parse_manifest_filename_argument "ai-rizz.inf")
+    root=$(echo "$result" | cut -f1)
+    local_name=$(echo "$result" | cut -f2)
+    assertEquals "Should use as root when not local" "ai-rizz.inf" "$root"
+    assertEquals "Should derive local name" "ai-rizz.local.inf" "$local_name"
+    
+    # Test 5: Gyattfile -> root: Gyattfile, local: Gyattfile.local
+    result=$(parse_manifest_filename_argument "Gyattfile")
+    root=$(echo "$result" | cut -f1)
+    local_name=$(echo "$result" | cut -f2)
+    assertEquals "Should use as root when extensionless" "Gyattfile" "$root"
+    assertEquals "Should derive local name for extensionless" "Gyattfile.local" "$local_name"
 }
 
 # Include and run shunit2

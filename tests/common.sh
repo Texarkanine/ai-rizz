@@ -9,8 +9,8 @@ SHARED_DIR="shared"
 CONFIG_DIR="$HOME/.config/ai-rizz"
 
 # New manifest file constants for dual-mode testing
-COMMIT_MANIFEST_FILE="ai-rizz.inf"
-LOCAL_MANIFEST_FILE="ai-rizz.local.inf"
+COMMIT_MANIFEST_FILE="ai-rizz.skbd"
+LOCAL_MANIFEST_FILE="ai-rizz.local.skbd"
 
 # New directory constants  
 LOCAL_DIR="local"
@@ -208,30 +208,6 @@ assert_git_exclude_contains() {
 
 assert_git_exclude_not_contains() {
     assertFalse "Git exclude should not contain $1" "grep -q '^$1$' .git/info/exclude"
-}
-
-# Legacy repository setup for migration testing
-setup_legacy_local_repo() {
-    # Create old-style local mode setup
-    echo "$SOURCE_REPO	$TARGET_DIR" > "$COMMIT_MANIFEST_FILE"
-    echo "rules/rule1.mdc" >> "$COMMIT_MANIFEST_FILE"
-    mkdir -p "$TARGET_DIR/$SHARED_DIR"
-    cp "$REPO_DIR/rules/rule1.mdc" "$TARGET_DIR/$SHARED_DIR/"
-    
-    # Add to git exclude to simulate legacy local mode
-    mkdir -p .git/info
-    echo "$COMMIT_MANIFEST_FILE" > .git/info/exclude
-    echo "$TARGET_DIR/$SHARED_DIR" >> .git/info/exclude
-}
-
-setup_legacy_commit_repo() {
-    # Create old-style commit mode setup  
-    echo "$SOURCE_REPO	$TARGET_DIR" > "$COMMIT_MANIFEST_FILE"
-    echo "rules/rule1.mdc" >> "$COMMIT_MANIFEST_FILE"
-    mkdir -p "$TARGET_DIR/$SHARED_DIR"
-    cp "$REPO_DIR/rules/rule1.mdc" "$TARGET_DIR/$SHARED_DIR/"
-    
-    # No git exclude entries = commit mode
 }
 
 # Reset ai-rizz global state (call after sourcing to ensure clean state)

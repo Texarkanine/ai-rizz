@@ -21,7 +21,6 @@ DEFAULT_RULES_PATH="rules"                          # Added for default rules pa
 DEFAULT_RULESETS_PATH="rulesets"                    # Added for default rulesets path
 
 # Dynamic manifest filenames (set during initialization with -s/--skibidi or -f/--manifest)
-CUSTOM_MANIFEST_ROOT=""
 
 # Mode state (set once during initialization, read-only afterward)
 HAS_COMMIT_MODE=false
@@ -823,8 +822,6 @@ lazy_init_mode() {
 			HAS_LOCAL_MODE=true
 			LOCAL_SOURCE_REPO="${lim_source_repo}"
 			LOCAL_TARGET_DIR="${lim_target_dir}"
-			LOCAL_RULES_PATH="${lim_rules_path}"
-			LOCAL_RULESETS_PATH="${lim_rulesets_path}"
 			;;
 			
 		commit)
@@ -838,8 +835,6 @@ lazy_init_mode() {
 		HAS_COMMIT_MODE=true
 		COMMIT_SOURCE_REPO="${lim_source_repo}"
 		COMMIT_TARGET_DIR="${lim_target_dir}"
-		COMMIT_RULES_PATH="${lim_rules_path}"
-		COMMIT_RULESETS_PATH="${lim_rulesets_path}"
 		;;
 		
 	*)
@@ -1316,7 +1311,7 @@ cmd_init() {
 			if [ "${HAS_LOCAL_MODE}" = "true" ]; then
 				# Check if parameters match existing configuration
 				if [ "${LOCAL_SOURCE_REPO}" = "${ci_source_repo}" ] && [ "${LOCAL_TARGET_DIR}" = "${ci_target_dir}" ]; then
-					echo "Initialized ai-rizz with\n\tsource: ${ci_source_repo}\n\ttarget: ${ci_target_dir}\n\tmode: ${ci_mode}"
+					printf "Initialized ai-rizz with\\n\\tsource: %s\\n\\ttarget: %s\\n\\tmode: %s\\n" "${ci_source_repo}" "${ci_target_dir}" "${ci_mode}"
 					return 0  # Idempotent success
 				else
 					error "Local mode already initialized with different parameters. Use 'ai-rizz deinit --local' first."
@@ -1327,7 +1322,7 @@ cmd_init() {
 			if [ "${HAS_COMMIT_MODE}" = "true" ]; then
 				# Check if parameters match existing configuration
 				if [ "${COMMIT_SOURCE_REPO}" = "${ci_source_repo}" ] && [ "${COMMIT_TARGET_DIR}" = "${ci_target_dir}" ]; then
-					echo "Initialized ai-rizz with\n\tsource: ${ci_source_repo}\n\ttarget: ${ci_target_dir}\n\tmode: ${ci_mode}"
+					printf "Initialized ai-rizz with\\n\\tsource: %s\\n\\ttarget: %s\\n\\tmode: %s\\n" "${ci_source_repo}" "${ci_target_dir}" "${ci_mode}"
 					return 0  # Idempotent success
 				else
 					error "Commit mode already initialized with different parameters. Use 'ai-rizz deinit --commit' first."
@@ -1362,8 +1357,6 @@ cmd_init() {
 			HAS_LOCAL_MODE=true
 			LOCAL_SOURCE_REPO="${ci_source_repo}"
 			LOCAL_TARGET_DIR="${ci_target_dir}"
-			LOCAL_RULES_PATH="${ci_rule_path}"
-			LOCAL_RULESETS_PATH="${ci_ruleset_path}"
 			;;
 			
 		commit)
@@ -1377,8 +1370,6 @@ cmd_init() {
 			HAS_COMMIT_MODE=true
 			COMMIT_SOURCE_REPO="${ci_source_repo}"
 			COMMIT_TARGET_DIR="${ci_target_dir}"
-			COMMIT_RULES_PATH="${ci_rule_path}"
-			COMMIT_RULESETS_PATH="${ci_ruleset_path}"
 			;;
 	esac
 	
@@ -1386,7 +1377,7 @@ cmd_init() {
 	RULES_PATH="${ci_rule_path}"
 	RULESETS_PATH="${ci_ruleset_path}"
 	
-	echo "Initialized ai-rizz with\n\tsource: ${ci_source_repo}\n\ttarget: ${ci_target_dir}\n\tmode: ${ci_mode}"
+	printf "Initialized ai-rizz with\\n\\tsource: %s\\n\\ttarget: %s\\n\\tmode: %s\\n" "${ci_source_repo}" "${ci_target_dir}" "${ci_mode}"
 	return 0
 }
 
@@ -2788,7 +2779,6 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 				fi
 				# Parse the provided filename to determine root and local names
 				manifest_names=$(parse_manifest_filename_argument "$2")
-				CUSTOM_MANIFEST_ROOT=$(echo "$manifest_names" | cut -f1)
 				COMMIT_MANIFEST_FILE=$(echo "$manifest_names" | cut -f1)
 				LOCAL_MANIFEST_FILE=$(echo "$manifest_names" | cut -f2)
 				shift 2
@@ -2806,6 +2796,7 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 	done
 	
 	# Set the processed arguments back for command processing
+	# shellcheck disable=SC2086
 	set -- $PROCESSED_ARGS
 	
 	# Initialize ai-rizz state for production use

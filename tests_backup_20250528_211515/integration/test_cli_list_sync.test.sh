@@ -39,6 +39,7 @@ test_list_shows_correct_glyphs_local_only() {
     assertEquals "Setup should succeed" 0 $?
     
     # Run list command
+    local output
     output=$(run_ai_rizz list 2>&1)
     assertEquals "List should succeed" 0 $?
     
@@ -64,6 +65,7 @@ test_list_shows_correct_glyphs_commit_only() {
     assertEquals "Setup should succeed" 0 $?
     
     # Run list command
+    local output
     output=$(run_ai_rizz list 2>&1)
     assertEquals "List should succeed" 0 $?
     
@@ -96,6 +98,7 @@ test_list_shows_correct_glyphs_dual_mode() {
     assertEquals "Setup should succeed" 0 $?
     
     # Run list command
+    local output
     output=$(run_ai_rizz list 2>&1)
     assertEquals "List should succeed" 0 $?
     
@@ -157,6 +160,7 @@ test_sync_handles_repository_failures() {
     rm -rf ~/.config/ai-rizz/repos/"$project_name"
     
     # Try to sync - should fail gracefully
+    local output
     output=$(run_ai_rizz sync 2>&1 || echo "SYNC_FAILED")
     
     # Should fail but not crash
@@ -197,6 +201,7 @@ test_sync_resolves_conflicts_commit_wins() {
 # Expected: Should show appropriate error message
 test_sync_without_initialization() {
     # Try to sync without any initialization
+    local output
     output=$(run_ai_rizz sync 2>&1 || echo "SYNC_FAILED")
     
     # Should fail with helpful error
@@ -207,6 +212,7 @@ test_sync_without_initialization() {
 # Expected: Should show appropriate error message
 test_list_without_initialization() {
     # Try to list without any initialization
+    local output
     output=$(run_ai_rizz list 2>&1 || echo "LIST_FAILED")
     
     # Should fail with helpful error

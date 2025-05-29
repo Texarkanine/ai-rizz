@@ -144,29 +144,30 @@ write_manifest() {
   return 0
 }
 
-# Add an entry to a manifest file if it's not already present
+# Add entry to manifest using progressive functions
 add_manifest_entry() {
-    manifest_file="$1"
-    entry="$2"
-    
-    if [ ! -f "$manifest_file" ]; then
-        echo "$entry" > "$manifest_file"
-    elif ! grep -Fxq "$entry" "$manifest_file"; then
-        echo "$entry" >> "$manifest_file"
-    fi
+  entry="$1"
+  
+  # Use progressive manifest function
+  add_manifest_entry_to_file "$MANIFEST_FILE" "$entry"
+  
+  # Update our local MANIFEST_ENTRIES for compatibility
+  MANIFEST_ENTRIES=$(read_manifest_entries "$MANIFEST_FILE" || true)
+  
+  return 0
 }
 
-# Remove an entry from a manifest file
+# Remove entry from manifest using progressive functions
 remove_manifest_entry() {
-    manifest_file="$1"
-    entry="$2"
-    
-    if [ -f "$manifest_file" ]; then
-        # Use a temporary file for atomic operation
-        temp_file=$(mktemp)
-        grep -Fxv "$entry" "$manifest_file" > "$temp_file" || true
-        mv "$temp_file" "$manifest_file"
-    fi
+  entry="$1"
+  
+  # Use progressive manifest function
+  remove_manifest_entry_from_file "$MANIFEST_FILE" "$entry"
+  
+  # Update our local MANIFEST_ENTRIES for compatibility
+  MANIFEST_ENTRIES=$(read_manifest_entries "$MANIFEST_FILE" || true)
+  
+  return 0
 }
 
 # Utility function to check if a file exists
@@ -207,42 +208,6 @@ assert_git_exclude_contains() {
 
 assert_git_exclude_not_contains() {
     assertFalse "Git exclude should not contain $1" "grep -q '^$1$' .git/info/exclude"
-}
-
-# Used to verify local mode git exclude management.
-# Validates that the specified path has been added to or removed from .gitignore.
-#
-# Usage: assert_git_exclude_exists <path>
-#        assert_git_exclude_not_exists <path>
-#
-# Arguments:
-#   path - The relative path that should be present/absent in .gitignore
-#
-# Returns:
-#   0 on success (assertion passed)
-#   1 on failure (via fail function)
-assert_git_exclude_exists() {
-    path="$1"
-    
-    assertTrue "Git should be initialized" "[ -d .git ]"
-    assertTrue ".gitignore should exist" "[ -f .gitignore ]"
-    
-    if ! grep -Fxq "$path" .gitignore; then
-        fail ".gitignore should contain: $path"
-    fi
-}
-
-assert_git_exclude_not_exists() {
-    path="$1"
-    
-    # If .gitignore doesn't exist, path is definitely not excluded
-    if [ ! -f .gitignore ]; then
-        return 0
-    fi
-    
-    if grep -Fxq "$path" .gitignore; then
-        fail ".gitignore should not contain: $path"
-    fi
 }
 
 # Reset ai-rizz global state (call after sourcing to ensure clean state)
@@ -624,8 +589,8 @@ run_ai_rizz() {
 #   1 if entry not found (via assertion failure)
 #
 assert_manifest_contains() {
-    manifest_file="$1"
-    entry="$2"
+    local manifest_file="$1"
+    local entry="$2"
     
     assertTrue "Manifest file should exist: $manifest_file" "[ -f '$manifest_file' ]"
     assertTrue "Manifest should contain entry: $entry" "grep -q '^$entry$' '$manifest_file'"
@@ -648,8 +613,8 @@ assert_manifest_contains() {
 #   1 if entry found (via assertion failure)
 #
 assert_manifest_not_contains() {
-    manifest_file="$1"
-    entry="$2"
+    local manifest_file="$1"
+    local entry="$2"
     
     if [ -f "$manifest_file" ]; then
         assertFalse "Manifest should not contain entry: $entry" "grep -q '^$entry$' '$manifest_file'"
@@ -672,7 +637,7 @@ assert_manifest_not_contains() {
 #   1 if path is not excluded (via assertion failure)
 #
 assert_git_excludes() {
-    path="$1"
+    local path="$1"
     
     assertTrue "Git exclude file should exist" "[ -f '.git/info/exclude' ]"
     assertTrue "Git should exclude path: $path" "grep -q '^$path$' '.git/info/exclude'"
@@ -694,7 +659,7 @@ assert_git_excludes() {
 #   1 if path is excluded (via assertion failure)
 #
 assert_git_tracks() {
-    path="$1"
+    local path="$1"
     
     if [ -f ".git/info/exclude" ]; then
         assertFalse "Git should not exclude path: $path" "grep -q '^$path$' '.git/info/exclude'"
@@ -718,9 +683,9 @@ assert_git_tracks() {
 #   1 if rule is not deployed (via assertion failure)
 #
 assert_rule_deployed() {
-    target_dir="$1"
-    rule_name="$2"
-    rule_file="$target_dir/$rule_name.mdc"
+    local target_dir="$1"
+    local rule_name="$2"
+    local rule_file="$target_dir/$rule_name.mdc"
     
     assertTrue "Target directory should exist: $target_dir" "[ -d '$target_dir' ]"
     assertTrue "Rule should be deployed: $rule_file" "[ -f '$rule_file' ]"
@@ -743,9 +708,9 @@ assert_rule_deployed() {
 #   1 if rule is deployed (via assertion failure)
 #
 assert_rule_not_deployed() {
-    target_dir="$1"
-    rule_name="$2"
-    rule_file="$target_dir/$rule_name.mdc"
+    local target_dir="$1"
+    local rule_name="$2"
+    local rule_file="$target_dir/$rule_name.mdc"
     
     assertFalse "Rule should not be deployed: $rule_file" "[ -f '$rule_file' ]"
 }
@@ -766,9 +731,10 @@ assert_rule_not_deployed() {
 #   1 if directory contains files (via assertion failure)
 #
 assert_directory_empty() {
-    dir="$1"
+    local dir="$1"
     
     if [ -d "$dir" ]; then
+        local file_count
         file_count=$(find "$dir" -type f | wc -l)
         assertEquals "Directory should be empty: $dir" "0" "$file_count"
     fi
@@ -791,11 +757,12 @@ assert_directory_empty() {
 #   1 if file count doesn't match (via assertion failure)
 #
 assert_directory_file_count() {
-    dir="$1"
-    expected_count="$2"
+    local dir="$1"
+    local expected_count="$2"
     
     assertTrue "Directory should exist: $dir" "[ -d '$dir' ]"
     
+    local actual_count
     actual_count=$(find "$dir" -type f -name "*.mdc" | wc -l)
     assertEquals "Directory file count mismatch: $dir" "$expected_count" "$actual_count"
 }
@@ -817,8 +784,8 @@ assert_directory_file_count() {
 #   1 if text not found (via assertion failure)
 #
 assert_output_contains() {
-    output="$1"
-    expected_text="$2"
+    local output="$1"
+    local expected_text="$2"
     
     echo "$output" | grep -q "$expected_text" || \
         fail "Output should contain: $expected_text"
@@ -841,68 +808,10 @@ assert_output_contains() {
 #   1 if text found (via assertion failure)
 #
 assert_output_not_contains() {
-    output="$1"
-    unwanted_text="$2"
+    local output="$1"
+    local unwanted_text="$2"
     
     if echo "$output" | grep -q "$unwanted_text"; then
         fail "Output should not contain: $unwanted_text"
     fi
-}
-
-# Create a test rule file with specified content
-create_test_rule() {
-    target_dir="$1"
-    rule_name="$2"
-    rule_file="$target_dir/$rule_name.mdc"
-    
-    # Ensure target directory exists
-    mkdir -p "$target_dir"
-    
-    # Create rule with simple content
-    cat > "$rule_file" << EOF
-# $rule_name
-Test rule content for $rule_name
-EOF
-    
-    # Make it readable
-    chmod 644 "$rule_file"
-}
-
-# Remove a test rule file
-remove_test_rule() {
-    target_dir="$1"
-    rule_name="$2"
-    rule_file="$target_dir/$rule_name.mdc"
-    
-    if [ -f "$rule_file" ]; then
-        rm -f "$rule_file"
-    fi
-}
-
-# Count files in directory (non-recursive)
-count_files_in_dir() {
-    dir="$1"
-    
-    if [ ! -d "$dir" ]; then
-        echo "0"
-        return
-    fi
-    
-    file_count=$(find "$dir" -maxdepth 1 -type f | wc -l)
-    echo "$file_count"
-}
-
-# Assert directory contains expected number of files
-assert_directory_file_count() {
-    dir="$1"
-    expected_count="$2"
-    
-    if [ ! -d "$dir" ]; then
-        fail "Directory should exist: $dir"
-        return
-    fi
-    
-    actual_count=$(count_files_in_dir "$dir")
-    
-    assertEquals "File count in $dir" "$expected_count" "$actual_count"
 } 

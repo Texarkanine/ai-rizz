@@ -44,6 +44,7 @@ test_init_local_mode_creates_proper_structure() {
     assert_git_excludes ".cursor/rules/local"
     
     # Verify manifest header (new 4-field format with defaults)
+    local first_line
     first_line=$(head -n1 ai-rizz.local.skbd)
     assertEquals "Local manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
@@ -68,6 +69,7 @@ test_init_commit_mode_creates_proper_structure() {
     assert_git_tracks ".cursor/rules/shared"
     
     # Verify manifest header (new 4-field format with defaults)
+    local first_line
     first_line=$(head -n1 ai-rizz.skbd)
     assertEquals "Commit manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
@@ -76,6 +78,7 @@ test_init_commit_mode_creates_proper_structure() {
 # Expected: Should prompt for mode selection or show error
 test_init_requires_mode_selection() {
     # Execute init without mode flag, provide empty input to prompt
+    local output
     output=$(echo "" | run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules 2>&1 || echo "ERROR_OCCURRED")
     
     # Should either show mode selection prompt or require mode flag
@@ -91,7 +94,7 @@ test_init_requires_mode_selection() {
 # Test: ai-rizz init <repo> -d custom/path --local
 # Expected: Uses custom target directory
 test_init_custom_target_directory() {
-    custom_dir="custom/rules"
+    local custom_dir="custom/rules"
     
     # Execute init with custom directory
     run_ai_rizz init "file://$MOCK_REPO_DIR" -d "$custom_dir" --local
@@ -102,6 +105,7 @@ test_init_custom_target_directory() {
     assert_git_excludes "$custom_dir/local"
     
     # Verify manifest uses custom directory
+    local first_line
     first_line=$(head -n1 ai-rizz.local.skbd)
     assertEquals "Manifest should use custom directory" "file://$MOCK_REPO_DIR	$custom_dir	rules	rulesets" "$first_line"
 }
@@ -110,6 +114,7 @@ test_init_custom_target_directory() {
 # Expected: Should handle invalid repository gracefully
 test_init_invalid_repository_url() {
     # Execute init with invalid repository
+    local output
     output=$(run_ai_rizz init "invalid://nonexistent" -d .cursor/rules --local 2>&1 || echo "COMMAND_FAILED")
     
     # Command should fail gracefully
@@ -179,6 +184,7 @@ test_init_with_extensionless_manifest_root() {
     # Should create local directory
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
     # Manifest header should be correct
+    local first_line
     first_line=$(head -n1 Gyattfile.local)
     assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
@@ -193,6 +199,7 @@ test_init_with_single_extension_manifest_root() {
     # Should create shared directory
     assertTrue "Shared directory should exist" "[ -d '.cursor/rules/shared' ]"
     # Manifest header should be correct
+    local first_line
     first_line=$(head -n1 foo.bar)
     assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
@@ -207,6 +214,7 @@ test_init_with_multi_dot_manifest_root() {
     # Should create local directory
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
     # Manifest header should be correct
+    local first_line
     first_line=$(head -n1 foo.baz.local.bar)
     assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
@@ -221,17 +229,9 @@ test_init_with_spaces_in_manifest_name() {
     # Should create local directory
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
     # Manifest header should be correct
+    local first_line
     first_line=$(head -n1 "manifest with spaces.local.conf")
     assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
-}
-
-# Test: ai-rizz init with target but no mode (should prompt and set default)
-test_init_mode_defaults() {
-    # Execute ai-rizz init with target but no mode (should prompt and set default)
-    output=$(printf "commit\n" | run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules 2>&1)
-
-    # Should succeed and default to local mode
-    assertEquals "Init should succeed with default mode" 0 $?
 }
 
 # Load and run shunit2

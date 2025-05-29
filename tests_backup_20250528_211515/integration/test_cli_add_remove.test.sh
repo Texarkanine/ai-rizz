@@ -216,8 +216,9 @@ test_add_nonexistent_rule_fails() {
     assertEquals "Init should succeed" 0 $?
     
     # Try to add nonexistent rule
+    local output
     output=$(run_ai_rizz add rule nonexistent --local 2>&1)
-    exit_code=$?
+    local exit_code=$?
     
     # Command should succeed but show warning
     assertEquals "Add nonexistent rule should succeed" 0 $exit_code
@@ -238,8 +239,9 @@ test_remove_nonexistent_rule_warns() {
     assertEquals "Init should succeed" 0 $?
     
     # Try to remove nonexistent rule
+    local output
     output=$(run_ai_rizz remove rule nonexistent 2>&1)
-    exit_code=$?
+    local exit_code=$?
     
     # Command should succeed (graceful handling)
     assertEquals "Remove nonexistent should not fail" 0 $exit_code
@@ -282,6 +284,7 @@ test_add_rule_dual_mode_requires_mode() {
     assertEquals "Dual mode init should succeed" 0 $?
     
     # Try to add rule without mode flag
+    local output
     output=$(run_ai_rizz add rule rule4 2>&1 || echo "COMMAND_FAILED")
     
     # Should either fail with mode requirement or succeed with smart default
@@ -291,6 +294,7 @@ test_add_rule_dual_mode_requires_mode() {
     else
         # Command succeeded - should have used smart default
         # Rule should be in one of the modes
+        local in_local in_commit
         in_local=$(grep -q "rules/rule4.mdc" ai-rizz.local.skbd 2>/dev/null && echo "true" || echo "false")
         in_commit=$(grep -q "rules/rule4.mdc" ai-rizz.skbd 2>/dev/null && echo "true" || echo "false")
         
@@ -303,41 +307,6 @@ test_add_rule_dual_mode_requires_mode() {
             fail "Rule should be in exactly one mode"
         fi
     fi
-}
-
-# Test: ai-rizz add rule with invalid repository
-# Expected: Should fail gracefully
-test_add_rule_with_invalid_repository() {
-    # Initialize with valid repository first
-    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
-    assertEquals "Setup should succeed" 0 $?
-    
-    # Corrupt the manifest to point to invalid repository
-    echo "invalid://nonexistent	.cursor/rules	rules	rulesets" > ai-rizz.local.skbd
-    
-    # Try to add rule from corrupted repository
-    output=$(run_ai_rizz add rule rule1 --local 2>&1 || echo "ADD_FAILED")
-    exit_code=$?
-    
-    # Should fail gracefully
-    if [ $exit_code -ne 0 ]; then
-        assert_output_contains "$output" "ADD_FAILED\|repository\|failed\|error"
-    fi
-}
-
-# Test: ai-rizz remove rule with graceful handling
-# Expected: Should handle gracefully
-test_remove_nonexistent_rule_graceful() {
-    # Initialize repository
-    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
-    assertEquals "Setup should succeed" 0 $?
-    
-    # Try to remove nonexistent rule
-    output=$(run_ai_rizz remove rule nonexistent --local 2>&1 || echo "REMOVE_FAILED")
-    exit_code=$?
-    
-    # Should handle gracefully
-    assertTrue "Should handle nonexistent rule removal" "[ $exit_code -eq 0 ] || echo '$output' | grep -q 'not found\|warning'"
 }
 
 # Load and run shunit2

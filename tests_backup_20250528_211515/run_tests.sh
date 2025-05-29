@@ -6,7 +6,6 @@ set -e
 
 # Store the original directory
 ORIG_DIR="$(pwd)"
-TIMEOUT_SECONDS=15
 
 # Get the project root directory (parent of the tests directory)
 get_project_root() {
@@ -30,7 +29,7 @@ get_project_root() {
 
 # Find test files based on type selection
 find_tests() {
-	test_files=""
+	local test_files=""
 	
 	if [ "$RUN_UNIT_TESTS" = "true" ]; then
 		unit_tests=$(find "$PROJECT_ROOT/tests/unit" -name "*.test.sh" 2>/dev/null | sort)
@@ -61,7 +60,7 @@ run_test() {
 	if [ "$VERBOSE_TESTS" = "true" ]; then
 		# Verbose mode: show all output
 		echo "==== Running test: $test_name ===="
-		if timeout $TIMEOUT_SECONDS sh "$test_file"; then
+		if timeout 5s sh "$test_file"; then
 			echo "==== PASS: $test_name ===="
 			return 0
 		else
@@ -77,7 +76,7 @@ run_test() {
 		# Quiet mode: capture output, show only on failure
 		printf "%-50s " "$test_name"
 		
-		if output=$(timeout $TIMEOUT_SECONDS sh "$test_file" 2>&1); then
+		if output=$(timeout 5s sh "$test_file" 2>&1); then
 			echo "✓ PASS"
 			return 0
 		else
@@ -90,7 +89,7 @@ run_test() {
 				echo "  Re-running with verbose output for troubleshooting:"
 			fi
 			echo "  ----------------------------------------"
-			VERBOSE_TESTS=true timeout $TIMEOUT_SECONDS sh "$test_file" || true
+			VERBOSE_TESTS=true timeout 5s sh "$test_file" || true
 			echo "  ----------------------------------------"
 			return 1
 		fi
@@ -156,8 +155,8 @@ parse_arguments() {
 
 # Check test prerequisites
 check_prerequisites() {
-	missing=""
-	prereqs="timeout git"  # Space-separated list of required commands
+	local missing=""
+	local prereqs="timeout git"  # Space-separated list of required commands
 	
 	for cmd in $prereqs; do
 		if ! command -v "$cmd" >/dev/null 2>&1; then

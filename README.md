@@ -87,18 +87,20 @@ Available commands:
 
 Command-specific options:
   init options:
+    -c, --commit           Initialize commit mode (git-tracked)
     -d <target_dir>        Target directory (default: .cursor/rules)
-    --local, -l            Initialize local mode (git-ignored)
-    --commit, -c           Initialize commit mode (git-tracked)
+    -f, --manifest <file>  Alias for --skibidi
+    -l, --local            Initialize local mode (git-ignored)
+    -s, --skibidi <file>   Use custom manifest filename
 
   add options:
-    --local, -l            Add to local mode (auto-initializes if needed)
-    --commit, -c           Add to commit mode (auto-initializes if needed)
+    -c, --commit           Add to commit mode (auto-initializes if needed)
+    -l, --local            Add to local mode (auto-initializes if needed)
 
   deinit options:
-    --local, -l            Remove local mode only
-    --commit, -c           Remove commit mode only
-    --all, -a              Remove both modes completely
+    -a, --all              Remove both modes completely
+    -c, --commit           Remove commit mode only
+    -l, --local            Remove local mode only
     -y                     Skip confirmation prompts
 ```
 
@@ -152,7 +154,7 @@ make uninstall
 #### Initialization
 
 ```
-ai-rizz init [<source_repo>] [-d <target_dir>] [--local|-l|--commit|-c]
+ai-rizz init [<source_repo>] [-d <target_dir>] [--local|-l|--commit|-c] [-f|--manifest|-s|--skibidi <file>]
 ```
 
 Sets up one mode in your repository:
@@ -161,6 +163,8 @@ Sets up one mode in your repository:
 - `-d <target_dir>`: Target directory (default: `.cursor/rules`)
 - `--local, -l`: Set up local mode (git-ignored rules)
 - `--commit, -c`: Set up commit mode (git-tracked rules)
+- `-f, --manifest <file>`: Use custom manifest filename instead of default ai-rizz.inf
+- `-s, --skibidi <file>`: Alias for --manifest
 
 If you don't specify `--local` or `--commit`, ai-rizz will ask which you want.
 
@@ -174,6 +178,11 @@ ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
 **Commit-only setup (git-tracked rules):**
 ```bash
 ai-rizz init https://github.com/texarkanine/.cursor-rules.git --commit
+```
+
+**Custom manifest filename:**
+```bash
+ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local -f cursor-rules.conf
 ```
 
 #### Adding Rules and Rulesets

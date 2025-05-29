@@ -685,9 +685,9 @@ cache_manifest_metadata() {
 #   1 if no migration needed
 #
 needs_migration() {
-	# Legacy local mode: ai-rizz.inf exists but is in .git/info/exclude
-	if [ -f "ai-rizz.inf" ] && [ -f ".git/info/exclude" ]; then
-	    if grep -q "^ai-rizz.inf$" ".git/info/exclude"; then
+	# Legacy local mode: commit manifest exists but is in .git/info/exclude
+	if [ -f "${COMMIT_MANIFEST_FILE}" ] && [ -f ".git/info/exclude" ]; then
+	    if grep -q "^${COMMIT_MANIFEST_FILE}$" ".git/info/exclude"; then
 	        return 0  # true, needs migration from legacy local
 	    fi
 	fi
@@ -716,7 +716,7 @@ migrate_legacy_repository_if_needed() {
 	
 	# Get target directory from existing manifest
 	if [ -f "${COMMIT_MANIFEST_FILE}" ]; then
-		if ! mlrin_metadata=$(read_manifest_metadata "ai-rizz.inf"); then
+		if ! mlrin_metadata=$(read_manifest_metadata "${COMMIT_MANIFEST_FILE}"); then
 			error "Failed to read legacy manifest metadata"
 		fi
 		mlrin_legacy_target_dir=$(echo "${mlrin_metadata}" | cut -f2)
@@ -750,7 +750,7 @@ migrate_legacy_local_mode() {
 	mllm_legacy_target_dir="${1}"
 	
 	# 1. Rename manifest file
-	mv "ai-rizz.inf" "${LOCAL_MANIFEST_FILE}"
+	mv "${COMMIT_MANIFEST_FILE}" "${LOCAL_MANIFEST_FILE}"
 	
 	# 2. Create local directory and move rules from shared directory
 	mkdir -p "${mllm_legacy_target_dir}/${LOCAL_DIR}"
@@ -763,7 +763,7 @@ migrate_legacy_local_mode() {
 	fi
 	
 	# 3. Update .git/info/exclude entries
-	update_git_exclude "ai-rizz.inf" "remove"
+	update_git_exclude "${COMMIT_MANIFEST_FILE}" "remove"
 	update_git_exclude "${mllm_legacy_target_dir}/${SHARED_DIR}" "remove"  
 	update_git_exclude "${LOCAL_MANIFEST_FILE}" "add"
 	update_git_exclude "${mllm_legacy_target_dir}/${LOCAL_DIR}" "add"
@@ -1232,6 +1232,10 @@ cmd_init() {
 	            ci_mode="commit"
 	            shift
 	            ;;
+	        -s|--skibidi|-f|--manifest)
+	            # Skip these as they're now processed globally
+	            shift 2
+	            ;;
 	        *)
 	            if [ -z "${ci_source_repo}" ]; then
 	                ci_source_repo="$1"
@@ -1294,7 +1298,7 @@ cmd_init() {
 	        if [ "${HAS_LOCAL_MODE}" = "true" ]; then
 	            # Check if parameters match existing configuration
 	            if [ "${LOCAL_SOURCE_REPO}" = "${ci_source_repo}" ] && [ "${LOCAL_TARGET_DIR}" = "${ci_target_dir}" ]; then
-	                echo "Initialized ai-rizz with\n\tsource: ${ci_source_repo}\n\ttarget: ${ci_target_dir}\n\tmode: ${ci_mode}"
+	                echo "Initialized ai-rizz with source: ${ci_source_repo}, target: ${ci_target_dir}, mode: ${ci_mode}"
 	                return 0  # Idempotent success
 	            else
 	                error "Local mode already initialized with different parameters. Use 'ai-rizz deinit --local' first."
@@ -1305,7 +1309,7 @@ cmd_init() {
 	        if [ "${HAS_COMMIT_MODE}" = "true" ]; then
 	            # Check if parameters match existing configuration
 	            if [ "${COMMIT_SOURCE_REPO}" = "${ci_source_repo}" ] && [ "${COMMIT_TARGET_DIR}" = "${ci_target_dir}" ]; then
-	                echo "Initialized ai-rizz with\n\tsource: ${ci_source_repo}\n\ttarget: ${ci_target_dir}\n\tmode: ${ci_mode}"
+	                echo "Initialized ai-rizz with source: ${ci_source_repo}, target: ${ci_target_dir}, mode: ${ci_mode}"
 	                return 0  # Idempotent success
 	            else
 	                error "Commit mode already initialized with different parameters. Use 'ai-rizz deinit --commit' first."
@@ -1356,7 +1360,7 @@ cmd_init() {
 	        ;;
 	esac
 	
-	echo "Initialized ai-rizz with\n\tsource: ${ci_source_repo}\n\ttarget: ${ci_target_dir}\n\tmode: ${ci_mode}"
+	echo "Initialized ai-rizz with source: ${ci_source_repo}, target: ${ci_target_dir}, mode: ${ci_mode}"
 	return 0
 }
 
@@ -2628,8 +2632,7 @@ Command-specific options:
 	-d <target_dir>        Target directory (default: .cursor/rules)
 	--local, -l            Use local mode (ignore files)
 	--commit, -c           Use commit mode (commit files)
-	-s, --skibidi <file>   Use custom manifest filename
-	-f, --manifest <file>  Alias for --skibidi
+	-f, --manifest <file>  Use custom manifest filename
 
   deinit options:
 	-y                     Skip confirmation prompts
@@ -2701,19 +2704,29 @@ derive_local_manifest_filename() {
     esac
 }
 
-# Main
-# ====
-
-# Only run main code if script is executed, not sourced
-if [ "${0##*/}" = "ai-rizz" ]; then
-    # Check if no arguments provided
-    if [ $# -eq 0 ]; then
-        cmd_help
-        exit 0
-    fi
-    
-    # Process manifest options first - no subshell to preserve variable updates
-    PROCESSED_ARGS=""
+# Process manifest filename options from command line arguments
+#
+# Extracts -s/--skibidi and -f/--manifest flags from the command line
+# arguments and updates the manifest filenames accordingly. Returns the
+# remaining arguments for normal command processing.
+#
+# Globals:
+#   CUSTOM_MANIFEST_ROOT - Set if manifest option found
+#   COMMIT_MANIFEST_FILE - Updated if manifest option found
+#   LOCAL_MANIFEST_FILE - Updated if manifest option found
+#
+# Arguments:
+#   Command line arguments ($@)
+#
+# Outputs:
+#   Stdout: Remaining arguments (without manifest options)
+#
+# Returns:
+#   0 on success
+#
+process_manifest_options() {
+    pmo_new_args=""
+    pmo_i=1
     
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -2728,23 +2741,39 @@ if [ "${0##*/}" = "ai-rizz" ]; then
                 ;;
             *)
                 # Preserve the argument
-                if [ -z "$PROCESSED_ARGS" ]; then
-                    PROCESSED_ARGS="$1"
+                if [ -z "$pmo_new_args" ]; then
+                    pmo_new_args="$1"
                 else
-                    PROCESSED_ARGS="$PROCESSED_ARGS $1"
+                    pmo_new_args="$pmo_new_args $1"
                 fi
                 shift
                 ;;
         esac
     done
     
-    # Set the processed arguments back for command processing
-    set -- $PROCESSED_ARGS
+    # Return the filtered arguments
+    echo "$pmo_new_args"
+}
+
+# Main
+# ====
+
+# Only run main code if script is executed, not sourced
+if [ "${0##*/}" = "ai-rizz" ]; then
+    # Check if no arguments provided
+    if [ $# -eq 0 ]; then
+        cmd_help
+        exit 0
+    fi
+    
+    # Process manifest options first
+    REMAINING_ARGS=$(process_manifest_options "$@")
     
     # Initialize ai-rizz state for production use
     initialize_ai_rizz
     
     # Parse command
+    set -- $REMAINING_ARGS
     main_command=$1
     shift
 

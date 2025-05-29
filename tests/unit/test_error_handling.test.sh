@@ -39,7 +39,7 @@ test_error_no_init_before_add() {
 
 test_error_invalid_mode_flag() {
     # Setup: Valid repo
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     
     # Test: Invalid mode flag
     output=$(cmd_add_rule "rule1.mdc" --invalid 2>&1 || echo "ERROR_OCCURRED")
@@ -50,7 +50,7 @@ test_error_invalid_mode_flag() {
 
 test_error_missing_source_repo() {
     # Test: Init without source repo (provide empty input to prompt)
-    output=$(echo "" | cmd_init -d "$TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
+    output=$(echo "" | cmd_init -d "$TEST_TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
     
     # Expected: Error about missing source repo
     echo "$output" | grep -q "source.*required\|repository.*required\|Source repository URL" || fail "Should require source repo"
@@ -58,7 +58,7 @@ test_error_missing_source_repo() {
 
 test_graceful_nonexistent_rule() {
     # Setup: Valid initialization
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     
     # Test: Add nonexistent rule
     output=$(cmd_add_rule "nonexistent.mdc" --local 2>&1 || echo "ERROR_OCCURRED")
@@ -69,8 +69,8 @@ test_graceful_nonexistent_rule() {
 
 test_graceful_corrupted_manifest() {
     # Setup: Corrupted manifest
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
-    echo "CORRUPTED_DATA" > "$LOCAL_MANIFEST_FILE"
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    echo "CORRUPTED_DATA" > "$TEST_LOCAL_MANIFEST_FILE"
     
     # Test: Operations should handle gracefully
     output=$(cmd_list 2>&1 || echo "ERROR_OCCURRED")
@@ -81,7 +81,7 @@ test_graceful_corrupted_manifest() {
 
 test_error_invalid_target_directory() {
     # Test: Init with invalid target directory
-    output=$(cmd_init "$SOURCE_REPO" -d "/invalid/readonly/path" --local 2>&1 || echo "ERROR_OCCURRED")
+    output=$(cmd_init "$TEST_SOURCE_REPO" -d "/invalid/readonly/path" --local 2>&1 || echo "ERROR_OCCURRED")
     
     # Expected: Should error about target directory
     echo "$output" | grep -q "directory\|path\|permission" || fail "Should mention directory issue"
@@ -92,7 +92,7 @@ test_error_git_repo_required() {
     rm -rf .git
     
     # Test: Any command should error
-    output=$(cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
+    output=$(cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
     
     # Expected: Should require git repository
     echo "$output" | grep -q "git.*repository\|not.*git" || fail "Should require git repo"
@@ -100,20 +100,20 @@ test_error_git_repo_required() {
 
 test_graceful_missing_git_exclude() {
     # Setup: Remove git info directory
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     rm -rf .git/info
     
     # Test: Should handle missing git exclude file
     output=$(cmd_add_rule "rule1.mdc" --local 2>&1 || echo "ERROR_OCCURRED")
     
     # Expected: Should create git exclude or handle gracefully
-    assertTrue "Should handle missing git info" "[ -f '$TARGET_DIR/$LOCAL_DIR/rule1.mdc' ] || echo '$output' | grep -q 'warning'"
+    assertTrue "Should handle missing git info" "[ -f '$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc' ] || echo '$output' | grep -q 'warning'"
 }
 
 test_error_readonly_manifest() {
     # Setup: Make manifest read-only
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
-    chmod 444 "$LOCAL_MANIFEST_FILE"
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    chmod 444 "$TEST_LOCAL_MANIFEST_FILE"
     
     # Test: Add rule should error
     output=$(cmd_add_rule "rule1.mdc" --local 2>&1 || echo "ERROR_OCCURRED")
@@ -122,25 +122,23 @@ test_error_readonly_manifest() {
     echo "$output" | grep -q "permission\|read-only\|cannot.*write" || fail "Should report permission error"
     
     # Restore permissions for cleanup
-    chmod 644 "$LOCAL_MANIFEST_FILE"
+    chmod 644 "$TEST_LOCAL_MANIFEST_FILE"
 }
 
 test_error_source_repo_unavailable() {
     # Test: Init with invalid source repo should fail
-    output=$(cmd_init "invalid://nonexistent.repo" -d "$TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
+    output=$(cmd_init "invalid://nonexistent.repo" -d "$TEST_TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
     
     # Expected: Should fail with repository error
     echo "$output" | grep -q "repository\|clone\|fetch\|unavailable\|ERROR_OCCURRED" || fail "Should fail with repo issue"
     
     # Verify that no configuration was created
-    [ ! -f "$LOCAL_MANIFEST_FILE" ] || fail "Should not create manifest with invalid repo"
+    [ ! -f "$TEST_LOCAL_MANIFEST_FILE" ] || fail "Should not create manifest with invalid repo"
 }
-
-
 
 test_error_malformed_ruleset() {
     # Setup: Local mode
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     
     # Create malformed ruleset in repo (broken symlinks)
     mkdir -p "$REPO_DIR/rulesets/broken_ruleset"
@@ -155,26 +153,26 @@ test_error_malformed_ruleset() {
 
 test_error_concurrent_modification() {
     # Setup: Both modes
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit
     
     # Simulate concurrent modification by changing manifest during operation
     # This is a simplified test of race conditions
-    original_content=$(cat "$LOCAL_MANIFEST_FILE")
+    original_content=$(cat "$TEST_LOCAL_MANIFEST_FILE")
     
     # Modify manifest externally
-    echo "externally_added_rule" >> "$LOCAL_MANIFEST_FILE"
+    echo "externally_added_rule" >> "$TEST_LOCAL_MANIFEST_FILE"
     
     # Test: Operations should handle external changes
     output=$(cmd_add_rule "rule2.mdc" --local 2>&1 || echo "ERROR_OCCURRED")
     
     # Expected: Should complete or warn about external changes
-    assertTrue "Should handle external changes" "[ -f '$TARGET_DIR/$LOCAL_DIR/rule2.mdc' ] || echo '$output' | grep -q 'warning'"
+    assertTrue "Should handle external changes" "[ -f '$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule2.mdc' ] || echo '$output' | grep -q 'warning'"
 }
 
 test_error_network_timeout() {
     # Test: Init with network-dependent source that times out
-    output=$(timeout 1 cmd_init "https://github.com/nonexistent/timeout-test.git" -d "$TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
+    output=$(timeout 1 cmd_init "https://github.com/nonexistent/timeout-test.git" -d "$TEST_TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
     
     # Expected: Should handle timeout gracefully (either timeout or repository unavailable error)
     echo "$output" | grep -q "timeout\|network\|failed\|unavailable\|ERROR_OCCURRED" || fail "Should handle network issues gracefully"
@@ -182,11 +180,11 @@ test_error_network_timeout() {
 
 test_graceful_partial_rule_sync() {
     # Setup: Local mode with rule that exists in manifest but not in target
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     
     # Remove the synced file to simulate partial sync
-    rm -f "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
+    rm -f "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc"
     
     # Test: List should handle missing synced files
     output=$(cmd_list 2>&1 || echo "ERROR_OCCURRED")
@@ -197,10 +195,10 @@ test_graceful_partial_rule_sync() {
 
 test_error_invalid_manifest_format() {
     # Setup: Create manifest with invalid format
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     
     # Corrupt the manifest header
-    echo "INVALID FORMAT WITHOUT TAB" > "$LOCAL_MANIFEST_FILE"
+    echo "INVALID FORMAT WITHOUT TAB" > "$TEST_LOCAL_MANIFEST_FILE"
     
     # Test: Operations should detect invalid format
     output=$(cmd_list 2>&1 || echo "ERROR_OCCURRED")
@@ -211,10 +209,10 @@ test_error_invalid_manifest_format() {
 
 test_error_cleanup_on_failure() {
     # Setup: Start init process
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     
     # Simulate failure during add operation by making target readonly
-    chmod 444 "$TARGET_DIR"
+    chmod 444 "$TEST_TARGET_DIR"
     
     # Test: Failed operation should not leave inconsistent state
     output=$(cmd_add_rule "rule1.mdc" --local 2>&1 || echo "ERROR_OCCURRED")
@@ -223,13 +221,13 @@ test_error_cleanup_on_failure() {
     echo "$output" | grep -q "error\|permission\|failed" || fail "Should report error"
     
     # Manifest should not contain the failed rule
-    if [ -f "$LOCAL_MANIFEST_FILE" ]; then
-        local_content=$(cat "$LOCAL_MANIFEST_FILE")
+    if [ -f "$TEST_LOCAL_MANIFEST_FILE" ]; then
+        local_content=$(cat "$TEST_LOCAL_MANIFEST_FILE")
         echo "$local_content" | grep -q "rule1.mdc" && fail "Should not add failed rule to manifest"
     fi
     
     # Restore permissions for cleanup
-    chmod 755 "$TARGET_DIR"
+    chmod 755 "$TEST_TARGET_DIR"
 }
 
 test_graceful_empty_repository() {
@@ -238,17 +236,19 @@ test_graceful_empty_repository() {
     mkdir -p "$empty_repo"
     cd "$empty_repo" || fail "Failed to change to empty repo"
     git init . >/dev/null 2>&1
+    git config user.email "test@example.com" >/dev/null 2>&1
+    git config user.name "Test User" >/dev/null 2>&1
     git commit --allow-empty -m "Empty commit" >/dev/null 2>&1
-    cd "$TEST_DIR" || fail "Failed to return to test dir"
+    cd "$TEST_DIR/app" || fail "Failed to return to test app dir"
     
     # Test: Init with empty repo
-    cmd_init "$empty_repo" --local
+    cmd_init "$empty_repo" -d "$TEST_TARGET_DIR" --local
     
     # Test: List should handle empty repo
-    output=$(cmd_list)
+    output=$(cmd_list 2>&1)
     
     # Expected: Should work but show no rules
-    echo "$output" | grep -q "No rules available\|empty" || true  # May show empty state
+    echo "$output" | grep -q "No rules available\|empty\|found" || true  # May show empty state
 }
 
 # Load and run shunit2

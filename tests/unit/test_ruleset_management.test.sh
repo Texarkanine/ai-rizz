@@ -32,7 +32,7 @@ source_ai_rizz
 
 test_list_rulesets_correct_glyphs() {
     # Setup: Test the correct behavior - individual rules can't be downgraded from committed rulesets
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_ruleset "ruleset1" --local  # Add ruleset to local mode first
     cmd_add_rule "rule1.mdc" --commit   # Promote individual rule to commit mode (upgrade)
     
@@ -49,7 +49,7 @@ test_list_rulesets_correct_glyphs() {
 
 test_prevent_rule_downgrade_from_committed_ruleset() {
     # Setup: Committed ruleset with rule1 and rule2
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
     cmd_add_ruleset "ruleset1" --commit
     
     # Test: Try to add individual rule from committed ruleset to local mode (should warn and be no-op)
@@ -68,7 +68,7 @@ test_prevent_rule_downgrade_from_committed_ruleset() {
 
 test_allow_rule_upgrade_to_committed_ruleset() {
     # Setup: Individual rule in local mode  
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     
     # Test: Add ruleset containing that rule to commit mode (upgrade should be allowed)
@@ -86,7 +86,7 @@ test_allow_rule_upgrade_to_committed_ruleset() {
 
 test_allow_rule_upgrade_to_local_ruleset() {
     # Setup: Individual rule in commit mode
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
     cmd_add_rule "rule1.mdc" --commit
     
     # Test: Add ruleset containing that rule to local mode (upgrade should be allowed)
@@ -100,7 +100,7 @@ test_allow_rule_upgrade_to_local_ruleset() {
 
 test_prevent_downgrade_from_local_ruleset() {
     # Setup: Local ruleset with rule1 and rule2
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_ruleset "ruleset1" --local
     
     # Test: Try to add individual rule from local ruleset to commit mode (should be allowed - this is upgrade)
@@ -118,7 +118,7 @@ test_prevent_downgrade_from_local_ruleset() {
 
 test_ruleset_mode_migration() {
     # Setup: Ruleset in local mode
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_ruleset "ruleset1" --local
     
     # Verify initial state
@@ -140,25 +140,25 @@ test_ruleset_mode_migration() {
 
 test_ruleset_removes_all_constituent_rules() {
     # Setup: Ruleset in local mode
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_ruleset "ruleset1" --local
     
     # Verify files exist
-    assert_file_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
-    assert_file_exists "$TARGET_DIR/$LOCAL_DIR/rule2.mdc"
+    assert_file_exists "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc"
+    assert_file_exists "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule2.mdc"
     
     # Test: Remove ruleset
     cmd_remove_ruleset "ruleset1"
     cmd_sync
     
     # Expected: All constituent rule files should be removed
-    assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
-    assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/rule2.mdc"
+    assert_file_not_exists "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc"
+    assert_file_not_exists "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule2.mdc"
 }
 
 test_ruleset_add_with_existing_individual_rules() {
     # Setup: Individual rules already exist
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --local
     
@@ -184,7 +184,7 @@ test_ruleset_add_with_existing_individual_rules() {
 
 test_remove_nonexistent_ruleset_graceful() {
     # Setup: Local mode only
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     
     # Test: Remove nonexistent ruleset
     output=$(cmd_remove_ruleset "nonexistent" 2>&1 || echo "ERROR_OCCURRED")
@@ -195,7 +195,7 @@ test_remove_nonexistent_ruleset_graceful() {
 
 test_add_nonexistent_ruleset_warning() {
     # Setup: Local mode only
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     
     # Test: Add nonexistent ruleset
     output=$(cmd_add_ruleset "nonexistent" --local 2>&1)
@@ -206,8 +206,8 @@ test_add_nonexistent_ruleset_warning() {
     echo "$output" | grep -q "Warning\|not found" || fail "Should warn about nonexistent ruleset"
     
     # Should not create any files or manifest entries
-    if [ -f "$LOCAL_MANIFEST_FILE" ]; then
-        local_content=$(cat "$LOCAL_MANIFEST_FILE")
+    if [ -f "$TEST_LOCAL_MANIFEST_FILE" ]; then
+        local_content=$(cat "$TEST_LOCAL_MANIFEST_FILE")
         if echo "$local_content" | grep -q "nonexistent"; then
             fail "Should not add nonexistent ruleset to manifest"
         fi

@@ -32,7 +32,7 @@ source_ai_rizz
 
 test_list_local_mode_only_glyphs() {
     # Setup: Local mode only with one rule
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     
     # Test: List should show local and uninstalled glyphs only
@@ -48,7 +48,7 @@ test_list_local_mode_only_glyphs() {
 
 test_list_commit_mode_only_glyphs() {
     # Setup: Commit mode only
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
     cmd_add_rule "rule1.mdc" --commit
     
     output=$(cmd_list)
@@ -63,7 +63,7 @@ test_list_commit_mode_only_glyphs() {
 
 test_list_dual_mode_all_glyphs() {
     # Setup: Both modes with different rules
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --commit  # Lazy init commit mode
     
@@ -89,7 +89,7 @@ test_list_progressive_display_no_modes() {
 test_list_with_custom_target_dir() {
     # Setup: Custom target directory
     custom_dir=".custom/rules"
-    cmd_init "$SOURCE_REPO" -d "$custom_dir" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$custom_dir" --local
     cmd_add_rule "rule1.mdc" --local
     
     # Test: List should work with custom directory
@@ -105,7 +105,7 @@ test_list_with_custom_target_dir() {
 
 test_remove_rule_auto_detects_mode() {
     # Setup: Rule in local mode only
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     
     # Test: Remove without mode flag, then sync to ensure file removal
@@ -113,12 +113,12 @@ test_remove_rule_auto_detects_mode() {
     cmd_sync
     
     # Expected: Auto-detects and removes from local mode
-    assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
+    assert_file_not_exists "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc"
 }
 
 test_remove_rule_from_correct_mode() {
     # Setup: Different rules in different modes
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --commit
     
@@ -128,13 +128,13 @@ test_remove_rule_from_correct_mode() {
     cmd_sync
     
     # Expected: Each removed from correct mode
-    assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
-    assert_file_not_exists "$TARGET_DIR/$SHARED_DIR/rule2.mdc"
+    assert_file_not_exists "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc"
+    assert_file_not_exists "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rule2.mdc"
 }
 
 test_remove_nonexistent_rule_graceful() {
     # Setup: Local mode only
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     
     # Test: Remove nonexistent rule
     output=$(cmd_remove_rule "nonexistent.mdc" 2>&1 || echo "ERROR_OCCURRED")
@@ -145,7 +145,7 @@ test_remove_nonexistent_rule_graceful() {
 
 test_remove_rule_from_dual_mode() {
     # Setup: Same rule in both modes (edge case)
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     
     # Manually add to commit mode to test conflict
@@ -156,12 +156,12 @@ test_remove_rule_from_dual_mode() {
     cmd_sync
     
     # Expected: Should remove from commit mode
-    assert_file_not_exists "$TARGET_DIR/$SHARED_DIR/rule1.mdc"
+    assert_file_not_exists "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rule1.mdc"
 }
 
 test_remove_updates_manifests() {
     # Setup: Rules in both modes
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --commit
     
@@ -170,12 +170,12 @@ test_remove_updates_manifests() {
     cmd_remove_rule "rule2.mdc"
     
     # Expected: Manifests should be updated
-    local_manifest_content=$(cat "$LOCAL_MANIFEST_FILE")
+    local_manifest_content=$(cat "$TEST_LOCAL_MANIFEST_FILE")
     if echo "$local_manifest_content" | grep -q "rule1.mdc"; then
         fail "Rule1 should be removed from local manifest"
     fi
     
-    commit_manifest_content=$(cat "$COMMIT_MANIFEST_FILE")
+    commit_manifest_content=$(cat "$TEST_COMMIT_MANIFEST_FILE")
     if echo "$commit_manifest_content" | grep -q "rule2.mdc"; then
         fail "Rule2 should be removed from commit manifest"
     fi

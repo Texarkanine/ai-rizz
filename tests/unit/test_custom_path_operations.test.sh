@@ -33,8 +33,8 @@ setUp() {
     # Setup test repository structure
     REPO_DIR=$(get_repo_dir)
     mkdir -p "$REPO_DIR"
-    SOURCE_REPO="https://example.com/repo.git"
-    TARGET_DIR=".cursor/rules"
+    TEST_SOURCE_REPO="https://example.com/repo.git"
+    TEST_TARGET_DIR=".cursor/rules"
     
     # Create repository structure with custom paths
     mkdir -p "$REPO_DIR/docs"
@@ -84,57 +84,57 @@ tearDown() {
 # Test that cmd_init works with custom path arguments
 test_init_works_with_custom_path_args() {
     # This should now work because --rule-path and --ruleset-path are implemented
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local --rule-path "docs" --ruleset-path "kb/sections"
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --rule-path "docs" --ruleset-path "kb/sections"
     assertTrue "cmd_init should work with custom path arguments" $?
     
     # Verify manifest has correct format
-    test -f "$LOCAL_MANIFEST_FILE"
+    test -f "$TEST_LOCAL_MANIFEST_FILE"
     assertTrue "Local manifest should be created" $?
     
-    first_line=$(head -n 1 "$LOCAL_MANIFEST_FILE")
-    assertEquals "Should use custom paths in manifest" "$SOURCE_REPO	$TARGET_DIR	docs	kb/sections" "$first_line"
+    first_line=$(head -n 1 "$TEST_LOCAL_MANIFEST_FILE")
+    assertEquals "Should use custom paths in manifest" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	kb/sections" "$first_line"
 }
 
 # Test that standard initialization still works (baseline test)
 test_standard_init_works() {
     # This should work with current implementation
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     assertTrue "Standard init should work" $?
     
     # Verify standard structure is created
-    test -f "$LOCAL_MANIFEST_FILE"
+    test -f "$TEST_LOCAL_MANIFEST_FILE"
     assertTrue "Local manifest should be created" $?
     
-    test -d "$TARGET_DIR/local"
+    test -d "$TEST_TARGET_DIR/local"
     assertTrue "Local directory should be created" $?
     
     # Verify manifest has standard format with defaults
-    first_line=$(head -n 1 "$LOCAL_MANIFEST_FILE")
-    assertEquals "Should use standard format with defaults" "$SOURCE_REPO	$TARGET_DIR	rules	rulesets" "$first_line"
+    first_line=$(head -n 1 "$TEST_LOCAL_MANIFEST_FILE")
+    assertEquals "Should use standard format with defaults" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	rules	rulesets" "$first_line"
 }
 
 # Test adding rule with custom paths
 test_add_rule_uses_custom_paths() {
     # Initialize with custom paths
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local --rule-path "docs" --ruleset-path "kb/sections"
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --rule-path "docs" --ruleset-path "kb/sections"
     
     # Add a rule from the custom "docs" directory
     cmd_add_rule "test-rule.mdc" "--local"
     assertTrue "Should be able to add rule from docs directory" $?
     
     # Verify rule was added to manifest with "docs/" prefix
-    grep -q "docs/test-rule.mdc" "$LOCAL_MANIFEST_FILE"
+    grep -q "docs/test-rule.mdc" "$TEST_LOCAL_MANIFEST_FILE"
     assertTrue "Manifest should contain rule with docs/ prefix" $?
     
     # Verify rule file exists in target
-    test -f "$TARGET_DIR/local/test-rule.mdc"
+    test -f "$TEST_TARGET_DIR/local/test-rule.mdc"
     assertTrue "Rule file should exist in target directory" $?
 }
 
 # Test that list command shows rules from custom paths
 test_list_shows_custom_paths() {
     # Initialize with custom paths
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local --rule-path "docs" --ruleset-path "kb/sections"
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --rule-path "docs" --ruleset-path "kb/sections"
     
     # Add a rule from custom location
     cmd_add_rule "test-rule.mdc" "--local"
@@ -150,41 +150,41 @@ test_list_shows_custom_paths() {
 # Test adding ruleset with custom paths - should now PASS
 test_add_ruleset_uses_custom_paths() {
     # Initialize with custom paths
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local --rule-path "docs" --ruleset-path "kb/sections"
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --rule-path "docs" --ruleset-path "kb/sections"
     
     # Add a ruleset from the custom "kb/sections" directory (should now work)
     cmd_add_ruleset "test-ruleset" "--local"
     assertTrue "Should be able to add ruleset from kb/sections directory" $?
     
     # Verify ruleset was added to manifest with "kb/sections/" prefix
-    grep -q "kb/sections/test-ruleset" "$LOCAL_MANIFEST_FILE"
+    grep -q "kb/sections/test-ruleset" "$TEST_LOCAL_MANIFEST_FILE"
     assertTrue "Manifest should contain ruleset with kb/sections/ prefix" $?
     
     # Verify ruleset files exist in target
-    test -f "$TARGET_DIR/local/rule1.mdc"
+    test -f "$TEST_TARGET_DIR/local/rule1.mdc"
     assertTrue "Ruleset rule1 file should exist in target directory" $?
     
-    test -f "$TARGET_DIR/local/rule2.mdc"
+    test -f "$TEST_TARGET_DIR/local/rule2.mdc"
     assertTrue "Ruleset rule2 file should exist in target directory" $?
 }
 
 # Test that new manifest format can be read and used
 test_new_manifest_format_fully_functional() {
     # Create a manifest with new format manually
-    echo "$SOURCE_REPO	$TARGET_DIR	docs	kb/sections" > "$LOCAL_MANIFEST_FILE"
-    echo "docs/test-rule.mdc" >> "$LOCAL_MANIFEST_FILE"
+    echo "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	kb/sections" > "$TEST_LOCAL_MANIFEST_FILE"
+    echo "docs/test-rule.mdc" >> "$TEST_LOCAL_MANIFEST_FILE"
     
     # Verify we can read the metadata
-    metadata=$(read_manifest_metadata "$LOCAL_MANIFEST_FILE")
+    metadata=$(read_manifest_metadata "$TEST_LOCAL_MANIFEST_FILE")
     assertNotNull "Should be able to read new format metadata" "$metadata"
     
     # Verify we can read the entries
-    entries=$(read_manifest_entries "$LOCAL_MANIFEST_FILE")
+    entries=$(read_manifest_entries "$TEST_LOCAL_MANIFEST_FILE")
     assertEquals "Should read entries correctly" "docs/test-rule.mdc" "$entries"
     
     # Test that the implementation now USES the custom paths in the metadata
     # Initialize the mode state to simulate having this manifest loaded
-    mkdir -p "$TARGET_DIR/local"
+    mkdir -p "$TEST_TARGET_DIR/local"
     HAS_LOCAL_MODE=true
     cache_manifest_metadata
     
@@ -192,7 +192,7 @@ test_new_manifest_format_fully_functional() {
     cmd_add_rule "another-rule.mdc" "--local"
     
     # Check what prefix was actually used
-    new_entries=$(read_manifest_entries "$LOCAL_MANIFEST_FILE")
+    new_entries=$(read_manifest_entries "$TEST_LOCAL_MANIFEST_FILE")
     
     # This should now work correctly with custom paths
     echo "$new_entries" | grep -q "docs/another-rule.mdc"

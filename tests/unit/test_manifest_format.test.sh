@@ -35,8 +35,8 @@ setUp() {
     # Setup test repository structure
     REPO_DIR=$(get_repo_dir)
     mkdir -p "$REPO_DIR"
-    SOURCE_REPO="https://example.com/repo.git"
-    TARGET_DIR=".cursor/rules"
+    TEST_SOURCE_REPO="https://example.com/repo.git"
+    TEST_TARGET_DIR=".cursor/rules"
     
     # Create repository structure with custom paths
     mkdir -p "$REPO_DIR/docs"
@@ -75,7 +75,7 @@ tearDown() {
 # Test reading new format manifest
 test_read_new_format_manifest() {
     # Create new format manifest (new-style with custom paths)
-    echo "$SOURCE_REPO	$TARGET_DIR	custom_rules	custom_rulesets" > ai-rizz.skbd
+    echo "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	custom_rules	custom_rulesets" > ai-rizz.skbd
     echo "custom_rules/test-rule.mdc" >> ai-rizz.skbd
     
     # Read metadata using existing function (this should work)
@@ -91,8 +91,8 @@ test_read_new_format_manifest() {
     rules_path=$(echo "$metadata" | cut -f3)
     rulesets_path=$(echo "$metadata" | cut -f4)
     
-    assertEquals "Source repo should be parsed correctly" "$SOURCE_REPO" "$source_repo"
-    assertEquals "Target dir should be parsed correctly" "$TARGET_DIR" "$target_dir"
+    assertEquals "Source repo should be parsed correctly" "$TEST_SOURCE_REPO" "$source_repo"
+    assertEquals "Target dir should be parsed correctly" "$TEST_TARGET_DIR" "$target_dir"
     assertEquals "Rules path should be custom_rules" "custom_rules" "$rules_path"
     assertEquals "Rulesets path should be custom_rulesets" "custom_rulesets" "$rulesets_path"
 }
@@ -100,7 +100,7 @@ test_read_new_format_manifest() {
 # Test reading old format manifest with backward compatibility
 test_read_old_format_manifest() {
     # Create old format manifest
-    echo "$SOURCE_REPO	$TARGET_DIR" > ai-rizz.inf
+    echo "$TEST_SOURCE_REPO	$TEST_TARGET_DIR" > ai-rizz.inf
     echo "rules/test-rule.mdc" >> ai-rizz.inf
     
     # Read metadata using existing function
@@ -114,8 +114,8 @@ test_read_old_format_manifest() {
     source_repo=$(echo "$metadata" | cut -f1)
     target_dir=$(echo "$metadata" | cut -f2)
     
-    assertEquals "Source repo should be parsed correctly" "$SOURCE_REPO" "$source_repo"
-    assertEquals "Target dir should be parsed correctly" "$TARGET_DIR" "$target_dir"
+    assertEquals "Source repo should be parsed correctly" "$TEST_SOURCE_REPO" "$source_repo"
+    assertEquals "Target dir should be parsed correctly" "$TEST_TARGET_DIR" "$target_dir"
     
     # For old format, fields 3 and 4 should be empty when using cut
     rules_path=$(echo "$metadata" | cut -f3)
@@ -128,34 +128,34 @@ test_read_old_format_manifest() {
 # Test writing manifest with custom paths - should now PASS
 test_write_manifest_with_custom_paths() {
     # Test calling with old parameters first
-    echo "" | write_manifest_with_entries "test_manifest_old.inf" "$SOURCE_REPO" "$TARGET_DIR"
+    echo "" | write_manifest_with_entries "test_manifest_old.inf" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR"
     first_line=$(head -n 1 "test_manifest_old.inf")
-    assertEquals "Old format should work with defaults" "$SOURCE_REPO	$TARGET_DIR	rules	rulesets" "$first_line"
+    assertEquals "Old format should work with defaults" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	rules	rulesets" "$first_line"
     
     # Test calling with new parameters
-    echo "" | write_manifest_with_entries "test_manifest_new.skbd" "$SOURCE_REPO" "$TARGET_DIR" "docs" "examples"
+    echo "" | write_manifest_with_entries "test_manifest_new.skbd" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR" "docs" "examples"
     first_line=$(head -n 1 "test_manifest_new.skbd")
-    assertEquals "New format should include custom paths" "$SOURCE_REPO	$TARGET_DIR	docs	examples" "$first_line"
+    assertEquals "New format should include custom paths" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	examples" "$first_line"
 }
 
 # Test initialization with custom paths
 test_init_with_custom_paths() {
     # This should now work because cmd_init supports --rule-path and --ruleset-path
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local --rule-path "docs" --ruleset-path "examples"
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --rule-path "docs" --ruleset-path "examples"
     assertTrue "cmd_init should succeed with custom path arguments" $?
     
     # Verify manifest has been created with new format
-    test -f "$LOCAL_MANIFEST_FILE" 
+    test -f "$TEST_LOCAL_MANIFEST_FILE" 
     assertTrue "Local manifest file should exist" $?
     
-    first_line=$(head -n 1 "$LOCAL_MANIFEST_FILE")
-    assertEquals "Should use new format with custom paths" "$SOURCE_REPO	$TARGET_DIR	docs	examples" "$first_line"
+    first_line=$(head -n 1 "$TEST_LOCAL_MANIFEST_FILE")
+    assertEquals "Should use new format with custom paths" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	examples" "$first_line"
 }
 
 # Test that current manifest reading works and supports new fields
 test_current_manifest_capabilities() {
     # Create a new format manifest with custom paths
-    echo "$SOURCE_REPO	$TARGET_DIR	docs	examples" > ai-rizz.skbd
+    echo "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	examples" > ai-rizz.skbd
     echo "docs/test-rule.mdc" >> ai-rizz.skbd
     
     # Current read_manifest_metadata should work

@@ -21,18 +21,14 @@ Review the main `ai-rizz` script for the following issues:
 - Review all inline documentation, comments, and function docstrings for accuracy and completeness.
 - Ensure that documentation matches the actual behavior and flags supported, as described in the README.md.
 
-## 5. Maintainability and Extensibility
-
-- Propose and document improvements for maintainability or extensibility, even if not strictly required by the prompt.
-
-## 6. Planning
+## 5. Planning
 
 - Before making any code changes, produce a detailed plan that lists:
   - Each issue found (bad practice, duplication, useless function, inaccurate doc, maintainability/extensibility).
   - The proposed fix for each issue.
   - Any refactoring or documentation updates you intend to make.
 
-## 7. Standards
+## 6. Standards
 
 - Ensure all changes are consistent with the project's shell scripting and documentation standards.
 

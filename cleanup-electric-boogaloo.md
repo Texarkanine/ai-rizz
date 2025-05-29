@@ -1,0 +1,161 @@
+# AI-Rizz Script Cleanup Plan: Electric Boogaloo
+
+## Executive Summary
+
+This plan identifies and addresses code quality issues in the `ai-rizz` script to improve maintainability, reduce duplication, ensure POSIX compliance, and align documentation with actual behavior.
+
+## 1. Bad Practices / POSIX Compliance Issues
+
+### 1.1 Mixed Indentation Inconsistencies
+**Issue**: Some functions use inconsistent spacing for alignment within multi-line constructs.
+**Fix**: Standardize all indentation to use tabs for initial indentation and spaces for alignment, per @shared/posix-style.mdc requirements.
+
+**Specific Locations**:
+- Lines 2950+ in main argument processing
+- Various function argument parsing sections
+- Some comment blocks mixing tabs and spaces
+
+### 1.2 Line Length and Breaking
+**Issue**: Several lines exceed 80 characters and break at awkward points rather than logical boundaries.
+**Fix**: Break lines at logical points (sentence boundaries, logical operators) rather than arbitrary character limits.
+
+**Specific Locations**:
+- Long comment lines in function headers
+- Complex conditional statements
+- Printf statements with multiple variables
+
+### 1.3 Subshell Usage Patterns
+**Issue**: Some functions use temporary files to avoid subshells inconsistently.
+**Fix**: Standardize the approach - use temporary files consistently when variable scope matters.
+
+### 1.4 ShellCheck Disable Usage
+**Issue**: Line 2950 has `# shellcheck disable=SC2086` but the usage `set -- $PROCESSED_ARGS` is intentional word splitting.
+**Fix**: Add proper comment explaining why word splitting is intentional and safe here.
+
+## 2. Code Duplication Issues
+
+### 2.1 Mode Selection Pattern
+**Issue**: Multiple functions repeat the same mode selection logic.
+**Locations**: `cmd_add_rule()`, `cmd_add_ruleset()`, `cmd_remove_rule()`, `cmd_remove_ruleset()`
+**Fix**: Already partially addressed with `select_mode()` helper, but needs consistent usage.
+
+### 2.2 Initialization and Validation Pattern  
+**Issue**: Most command functions start with identical initialization and validation.
+**Current**: `ensure_initialized_and_valid()` exists but not used consistently.
+**Fix**: Ensure all command functions use the consolidated helper consistently.
+
+### 2.3 Manifest and Target Selection
+**Issue**: Repeated logic for selecting manifest file and target directory based on mode.
+**Current**: `get_manifest_and_target()` helper exists but could be used more widely.
+**Fix**: Consolidate usage and potentially expand the helper.
+
+### 2.4 Repository Item Validation
+**Issue**: Similar validation logic repeated in add commands.
+**Current**: `check_repository_item()` helper exists.
+**Fix**: Ensure consistent usage and consider expanding.
+
+### 2.5 Mode-Specific Variable Patterns
+**Issue**: Repeated logic for setting LOCAL_ vs COMMIT_ variables.
+**Fix**: The TODO in `parse_manifest_metadata()` mentions using single variables instead of mode-specific ones - implement this consolidation.
+
+## 3. Useless/Redundant Functions
+
+### 3.1 ensure_initialized() vs ensure_initialized_and_valid()
+**Issue**: Two similar functions with overlapping functionality.
+**Current**: `ensure_initialized()` is marked for backward compatibility.
+**Fix**: Complete migration to `ensure_initialized_and_valid()` and remove the old function.
+
+### 3.2 Over-engineered Helper Functions
+**Issue**: Some helper functions are used only once and add complexity without benefit.
+**Examples**: 
+- `ensure_mdc_extension()` - simple but used in only 2 places
+- `initialize_mode_if_needed()` - wraps simple logic
+**Fix**: Evaluate if inline implementation would be clearer for single-use helpers.
+
+### 3.3 Unused Global Variables  
+**Issue**: Some globals mentioned in documentation may not be actively used.
+**Examples**: Variables mentioned in `initialize_ai_rizz()` docstring that aren't set
+**Fix**: Remove unused globals and update documentation.
+
+## 4. Inaccurate Documentation
+
+### 4.1 Function Header Inconsistencies
+**Issue**: Some function docstrings don't match actual behavior.
+
+**Specific Problems**:
+- `git_sync()`: Claims to "never return" in Returns section but actually returns 0/1
+- `initialize_ai_rizz()`: Lists globals that aren't set in the function  
+- `cmd_sync()`: Lists `HAS_LOCAL_MODE` global that doesn't exist
+- Several functions mention custom paths in globals that may not be accurate
+
+### 4.2 Command Flag Documentation Mismatches
+**Issue**: `cmd_help()` output may not match actual supported flags in command functions.
+**Fix**: Cross-reference help output with actual argument parsing in each command.
+
+### 4.3 Missing Flag Documentation
+**Issue**: Per @local/ai-rizz-development, all `cmd_xxx` functions must document supported flags.
+**Fix**: Ensure all command functions document their flags in the header comment.
+
+### 4.4 Return Value Documentation
+**Issue**: Some functions use inconsistent return value documentation (0/1 vs success/failure).
+**Fix**: Standardize to shell conventions (0/1 for success/failure) per @local/ai-rizz-development.
+
+## 5. Standards Compliance Issues
+
+### 5.1 Function Documentation Format
+**Issue**: Some functions don't follow the exact required format from @shared/posix-style.mdc.
+**Fix**: Ensure all functions have required sections: Description, Globals, Arguments, Outputs, Returns.
+
+### 5.2 Variable Scope Management
+**Issue**: All functions correctly use prefixes, but some could be more consistent.
+**Fix**: Review and standardize prefix usage across all functions.
+
+### 5.3 Error Message Actionability
+**Issue**: Per @local/ai-rizz-development, error messages should include copy-pasteable fix commands when possible.
+**Current**: `show_manifest_integrity_error()` does this well.
+**Fix**: Review other error messages and add actionable guidance where appropriate.
+
+## Implementation Plan
+
+### Phase 1: POSIX Compliance and Standards (High Priority)
+1. Fix indentation inconsistencies throughout the script
+2. Standardize line breaking at logical boundaries
+3. Update function documentation to match exact required format
+4. Ensure all command functions document their supported flags
+5. Standardize return value documentation format
+
+### Phase 2: Eliminate Duplication (Medium Priority)  
+1. Complete migration from `ensure_initialized()` to `ensure_initialized_and_valid()`
+2. Implement the TODO to use single variables instead of mode-specific pairs
+3. Ensure consistent usage of existing helper functions
+4. Consolidate remaining duplicated patterns
+
+### Phase 3: Documentation Accuracy (Medium Priority)
+1. Fix all function header inaccuracies identified above
+2. Cross-reference `cmd_help()` with actual command implementations
+3. Remove documentation for unused globals
+4. Add missing flag documentation per development standards
+
+### Phase 4: Remove Redundancy (Low Priority)
+1. Evaluate single-use helper functions for inline implementation
+2. Remove unused globals and functions after migration is complete
+3. Simplify over-engineered patterns where appropriate
+
+### Phase 5: Enhanced Error Handling (Low Priority)
+1. Review error messages for actionability improvements
+2. Ensure consistent error handling patterns throughout
+
+## Validation Strategy
+
+1. **POSIX Compliance**: Run script through `shellcheck --shell=sh` to verify POSIX compliance
+2. **Functionality**: Run existing test suite to ensure no behavior changes
+3. **Documentation**: Manual review of all function headers against actual implementation
+4. **Standards**: Verify compliance with @local/ai-rizz-development requirements
+
+## Risk Assessment
+
+- **Low Risk**: Documentation fixes, indentation standardization
+- **Medium Risk**: Helper function consolidation, variable simplification  
+- **High Risk**: Removing any functions, changing core logic patterns
+
+All changes will maintain backward compatibility and existing functionality while improving code quality and maintainability. 

@@ -1169,6 +1169,25 @@ validate_manifest_integrity() {
 	fi
 }
 
+# Helper function to consolidate common initialization check
+#
+# Consolidates the repeated pattern of checking if ai-rizz is initialized
+# used by most commands that require an existing configuration.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state
+#   HAS_LOCAL_MODE - Local mode state
+#
+# Returns:
+#   Never returns on error (calls error() function)
+#   0 if any mode is initialized
+#
+ensure_initialized() {
+	if [ "${HAS_COMMIT_MODE}" = "false" ] && [ "${HAS_LOCAL_MODE}" = "false" ]; then
+		error "No ai-rizz configuration found. Run 'ai-rizz init' first."
+	fi
+}
+
 # Commands
 # ========
 
@@ -1623,10 +1642,8 @@ cmd_deinit() {
 #   1 on error (via error() function)
 #
 cmd_list() {
-	# Check if any mode is initialized
-	if [ "${HAS_COMMIT_MODE}" = "false" ] && [ "${HAS_LOCAL_MODE}" = "false" ]; then
-		error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-	fi
+	# Ensure ai-rizz is initialized
+	ensure_initialized
 	
 	# Validate manifest integrity (hard error for mismatched source repos)
 	validate_manifest_integrity

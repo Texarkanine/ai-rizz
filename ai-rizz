@@ -747,10 +747,6 @@ cache_manifest_metadata() {
 		parse_manifest_metadata "${LOCAL_MANIFEST_FILE}" "local"
 	fi
 }
-activate_commit_mode_paths() {
-	SOURCE_REPO_RULES_PATH="${COMMIT_RULES_PATH}"
-	SOURCE_REPO_RULESETS_PATH="${COMMIT_RULESETS_PATH}"
-}
 
 # Lazy Initialization Utilities
 # =============================

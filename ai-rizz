@@ -11,12 +11,14 @@
 set -e  # Exit on error
 
 # Configuration constants
-COMMIT_MANIFEST_FILE="ai-rizz.inf"
-LOCAL_MANIFEST_FILE="ai-rizz.local.inf"
+COMMIT_MANIFEST_FILE="ai-rizz.skbd"                 # Changed from ai-rizz.inf
+LOCAL_MANIFEST_FILE="ai-rizz.local.skbd"            # Changed from ai-rizz.local.inf
 SHARED_DIR="shared"
 LOCAL_DIR="local" 
 CONFIG_DIR="$HOME/.config/ai-rizz"
 DEFAULT_TARGET_DIR=".cursor/rules"
+DEFAULT_RULES_PATH="rules"                          # Added for default rules path
+DEFAULT_RULESETS_PATH="rulesets"                    # Added for default rulesets path
 
 # Dynamic manifest filenames (set during initialization with -s/--skibidi or -f/--manifest)
 CUSTOM_MANIFEST_ROOT=""
@@ -30,9 +32,17 @@ COMMIT_SOURCE_REPO=""
 LOCAL_SOURCE_REPO=""
 COMMIT_TARGET_DIR=""
 LOCAL_TARGET_DIR=""
+COMMIT_RULES_PATH=""                                # Added for commit mode rules path
+LOCAL_RULES_PATH=""                                 # Added for local mode rules path
+COMMIT_RULESETS_PATH=""                             # Added for commit mode rulesets path
+LOCAL_RULESETS_PATH=""                              # Added for local mode rulesets path
 
 # Repository directory (set during initialization)
 REPO_DIR=""
+
+# Active paths (used for path construction in current operation)
+SOURCE_REPO_RULES_PATH=""                           # Added for current operation
+SOURCE_REPO_RULESETS_PATH=""                        # Added for current operation
 
 # Display formatting variables  
 COMMITTED_GLYPH="●"
@@ -177,6 +187,8 @@ read_manifest_entries() {
 #   $1 - Path to manifest file to write (required)
 #   $2 - Source repository URL (required)
 #   $3 - Target directory path (required)
+#   $4 - Rules path (optional, defaults to "rules")
+#   $5 - Rulesets path (optional, defaults to "rulesets")
 #
 # Outputs:
 #   None (writes to file)
@@ -188,9 +200,11 @@ write_manifest_with_entries() {
 	wmwe_manifest_file="${1}"
 	wmwe_source_repo="${2}"
 	wmwe_target_dir="${3}"
+	wmwe_rules_path="${4:-rules}"         # Default to "rules" if not provided
+	wmwe_rulesets_path="${5:-rulesets}"    # Default to "rulesets" if not provided
 	
-	# Write header
-	echo "${wmwe_source_repo}	${wmwe_target_dir}" > "${wmwe_manifest_file}"
+	# Write header with all fields (new format)
+	echo "${wmwe_source_repo}	${wmwe_target_dir}	${wmwe_rules_path}	${wmwe_rulesets_path}" > "${wmwe_manifest_file}"
 	
 	# Read from stdin and append if there's content
 	while IFS= read -r wmwe_line; do
@@ -265,14 +279,27 @@ remove_manifest_entry_from_file() {
 	# Get entries excluding the one to remove
 	rmeff_entries=$(read_manifest_entries "${rmeff_local_manifest_file}" | grep -v "^${rmeff_entry}$" || true)
 	
-	# Rewrite manifest
+	# Count tabs to determine format version
+	rmeff_tab_count=$(echo "${rmeff_metadata}" | tr -cd '\t' | wc -c)
+	
+	# Extract fields based on format
 	rmeff_source_repo=$(echo "${rmeff_metadata}" | cut -f1)
 	rmeff_target_dir=$(echo "${rmeff_metadata}" | cut -f2)
 	
-	# Write header first
-	echo "${rmeff_source_repo}	${rmeff_target_dir}" > "${rmeff_local_manifest_file}"
+	if [ "${rmeff_tab_count}" -eq 1 ]; then
+	    # Old format - upgrade to new format with defaults
+	    rmeff_rules_path="${DEFAULT_RULES_PATH}"
+	    rmeff_rulesets_path="${DEFAULT_RULESETS_PATH}"
+	else
+	    # New format - extract values
+	    rmeff_rules_path=$(echo "${rmeff_metadata}" | cut -f3)
+	    rmeff_rulesets_path=$(echo "${rmeff_metadata}" | cut -f4)
+	fi
 	
-	# Append entries if any exist (avoid hanging cat with empty input)
+	# Write header with all fields (new format)
+	echo "${rmeff_source_repo}	${rmeff_target_dir}	${rmeff_rules_path}	${rmeff_rulesets_path}" > "${rmeff_local_manifest_file}"
+	
+	# Append entries if any exist
 	if [ -n "${rmeff_entries}" ]; then
 	    echo "${rmeff_entries}" >> "${rmeff_local_manifest_file}"
 	fi
@@ -309,6 +336,71 @@ get_any_manifest_metadata() {
 	
 	# No manifests available
 	return 1
+}
+
+# Parse manifest metadata and set global variables for custom paths
+#
+# Globals:
+#   LOCAL_SOURCE_REPO, LOCAL_TARGET_DIR, LOCAL_RULES_PATH, LOCAL_RULESETS_PATH - Set for local mode
+#   COMMIT_SOURCE_REPO, COMMIT_TARGET_DIR, COMMIT_RULES_PATH, COMMIT_RULESETS_PATH - Set for commit mode
+#   DEFAULT_RULES_PATH, DEFAULT_RULESETS_PATH - Default values
+#
+# Arguments:
+#   $1 - Path to manifest file (required)
+#   $2 - Mode: "local" or "commit" (required)
+#
+# Outputs:
+#   None (sets global variables)
+#
+# Returns:
+#   0 on success
+#   1 if file doesn't exist
+#
+parse_manifest_metadata() {
+	pmm_manifest_file="${1}"
+	pmm_mode="${2}"  # "local" or "commit"
+	
+	if [ ! -f "${pmm_manifest_file}" ]; then
+	    return 1
+	fi
+	
+	# Read metadata line
+	pmm_metadata=$(read_manifest_metadata "${pmm_manifest_file}")
+	
+	# Count tabs to determine format version
+	pmm_tab_count=$(echo "${pmm_metadata}" | tr -cd '\t' | wc -c)
+	
+	# Extract fields based on format
+	pmm_source_repo=$(echo "${pmm_metadata}" | cut -f1)
+	pmm_target_dir=$(echo "${pmm_metadata}" | cut -f2)
+	
+	if [ "${pmm_tab_count}" -eq 1 ]; then
+	    # Old format - use defaults
+	    pmm_rules_path="${DEFAULT_RULES_PATH}"
+	    pmm_rulesets_path="${DEFAULT_RULESETS_PATH}"
+	else
+	    # New format - extract values
+	    pmm_rules_path=$(echo "${pmm_metadata}" | cut -f3)
+	    pmm_rulesets_path=$(echo "${pmm_metadata}" | cut -f4)
+	fi
+	
+	# Set global variables based on mode
+	case "${pmm_mode}" in
+	    local)
+	        LOCAL_SOURCE_REPO="${pmm_source_repo}"
+	        LOCAL_TARGET_DIR="${pmm_target_dir}"
+	        LOCAL_RULES_PATH="${pmm_rules_path}"
+	        LOCAL_RULESETS_PATH="${pmm_rulesets_path}"
+	        ;;
+	    commit)
+	        COMMIT_SOURCE_REPO="${pmm_source_repo}"
+	        COMMIT_TARGET_DIR="${pmm_target_dir}"
+	        COMMIT_RULES_PATH="${pmm_rules_path}"
+	        COMMIT_RULESETS_PATH="${pmm_rulesets_path}"
+	        ;;
+	esac
+	
+	return 0
 }
 
 # Clone or update the rules repository cache
@@ -631,8 +723,12 @@ get_target_directory() {
 #   LOCAL_MANIFEST_FILE - Local manifest filename
 #   COMMIT_SOURCE_REPO - Set from commit manifest
 #   COMMIT_TARGET_DIR - Set from commit manifest
+#   COMMIT_RULES_PATH - Set from commit manifest
+#   COMMIT_RULESETS_PATH - Set from commit manifest
 #   LOCAL_SOURCE_REPO - Set from local manifest
 #   LOCAL_TARGET_DIR - Set from local manifest
+#   LOCAL_RULES_PATH - Set from local manifest
+#   LOCAL_RULESETS_PATH - Set from local manifest
 #
 # Arguments:
 #   None
@@ -646,23 +742,64 @@ get_target_directory() {
 cache_manifest_metadata() {
 	# Cache commit manifest metadata
 	if [ -f "${COMMIT_MANIFEST_FILE}" ]; then
-		if ! cmm_metadata=$(read_manifest_metadata "${COMMIT_MANIFEST_FILE}"); then
-			error "Failed to read commit manifest metadata"
-		fi
-		COMMIT_SOURCE_REPO=$(echo "${cmm_metadata}" | cut -f1)
-		COMMIT_TARGET_DIR=$(echo "${cmm_metadata}" | cut -f2)
+		parse_manifest_metadata "${COMMIT_MANIFEST_FILE}" "commit"
 	fi
 	
 	# Cache local manifest metadata
 	if [ -f "${LOCAL_MANIFEST_FILE}" ]; then
-		if ! cmm_metadata=$(read_manifest_metadata "${LOCAL_MANIFEST_FILE}"); then
-			error "Failed to read local manifest metadata"
-		fi
-		LOCAL_SOURCE_REPO=$(echo "${cmm_metadata}" | cut -f1)
-		LOCAL_TARGET_DIR=$(echo "${cmm_metadata}" | cut -f2)
+		parse_manifest_metadata "${LOCAL_MANIFEST_FILE}" "local"
 	fi
 }
 
+# Activate local mode paths for current operation
+#
+# Sets the active SOURCE_REPO_RULES_PATH and SOURCE_REPO_RULESETS_PATH
+# to the local mode values for use in path construction.
+#
+# Globals:
+#   LOCAL_RULES_PATH - Local mode rules path (read)
+#   LOCAL_RULESETS_PATH - Local mode rulesets path (read)
+#   SOURCE_REPO_RULES_PATH - Active rules path (set)
+#   SOURCE_REPO_RULESETS_PATH - Active rulesets path (set)
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 always
+#
+activate_local_mode_paths() {
+	SOURCE_REPO_RULES_PATH="${LOCAL_RULES_PATH}"
+	SOURCE_REPO_RULESETS_PATH="${LOCAL_RULESETS_PATH}"
+}
+
+# Activate commit mode paths for current operation
+#
+# Sets the active SOURCE_REPO_RULES_PATH and SOURCE_REPO_RULESETS_PATH
+# to the commit mode values for use in path construction.
+#
+# Globals:
+#   COMMIT_RULES_PATH - Commit mode rules path (read)
+#   COMMIT_RULESETS_PATH - Commit mode rulesets path (read)
+#   SOURCE_REPO_RULES_PATH - Active rules path (set)
+#   SOURCE_REPO_RULESETS_PATH - Active rulesets path (set)
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 always
+#
+activate_commit_mode_paths() {
+	SOURCE_REPO_RULES_PATH="${COMMIT_RULES_PATH}"
+	SOURCE_REPO_RULESETS_PATH="${COMMIT_RULESETS_PATH}"
+}
 
 # Legacy Migration Utilities
 # ==========================
@@ -808,16 +945,30 @@ lazy_init_mode() {
 		error "No manifest available to copy metadata from for lazy initialization"
 	fi
 	
+	# Count tabs to determine format version
+	lim_tab_count=$(echo "${lim_metadata}" | tr -cd '\t' | wc -c)
+	
+	# Extract fields based on format
 	lim_source_repo=$(echo "${lim_metadata}" | cut -f1)
 	lim_target_dir=$(echo "${lim_metadata}" | cut -f2)
+	
+	if [ "${lim_tab_count}" -eq 1 ]; then
+	    # Old format - use defaults
+	    lim_rules_path="${DEFAULT_RULES_PATH}"
+	    lim_rulesets_path="${DEFAULT_RULESETS_PATH}"
+	else
+	    # New format - extract values
+	    lim_rules_path=$(echo "${lim_metadata}" | cut -f3)
+	    lim_rulesets_path=$(echo "${lim_metadata}" | cut -f4)
+	fi
 	
 	case "${lim_target_mode}" in
 	    local)
 	        # Create local mode structure
 	        mkdir -p "${lim_target_dir}/${LOCAL_DIR}"
 	        
-	        # Write empty manifest with metadata
-	        echo "" | write_manifest_with_entries "${LOCAL_MANIFEST_FILE}" "${lim_source_repo}" "${lim_target_dir}"
+	        # Write empty manifest with metadata (including custom paths)
+	        echo "" | write_manifest_with_entries "${LOCAL_MANIFEST_FILE}" "${lim_source_repo}" "${lim_target_dir}" "${lim_rules_path}" "${lim_rulesets_path}"
 	        
 	        # Update git excludes
 	        setup_local_mode_excludes "${lim_target_dir}"
@@ -826,19 +977,23 @@ lazy_init_mode() {
 	        HAS_LOCAL_MODE=true
 	        LOCAL_SOURCE_REPO="${lim_source_repo}"
 	        LOCAL_TARGET_DIR="${lim_target_dir}"
+	        LOCAL_RULES_PATH="${lim_rules_path}"
+	        LOCAL_RULESETS_PATH="${lim_rulesets_path}"
 	        ;;
 	        
 	    commit)
 	        # Create commit mode structure  
 	        mkdir -p "${lim_target_dir}/${SHARED_DIR}"
 	        
-	        # Write empty manifest with metadata
-	                echo "" | write_manifest_with_entries "${COMMIT_MANIFEST_FILE}" "${lim_source_repo}" "${lim_target_dir}"
+	        # Write empty manifest with metadata (including custom paths)
+	        echo "" | write_manifest_with_entries "${COMMIT_MANIFEST_FILE}" "${lim_source_repo}" "${lim_target_dir}" "${lim_rules_path}" "${lim_rulesets_path}"
         
         # Update mode state and cache
         HAS_COMMIT_MODE=true
         COMMIT_SOURCE_REPO="${lim_source_repo}"
         COMMIT_TARGET_DIR="${lim_target_dir}"
+        COMMIT_RULES_PATH="${lim_rules_path}"
+        COMMIT_RULESETS_PATH="${lim_rulesets_path}"
         ;;
         
     *)
@@ -1205,8 +1360,10 @@ validate_manifest_integrity() {
 #   [-d target_dir]      - Target directory (defaults to .cursor/rules)
 #   [--local|-l]         - Initialize local mode (git-ignored)
 #   [--commit|-c]        - Initialize commit mode (git-tracked)
-#   [-s|--skibidi file]  - Use custom manifest root filename (processed globally)
-#   [-f|--manifest file] - Alias for --skibidi (processed globally)
+#   [-s, --skibidi file]  - Use custom manifest root filename (processed globally)
+#   [-f, --manifest file] - Alias for --skibidi (processed globally)
+#   [--rule-path]        - Rules path (optional, defaults to "rules")
+#   [--ruleset-path]     - Rulesets path (optional, defaults to "rulesets")
 #
 # Returns:
 #   0 on success
@@ -1216,6 +1373,8 @@ cmd_init() {
 	ci_source_repo=""
 	ci_target_dir=""
 	ci_mode=""
+	ci_rule_path=""
+	ci_ruleset_path=""
 	
 	# Parse arguments
 	while [ $# -gt 0 ]; do
@@ -1232,6 +1391,14 @@ cmd_init() {
 	            ci_mode="commit"
 	            shift
 	            ;;
+	        --rule-path)
+	            ci_rule_path="$2"
+	            shift 2
+	            ;;
+	        --ruleset-path)
+	            ci_ruleset_path="$2"
+	            shift 2
+	            ;;
 	        *)
 	            if [ -z "${ci_source_repo}" ]; then
 	                ci_source_repo="$1"
@@ -1242,6 +1409,15 @@ cmd_init() {
 	            ;;
 	    esac
 	done
+	
+	# Use defaults if not provided
+	if [ -z "${ci_rule_path}" ]; then
+	    ci_rule_path="${DEFAULT_RULES_PATH}"
+	fi
+	
+	if [ -z "${ci_ruleset_path}" ]; then
+	    ci_ruleset_path="${DEFAULT_RULESETS_PATH}"
+	fi
 	
 	# Prompt for source repo if not provided
 	if [ -z "${ci_source_repo}" ]; then
@@ -1330,8 +1506,8 @@ cmd_init() {
 	        # Create local mode structure
 	        mkdir -p "${ci_target_dir}/${LOCAL_DIR}"
 	        
-	        # Write empty manifest with metadata
-	        echo "" | write_manifest_with_entries "${LOCAL_MANIFEST_FILE}" "${ci_source_repo}" "${ci_target_dir}"
+	        # Write empty manifest with metadata (including custom paths)
+	        echo "" | write_manifest_with_entries "${LOCAL_MANIFEST_FILE}" "${ci_source_repo}" "${ci_target_dir}" "${ci_rule_path}" "${ci_ruleset_path}"
 	        
 	        # Update git excludes
 	        setup_local_mode_excludes "${ci_target_dir}"
@@ -1340,14 +1516,16 @@ cmd_init() {
 	        HAS_LOCAL_MODE=true
 	        LOCAL_SOURCE_REPO="${ci_source_repo}"
 	        LOCAL_TARGET_DIR="${ci_target_dir}"
+	        LOCAL_RULES_PATH="${ci_rule_path}"
+	        LOCAL_RULESETS_PATH="${ci_ruleset_path}"
 	        ;;
 	        
 	    commit)
 	        # Create commit mode structure  
 	        mkdir -p "${ci_target_dir}/${SHARED_DIR}"
 	        
-	        # Write empty manifest with metadata
-	        echo "" | write_manifest_with_entries "${COMMIT_MANIFEST_FILE}" "${ci_source_repo}" "${ci_target_dir}"
+	        # Write empty manifest with metadata (including custom paths)
+	        echo "" | write_manifest_with_entries "${COMMIT_MANIFEST_FILE}" "${ci_source_repo}" "${ci_target_dir}" "${ci_rule_path}" "${ci_ruleset_path}"
 	        
 	        # Update mode state and cache
 	        HAS_COMMIT_MODE=true
@@ -1618,12 +1796,14 @@ cmd_list() {
 	    validate_manifest_format "${COMMIT_MANIFEST_FILE}" || error "Corrupted commit manifest file"
 	fi
 	
-	# Get source repo from any available mode
+	# Get source repo from any available mode and set active paths
 	cl_source_repo=""
 	if [ "${HAS_COMMIT_MODE}" = "true" ]; then
 	    cl_source_repo="${COMMIT_SOURCE_REPO}"
+	    activate_commit_mode_paths
 	elif [ "${HAS_LOCAL_MODE}" = "true" ]; then
 	    cl_source_repo="${LOCAL_SOURCE_REPO}"
+	    activate_local_mode_paths
 	fi
 	
 	# Update source repository
@@ -1644,7 +1824,7 @@ cmd_list() {
 	        
 	        # Use a for loop instead of while to avoid subshell issues
 	        for cl_check_entry in ${cl_check_entries}; do
-	            if [ -n "${cl_check_entry}" ] && echo "${cl_check_entry}" | grep -q "^rulesets/"; then
+	            if [ -n "${cl_check_entry}" ] && echo "${cl_check_entry}" | grep -q "^${SOURCE_REPO_RULESETS_PATH}/"; then
 	                # Check if this ruleset contains the item
 	                cl_check_ruleset_dir="${REPO_DIR}/${cl_check_entry}"
 	                if [ -d "${cl_check_ruleset_dir}" ] && [ -f "${cl_check_ruleset_dir}/${cl_check_item_basename}" ]; then
@@ -1680,13 +1860,13 @@ cmd_list() {
 	
 	# Display rules
 	echo "Available rules:"
-	cl_rules=$(find "${REPO_DIR}/rules" -name "*.mdc" | sort 2>/dev/null)
+	cl_rules=$(find "${REPO_DIR}/${SOURCE_REPO_RULES_PATH}" -name "*.mdc" | sort 2>/dev/null)
 	if [ -z "${cl_rules}" ]; then
 	    echo "  No rules found"
 	else
 	    for cl_rule in ${cl_rules}; do
 	        cl_rule_name=$(basename "${cl_rule}")
-	        cl_rule_path="rules/${cl_rule_name}"
+	        cl_rule_path="${SOURCE_REPO_RULES_PATH}/${cl_rule_name}"
 	        cl_status=$(is_installed "${cl_rule_path}")
 	        
 	        case "${cl_status}" in
@@ -1706,13 +1886,13 @@ cmd_list() {
 	
 	# Display rulesets
 	echo "Available rulesets:"
-	cl_rulesets=$(find "${REPO_DIR}/rulesets" -mindepth 1 -maxdepth 1 -type d | sort 2>/dev/null)
+	cl_rulesets=$(find "${REPO_DIR}/${SOURCE_REPO_RULESETS_PATH}" -mindepth 1 -maxdepth 1 -type d | sort 2>/dev/null)
 	if [ -z "${cl_rulesets}" ]; then
 	    echo "  No rulesets found"
 	else
 	    for cl_ruleset in ${cl_rulesets}; do
 	        cl_ruleset_name=$(basename "${cl_ruleset}")
-	        cl_ruleset_path="rulesets/${cl_ruleset_name}"
+	        cl_ruleset_path="${SOURCE_REPO_RULESETS_PATH}/${cl_ruleset_name}"
 	        cl_status=$(is_installed "${cl_ruleset_path}")
 	        
 	        # Display ruleset with installation status
@@ -1728,17 +1908,17 @@ cmd_list() {
 	                ;;
 	        esac
 	        
-	                # Use tree to display ruleset contents (filter to .mdc files only)
-        if [ -d "${cl_ruleset}" ]; then
-            # Check if tree command exists
-            if command -v tree >/dev/null 2>&1; then
-                # Use tree with pattern matching to show only .mdc files and symlinks
-                (cd "${cl_ruleset}" && tree -P "*.mdc" -L 1 --noreport) | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'
-            else
-                # Fallback if tree is not available
-                find "${cl_ruleset}" -maxdepth 1 \( -name "*.mdc" -type f \) -o \( -name "*.mdc" -type l \) -exec basename {} \; | sort | sed 's/^/    ├── /'
-            fi
-        fi
+	        # Use tree to display ruleset contents (filter to .mdc files only)
+	        if [ -d "${cl_ruleset}" ]; then
+	            # Check if tree command exists
+	            if command -v tree >/dev/null 2>&1; then
+	                # Use tree with pattern matching to show only .mdc files and symlinks
+	                (cd "${cl_ruleset}" && tree -P "*.mdc" -L 1 --noreport) | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'
+	            else
+	                # Fallback if tree is not available
+	                find "${cl_ruleset}" -maxdepth 1 \( -name "*.mdc" -type f \) -o \( -name "*.mdc" -type l \) -exec basename {} \; | sort | sed 's/^/    ├── /'
+	            fi
+	        fi
 	    done
 	fi
 	
@@ -1774,7 +1954,7 @@ check_rule_downgrade_conflict() {
 	# Only check for downgrade conflicts (local mode with commit mode active)
 	if [ "$crdc_mode" = "local" ] && [ "$HAS_COMMIT_MODE" = "true" ]; then
 		# Check if this rule is part of any committed ruleset
-		rule_filename=$(basename "rules/$crdc_rule")
+		rule_filename=$(basename "${SOURCE_REPO_RULES_PATH}/$crdc_rule")
 		commit_entries=$(read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null || true)
 		
 		if [ -n "$commit_entries" ]; then
@@ -1893,12 +2073,14 @@ cmd_add_rule() {
 	    local)
 	        car_manifest_file="${LOCAL_MANIFEST_FILE}"
 	        car_target_dir="${LOCAL_TARGET_DIR}/${LOCAL_DIR}"
+	        activate_local_mode_paths
 	        # Update source repository
 	        git_sync "${LOCAL_SOURCE_REPO}"
 	        ;;
 	    commit)
 	        car_manifest_file="${COMMIT_MANIFEST_FILE}"
 	        car_target_dir="${COMMIT_TARGET_DIR}/${SHARED_DIR}"
+	        activate_commit_mode_paths
 	        # Update source repository
 	        git_sync "${COMMIT_SOURCE_REPO}"
 	        ;;
@@ -1915,7 +2097,7 @@ cmd_add_rule() {
 	        *) car_rule="${car_rule}.mdc" ;;  # Add extension
 	    esac
 	    
-	    car_rule_path="rules/${car_rule}"
+	    car_rule_path="${SOURCE_REPO_RULES_PATH}/${car_rule}"
 	    
 	    # Check if rule exists in source repo
 	    if [ ! -f "${REPO_DIR}/${car_rule_path}" ]; then
@@ -2073,11 +2255,13 @@ cmd_add_ruleset() {
 	case "${cars_mode}" in
 	    local)
 	        cars_manifest_file="${LOCAL_MANIFEST_FILE}"
+	        activate_local_mode_paths
 	        # Update source repository
 	        git_sync "${LOCAL_SOURCE_REPO}"
 	        ;;
 	    commit)
 	        cars_manifest_file="${COMMIT_MANIFEST_FILE}"
+	        activate_commit_mode_paths
 	        # Update source repository
 	        git_sync "${COMMIT_SOURCE_REPO}"
 	        ;;
@@ -2088,7 +2272,7 @@ cmd_add_ruleset() {
 	
 	# Process each ruleset
 	for cars_ruleset in ${cars_rulesets}; do
-	    cars_ruleset_path="rulesets/${cars_ruleset}"
+	    cars_ruleset_path="${SOURCE_REPO_RULESETS_PATH}/${cars_ruleset}"
 	    
 	    # Check if ruleset exists in source repo
 	    if [ ! -d "${REPO_DIR}/${cars_ruleset_path}" ]; then
@@ -2191,28 +2375,29 @@ cmd_remove_rule() {
 	        *) rule="${rule}.mdc" ;;  # Add extension
 	    esac
 	    
-	    rule_path="rules/$rule"
 	    removed=false
 	    
-	    # Remove from whichever mode contains it
+	    # Remove from whichever mode contains it (use mode-specific paths)
 	    if [ "${HAS_LOCAL_MODE}" = "true" ]; then
-	        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-	            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
+	        local_rule_path="${LOCAL_RULES_PATH}/$rule"
+	        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$local_rule_path$"; then
+	            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$local_rule_path"
+	            echo "Removed rule: $local_rule_path"
 	            removed=true
 	        fi
 	    fi
 	    
 	    if [ "${HAS_COMMIT_MODE}" = "true" ]; then
-	        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-	            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
+	        commit_rule_path="${COMMIT_RULES_PATH}/$rule"
+	        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$commit_rule_path$"; then
+	            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$commit_rule_path"
+	            echo "Removed rule: $commit_rule_path"
 	            removed=true
 	        fi
 	    fi
 	    
-	    if [ "$removed" = "true" ]; then
-	        echo "Removed rule: $rule_path"
-	    else
-	        warn "Rule not found in any mode: $rule_path"
+	    if [ "$removed" = "false" ]; then
+	        warn "Rule not found in any mode: $rule"
 	    fi
 	done
 	
@@ -2256,28 +2441,29 @@ cmd_remove_ruleset() {
 	
 	# Process each ruleset
 	for ruleset in "$@"; do
-	    ruleset_path="rulesets/$ruleset"
 	    removed=false
 	    
-	    # Remove from whichever mode contains it
+	    # Remove from whichever mode contains it (use mode-specific paths)
 	    if [ "${HAS_LOCAL_MODE}" = "true" ]; then
-	        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-	            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
+	        local_ruleset_path="${LOCAL_RULESETS_PATH}/$ruleset"
+	        if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$local_ruleset_path$"; then
+	            remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$local_ruleset_path"
+	            echo "Removed ruleset: $local_ruleset_path"
 	            removed=true
 	        fi
 	    fi
 	    
 	    if [ "${HAS_COMMIT_MODE}" = "true" ]; then
-	        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-	            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
+	        commit_ruleset_path="${COMMIT_RULESETS_PATH}/$ruleset"
+	        if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$commit_ruleset_path$"; then
+	            remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$commit_ruleset_path"
+	            echo "Removed ruleset: $commit_ruleset_path"
 	            removed=true
 	        fi
 	    fi
 	    
-	    if [ "$removed" = "true" ]; then
-	        echo "Removed ruleset: $ruleset_path"
-	    else
-	        warn "Ruleset not found in any mode: $ruleset_path"
+	    if [ "$removed" = "false" ]; then
+	        warn "Ruleset not found in any mode: $ruleset"
 	    fi
 	done
 	
@@ -2630,6 +2816,8 @@ Command-specific options:
 	--commit, -c           Use commit mode (commit files)
 	-s, --skibidi <file>   Use custom manifest filename
 	-f, --manifest <file>  Alias for --skibidi
+	--rule-path <path>     Source repository rules path (default: rules)
+	--ruleset-path <path>  Source repository rulesets path (default: rulesets)
 
   deinit options:
 	-y                     Skip confirmation prompts
@@ -2654,6 +2842,12 @@ EOF
 #   LOCAL_SOURCE_REPO - Set during initialization
 #   COMMIT_TARGET_DIR - Set during initialization
 #   LOCAL_TARGET_DIR - Set during initialization
+#   COMMIT_RULES_PATH - Set during initialization
+#   LOCAL_RULES_PATH - Set during initialization
+#   COMMIT_RULESETS_PATH - Set during initialization
+#   LOCAL_RULESETS_PATH - Set during initialization
+#   SOURCE_REPO_RULES_PATH - Set during initialization
+#   SOURCE_REPO_RULESETS_PATH - Set during initialization
 #   REPO_DIR - Set during initialization
 #
 # Arguments:
@@ -2666,6 +2860,14 @@ EOF
 #   0 always
 #
 initialize_ai_rizz() {
+	# Initialize paths to defaults
+	SOURCE_REPO_RULES_PATH="${DEFAULT_RULES_PATH}"
+	SOURCE_REPO_RULESETS_PATH="${DEFAULT_RULESETS_PATH}"
+	LOCAL_RULES_PATH="${DEFAULT_RULES_PATH}"
+	LOCAL_RULESETS_PATH="${DEFAULT_RULESETS_PATH}"
+	COMMIT_RULES_PATH="${DEFAULT_RULES_PATH}"
+	COMMIT_RULESETS_PATH="${DEFAULT_RULESETS_PATH}"
+	
 	# Phase 1: Minimal detection and migration (file-based only)
 	detect_manifest_files_only
 	migrate_legacy_repository_if_needed

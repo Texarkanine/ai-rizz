@@ -437,16 +437,20 @@ ai-rizz uses a dual-manifest system to support per-rule mode selection:
 Both manifest files use the same format:
 
 ```
-<source_repo>[TAB]<target_dir>
+<source_repo>[TAB]<target_dir>[TAB]<rules_dir>[TAB]<rulesets_dir>
 rules/rule1.mdc
 rules/rule2.mdc
 rulesets/ruleset1
 ```
 
-- First line: source repository URL and target directory (tab-separated)
+- First line: tab-separated values:
+  1. source repository URL
+  2. target directory in your repository (where ai-rizz will install rules)
+  3. rules directory in source repository (where rules are pulled from)
+  4. rulesets directory in source repository (where rulesets are pulled from)
 - Subsequent lines: installed rules/rulesets (one per line)
-- Rule entries: `rules/` prefix + filename
-- Ruleset entries: `rulesets/` prefix + name
+- Rule entries: `<rules_dir>/` prefix + filename
+- Ruleset entries: `<rulesets_dir>/` prefix + name
 
 ### Conflict Resolution
 

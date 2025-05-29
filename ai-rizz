@@ -1169,10 +1169,312 @@ validate_manifest_integrity() {
 	fi
 }
 
-# Helper function to consolidate common initialization check
+# Consolidated Helper Functions for Command Logic
+# ============================================
+
+# Consolidate initialization check and integrity validation
 #
-# Consolidates the repeated pattern of checking if ai-rizz is initialized
-# used by most commands that require an existing configuration.
+# Performs both the basic initialization check and manifest integrity validation
+# that commonly appear together throughout command functions.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state (read)
+#   HAS_LOCAL_MODE - Local mode state (read)
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stderr: Error messages on failure
+#
+# Returns:
+#   Never returns on error (calls error() function)
+#   0 if any mode is initialized and integrity is valid
+#
+ensure_initialized_and_valid() {
+	if [ "${HAS_COMMIT_MODE}" = "false" ] && [ "${HAS_LOCAL_MODE}" = "false" ]; then
+		error "No ai-rizz configuration found. Run 'ai-rizz init' first."
+	fi
+	
+	# Validate manifest integrity (hard error for mismatched source repos)
+	validate_manifest_integrity
+}
+
+# Handle smart mode selection with proper variable prefixing
+#
+# Implements the common pattern of selecting a mode when not explicitly provided
+# by choosing the single available mode or prompting for selection when both exist.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state (read)
+#   HAS_LOCAL_MODE - Local mode state (read)
+#
+# Arguments:
+#   $1 - Current mode value (may be empty)
+#   $2 - Variable prefix for setting the result variable (e.g., "car" sets car_mode)
+#
+# Outputs:
+#   Stderr: Error messages on failure
+#
+# Returns:
+#   0 on success (sets ${prefix}_mode variable)
+#   1 on error (via error() function)
+#
+select_mode() {
+	sm_current_mode="${1}"
+	sm_prefix="${2}"
+	
+	# If mode already specified, validate and return
+	if [ -n "${sm_current_mode}" ]; then
+		case "${sm_current_mode}" in
+			local|commit)
+				eval "${sm_prefix}_mode=\"${sm_current_mode}\""
+				return 0
+				;;
+			*)
+				error "Invalid mode: ${sm_current_mode}. Must be 'local' or 'commit'"
+				;;
+		esac
+	fi
+	
+	# Smart mode selection
+	if [ "${HAS_LOCAL_MODE}" = "true" ] && [ "${HAS_COMMIT_MODE}" = "false" ]; then
+		eval "${sm_prefix}_mode=\"local\""
+	elif [ "${HAS_COMMIT_MODE}" = "true" ] && [ "${HAS_LOCAL_MODE}" = "false" ]; then
+		eval "${sm_prefix}_mode=\"commit\""
+	else
+		error "Both modes available. Please specify --local or --commit flag."
+	fi
+	
+	return 0
+}
+
+# Handle lazy initialization with tracking
+#
+# Implements the pattern of checking if lazy initialization is needed and tracking
+# whether it occurred, commonly used in add operations.
+#
+# Globals:
+#   None (calls needs_lazy_init and lazy_init_mode functions)
+#
+# Arguments:
+#   $1 - Mode to potentially initialize
+#   $2 - Variable prefix for setting the tracking variable (e.g., "car" sets car_lazy_init_occurred)
+#
+# Outputs:
+#   None (may output from lazy_init_mode function)
+#
+# Returns:
+#   0 on success (sets ${prefix}_lazy_init_occurred variable)
+#
+initialize_mode_if_needed() {
+	imn_mode="${1}"
+	imn_prefix="${2}"
+	
+	# Check if lazy initialization is needed and track it
+	if needs_lazy_init "${imn_mode}"; then
+		lazy_init_mode "${imn_mode}"
+		eval "${imn_prefix}_lazy_init_occurred=true"
+	else
+		eval "${imn_prefix}_lazy_init_occurred=false"
+	fi
+	
+	return 0
+}
+
+# Select manifest file and target directory based on mode
+#
+# Implements the common pattern of selecting the correct manifest file and target
+# directory based on the mode, along with syncing the source repository.
+#
+# Globals:
+#   LOCAL_MANIFEST_FILE - Local manifest filename (read)
+#   COMMIT_MANIFEST_FILE - Commit manifest filename (read)
+#   LOCAL_TARGET_DIR - Local target directory (read)
+#   COMMIT_TARGET_DIR - Commit target directory (read)
+#   LOCAL_DIR - Local directory name (read)
+#   SHARED_DIR - Shared directory name (read)
+#   LOCAL_SOURCE_REPO - Local source repository (read)
+#   COMMIT_SOURCE_REPO - Commit source repository (read)
+#
+# Arguments:
+#   $1 - Mode ("local" or "commit")
+#   $2 - Variable prefix for setting result variables (e.g., "car" sets car_manifest_file, car_target_dir)
+#
+# Outputs:
+#   Stderr: Warning messages from git_sync if repository update fails
+#
+# Returns:
+#   0 on success (sets ${prefix}_manifest_file and ${prefix}_target_dir variables)
+#   1 on error (via error() function)
+#
+get_manifest_and_target() {
+	gmt_mode="${1}"
+	gmt_prefix="${2}"
+	
+	# Select manifest and target based on mode
+	case "${gmt_mode}" in
+		local)
+			eval "${gmt_prefix}_manifest_file=\"${LOCAL_MANIFEST_FILE}\""
+			eval "${gmt_prefix}_target_dir=\"${LOCAL_TARGET_DIR}/${LOCAL_DIR}\""
+			# Update source repository
+			git_sync "${LOCAL_SOURCE_REPO}"
+			;;
+		commit)
+			eval "${gmt_prefix}_manifest_file=\"${COMMIT_MANIFEST_FILE}\""
+			eval "${gmt_prefix}_target_dir=\"${COMMIT_TARGET_DIR}/${SHARED_DIR}\""
+			# Update source repository
+			git_sync "${COMMIT_SOURCE_REPO}"
+			;;
+		*)
+			error "Invalid mode: ${gmt_mode}"
+			;;
+	esac
+	
+	return 0
+}
+
+# Add .mdc extension to an item if not present
+#
+# Implements the common pattern of ensuring an item has the .mdc extension.
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Item name to normalize
+#   $2 - Variable prefix for setting result variable (e.g., "car" sets car_item)
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 on success (sets ${prefix}_item variable with .mdc extension)
+#
+ensure_mdc_extension() {
+	eme_item="${1}"
+	eme_prefix="${2}"
+	
+	# Add .mdc extension if not present
+	case "${eme_item}" in
+		*".mdc") 
+			eval "${eme_prefix}_item=\"${eme_item}\""
+			;;  
+		*) 
+			eval "${eme_prefix}_item=\"${eme_item}.mdc\""
+			;;  
+	esac
+	
+	return 0
+}
+
+# Check if an item exists in the repository
+#
+# Implements the common pattern of checking if an item exists in the source
+# repository and outputting a warning if not found.
+#
+# Globals:
+#   REPO_DIR - Repository directory (read)
+#
+# Arguments:
+#   $1 - Item path relative to repository
+#   $2 - Item type description (e.g., "rule", "ruleset") for warning message
+#
+# Outputs:
+#   Stderr: Warning message if item not found
+#
+# Returns:
+#   0 if item exists
+#   1 if item not found
+#
+check_repository_item() {
+	cri_item_path="${1}"
+	cri_item_type="${2}"
+	
+	# Check if item exists in source repo
+	if [ ! -f "${REPO_DIR}/${cri_item_path}" ]; then
+		warn "${cri_item_type} not found: ${cri_item_path}"
+		return 1
+	fi
+	
+	return 0
+}
+
+# Handle conflict resolution migration logic
+#
+# Implements the complex pattern of migrating entries between modes to resolve
+# conflicts, handling both normal operation and post-lazy-initialization scenarios.
+#
+# Globals:
+#   HAS_COMMIT_MODE - Commit mode state (read)
+#   HAS_LOCAL_MODE - Local mode state (read)
+#   LOCAL_MANIFEST_FILE - Local manifest filename (read)
+#   COMMIT_MANIFEST_FILE - Commit manifest filename (read)
+#
+# Arguments:
+#   $1 - Item path to migrate
+#   $2 - Target mode ("local" or "commit")
+#   $3 - Lazy initialization occurred flag ("true" or "false")
+#
+# Outputs:
+#   None (may call remove_manifest_entry_from_file)
+#
+# Returns:
+#   0 on success
+#
+migrate_from_opposite_mode() {
+	mfom_item_path="${1}"
+	mfom_target_mode="${2}"
+	mfom_lazy_init_occurred="${3}"
+	
+	# Check if item exists in opposite mode (conflict resolution)
+	# Skip migration check if we just lazy-initialized the target mode (it's empty)
+	if [ "${mfom_lazy_init_occurred}" = "false" ]; then
+		case "${mfom_target_mode}" in
+			local)
+				if [ "${HAS_COMMIT_MODE}" = "true" ]; then
+					if read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
+						# Remove from commit mode, add to local mode
+						remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${mfom_item_path}"
+					fi
+				fi
+				;;
+			commit)
+				if [ "${HAS_LOCAL_MODE}" = "true" ]; then
+					if read_manifest_entries "${LOCAL_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
+						# Remove from local mode, add to commit mode
+						remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${mfom_item_path}"
+					fi
+				fi
+				;;
+		esac
+	else
+		# Lazy initialization occurred - need to migrate from opposite mode
+		case "${mfom_target_mode}" in
+			local)
+				# We just created local mode, migrate from commit mode if item exists there
+				if [ "${HAS_COMMIT_MODE}" = "true" ]; then
+					if read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
+						remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${mfom_item_path}"
+					fi
+				fi
+				;;
+			commit)
+				# We just created commit mode, migrate from local mode if item exists there
+				if [ "${HAS_LOCAL_MODE}" = "true" ]; then
+					if read_manifest_entries "${LOCAL_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
+						remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${mfom_item_path}"
+					fi
+				fi
+				;;
+		esac
+	fi
+	
+	return 0
+}
+
+# Keep the old ensure_initialized function for backward compatibility
+# This will be replaced by ensure_initialized_and_valid in the next phase
 #
 # Globals:
 #   HAS_COMMIT_MODE - Commit mode state
@@ -1642,12 +1944,9 @@ cmd_deinit() {
 #   1 on error (via error() function)
 #
 cmd_list() {
-	# Ensure ai-rizz is initialized
-	ensure_initialized
-	
-	# Validate manifest integrity (hard error for mismatched source repos)
-	validate_manifest_integrity
-	
+	# Ensure ai-rizz is initialized and validate manifest integrity
+	ensure_initialized_and_valid
+
 	# Validate manifest format for all existing manifests
 	if [ "${HAS_LOCAL_MODE}" = "true" ]; then
 		validate_manifest_format "${LOCAL_MANIFEST_FILE}" || error "Corrupted local manifest file"
@@ -1900,115 +2199,38 @@ cmd_add_rule() {
 		esac
 	done
 	
-	# Check if any mode is initialized
-	if [ "${HAS_COMMIT_MODE}" = "false" ] && [ "${HAS_LOCAL_MODE}" = "false" ]; then
-		error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-	fi
-	
-	# Validate manifest integrity (hard error for mismatched source repos)
-	validate_manifest_integrity
-	
-	# Smart mode selection
-	if [ -z "${car_mode}" ]; then
-		if [ "${HAS_LOCAL_MODE}" = "true" ] && [ "${HAS_COMMIT_MODE}" = "false" ]; then
-			car_mode="local"
-		elif [ "${HAS_COMMIT_MODE}" = "true" ] && [ "${HAS_LOCAL_MODE}" = "false" ]; then
-			car_mode="commit"
-		else
-			error "Both modes available. Please specify --local or --commit flag."
-		fi
-	fi
-	
-	# Check if lazy initialization is needed and track it
-	car_lazy_init_occurred=false
-	if needs_lazy_init "${car_mode}"; then
-		lazy_init_mode "${car_mode}"
-		car_lazy_init_occurred=true
-	fi
-	
-	# Select manifest and target based on mode
-	case "${car_mode}" in
-		local)
-			car_manifest_file="${LOCAL_MANIFEST_FILE}"
-			car_target_dir="${LOCAL_TARGET_DIR}/${LOCAL_DIR}"
-			# Update source repository
-			git_sync "${LOCAL_SOURCE_REPO}"
-			;;
-		commit)
-			car_manifest_file="${COMMIT_MANIFEST_FILE}"
-			car_target_dir="${COMMIT_TARGET_DIR}/${SHARED_DIR}"
-			# Update source repository
-			git_sync "${COMMIT_SOURCE_REPO}"
-			;;
-		*)
-			error "Invalid mode: ${car_mode}"
-			;;
-	esac
-	
+	# Check if any mode is initialized and validate manifest integrity
+	ensure_initialized_and_valid
+
+	# Smart mode selection using helper function
+	select_mode "${car_mode}" "car"
+
+	# Check if lazy initialization is needed and track it using helper function
+	initialize_mode_if_needed "${car_mode}" "car"
+
+	# Select manifest and target based on mode using helper function
+	get_manifest_and_target "${car_mode}" "car"
+
 	# Process each rule
 	for car_rule in ${car_rules}; do
-		# Add .mdc extension if not present
-		case "${car_rule}" in
-			*".mdc") ;;  # Already has extension
-			*) car_rule="${car_rule}.mdc" ;;  # Add extension
-		esac
+		# Add .mdc extension if not present using helper function
+		ensure_mdc_extension "${car_rule}" "car"
 		
-		car_rule_path="${RULES_PATH}/${car_rule}"
+		car_rule_path="${RULES_PATH}/${car_item}"
 		
-		# Check if rule exists in source repo
-		if [ ! -f "${REPO_DIR}/${car_rule_path}" ]; then
-			warn "Rule not found: ${car_rule_path}"
+		# Check if rule exists in source repo using helper function
+		if ! check_repository_item "${car_rule_path}" "Rule"; then
 			continue
 		fi
 		
 		# Check for downgrade conflicts first
-		if ! check_rule_downgrade_conflict "${car_rule}" "${car_mode}"; then
+		if ! check_rule_downgrade_conflict "${car_item}" "${car_mode}"; then
 			continue  # Skip this rule, conflict detected
 		fi
 		
-		# Check if rule exists in opposite mode (conflict resolution)
-		# Skip migration check if we just lazy-initialized the target mode (it's empty)
-		if [ "${car_lazy_init_occurred}" = "false" ]; then
-			case "${car_mode}" in
-				local)
-					if [ "${HAS_COMMIT_MODE}" = "true" ]; then
-						if read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${car_rule_path}$"; then
-							# Remove from commit mode, add to local mode
-							remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${car_rule_path}"
-						fi
-					fi
-					;;
-				commit)
-					if [ "${HAS_LOCAL_MODE}" = "true" ]; then
-						if read_manifest_entries "${LOCAL_MANIFEST_FILE}" | grep -q "^${car_rule_path}$"; then
-							# Remove from local mode, add to commit mode
-							remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${car_rule_path}"
-						fi
-					fi
-					;;
-			esac
-		else
-			# Lazy initialization occurred - need to migrate from opposite mode
-			case "${car_mode}" in
-				local)
-					# We just created local mode, migrate from commit mode if rule exists there
-					if [ "${HAS_COMMIT_MODE}" = "true" ]; then
-						if read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${car_rule_path}$"; then
-							remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${car_rule_path}"
-						fi
-					fi
-					;;
-				commit)
-					# We just created commit mode, migrate from local mode if rule exists there
-					if [ "${HAS_LOCAL_MODE}" = "true" ]; then
-						if read_manifest_entries "${LOCAL_MANIFEST_FILE}" | grep -q "^${car_rule_path}$"; then
-							remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${car_rule_path}"
-						fi
-					fi
-					;;
-			esac
-		fi
-		
+		# Handle conflict resolution migration using helper function
+		migrate_from_opposite_mode "${car_rule_path}" "${car_mode}" "${car_lazy_init_occurred}"
+
 		# Check if target directory is writable before adding to manifest
 		if [ ! -w "${car_target_dir}" ]; then
 			error "Cannot write to target directory: ${car_target_dir} (permission denied)"
@@ -2081,49 +2303,18 @@ cmd_add_ruleset() {
 		esac
 	done
 	
-	# Check if any mode is initialized
-	if [ "${HAS_COMMIT_MODE}" = "false" ] && [ "${HAS_LOCAL_MODE}" = "false" ]; then
-		error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-	fi
-	
-	# Validate manifest integrity (hard error for mismatched source repos)
-	validate_manifest_integrity
-	
-	# Smart mode selection
-	if [ -z "${cars_mode}" ]; then
-		if [ "${HAS_LOCAL_MODE}" = "true" ] && [ "${HAS_COMMIT_MODE}" = "false" ]; then
-			cars_mode="local"
-		elif [ "${HAS_COMMIT_MODE}" = "true" ] && [ "${HAS_LOCAL_MODE}" = "false" ]; then
-			cars_mode="commit"
-		else
-			error "Both modes available. Please specify --local or --commit flag."
-		fi
-	fi
-	
-	# Check if lazy initialization is needed and track it
-	cars_lazy_init_occurred=false
-	if needs_lazy_init "${cars_mode}"; then
-		lazy_init_mode "${cars_mode}"
-		cars_lazy_init_occurred=true
-	fi
-	
-	# Select manifest and target based on mode
-	case "${cars_mode}" in
-		local)
-			cars_manifest_file="${LOCAL_MANIFEST_FILE}"
-			# Update source repository
-			git_sync "${LOCAL_SOURCE_REPO}"
-			;;
-		commit)
-			cars_manifest_file="${COMMIT_MANIFEST_FILE}"
-			# Update source repository
-			git_sync "${COMMIT_SOURCE_REPO}"
-			;;
-		*)
-			error "Invalid mode: ${cars_mode}"
-			;;
-	esac
-	
+	# Check if any mode is initialized and validate manifest integrity
+	ensure_initialized_and_valid
+
+	# Smart mode selection using helper function
+	select_mode "${cars_mode}" "cars"
+
+	# Check if lazy initialization is needed and track it using helper function
+	initialize_mode_if_needed "${cars_mode}" "cars"
+
+	# Select manifest and target based on mode using helper function
+	get_manifest_and_target "${cars_mode}" "cars"
+
 	# Process each ruleset
 	for cars_ruleset in ${cars_rulesets}; do
 		cars_ruleset_path="${RULESETS_PATH}/${cars_ruleset}"
@@ -2134,49 +2325,9 @@ cmd_add_ruleset() {
 			continue
 		fi
 		
-		# Check if ruleset exists in opposite mode (conflict resolution)
-		# Skip migration check if we just lazy-initialized the target mode (it's empty)
-		if [ "${cars_lazy_init_occurred}" = "false" ]; then
-			case "${cars_mode}" in
-				local)
-					if [ "${HAS_COMMIT_MODE}" = "true" ]; then
-						if read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${cars_ruleset_path}$"; then
-							# Remove from commit mode, add to local mode
-							remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${cars_ruleset_path}"
-						fi
-					fi
-					;;
-				commit)
-					if [ "${HAS_LOCAL_MODE}" = "true" ]; then
-						if read_manifest_entries "${LOCAL_MANIFEST_FILE}" | grep -q "^${cars_ruleset_path}$"; then
-							# Remove from local mode, add to commit mode
-							remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${cars_ruleset_path}"
-						fi
-					fi
-					;;
-			esac
-		else
-			# Lazy initialization occurred - need to migrate from opposite mode
-			case "${cars_mode}" in
-				local)
-					# We just created local mode, migrate from commit mode if ruleset exists there
-					if [ "${HAS_COMMIT_MODE}" = "true" ]; then
-						if read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${cars_ruleset_path}$"; then
-							remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${cars_ruleset_path}"
-						fi
-					fi
-					;;
-				commit)
-					# We just created commit mode, migrate from local mode if ruleset exists there
-					if [ "${HAS_LOCAL_MODE}" = "true" ]; then
-						if read_manifest_entries "${LOCAL_MANIFEST_FILE}" | grep -q "^${cars_ruleset_path}$"; then
-							remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${cars_ruleset_path}"
-						fi
-					fi
-					;;
-			esac
-		fi
-		
+		# Handle conflict resolution migration using helper function
+		migrate_from_opposite_mode "${cars_ruleset_path}" "${cars_mode}" "${cars_lazy_init_occurred}"
+
 		# Add to target manifest
 		add_manifest_entry_to_file "${cars_manifest_file}" "${cars_ruleset_path}"
 		
@@ -2213,24 +2364,16 @@ cmd_add_ruleset() {
 #   1 on error (via error() function)
 #
 cmd_remove_rule() {
-	# Check if any mode is initialized
-	if [ "${HAS_COMMIT_MODE}" = "false" ] && [ "${HAS_LOCAL_MODE}" = "false" ]; then
-		error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-	fi
-	
-	# Validate manifest integrity (hard error for mismatched source repos)
-	validate_manifest_integrity
-	
+	# Check if any mode is initialized and validate manifest integrity
+	ensure_initialized_and_valid
+
 	# Process each rule
 	for rule in "$@"; do
-		# Add .mdc extension if not present
-		case "$rule" in
-			*".mdc") ;;  # Already has extension
-			*) rule="${rule}.mdc" ;;  # Add extension
-		esac
+		# Add .mdc extension if not present using helper function
+		ensure_mdc_extension "${rule}" "crr"
 		
 		removed=false
-		rule_path="${RULES_PATH}/$rule"
+		rule_path="${RULES_PATH}/${crr_item}"
 		
 		# Remove from whichever mode contains it
 		if [ "${HAS_LOCAL_MODE}" = "true" ]; then
@@ -2250,7 +2393,7 @@ cmd_remove_rule() {
 		fi
 		
 		if [ "$removed" = "false" ]; then
-			warn "Rule not found in any mode: $rule"
+			warn "Rule not found in any mode: ${crr_item}"
 		fi
 	done
 	
@@ -2284,14 +2427,9 @@ cmd_remove_rule() {
 #   1 on error (via error() function)
 #
 cmd_remove_ruleset() {
-	# Check if any mode is initialized
-	if [ "${HAS_COMMIT_MODE}" = "false" ] && [ "${HAS_LOCAL_MODE}" = "false" ]; then
-		error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-	fi
-	
-	# Validate manifest integrity (hard error for mismatched source repos)
-	validate_manifest_integrity
-	
+	# Check if any mode is initialized and validate manifest integrity
+	ensure_initialized_and_valid
+
 	# Process each ruleset
 	for ruleset in "$@"; do
 		removed=false
@@ -2597,14 +2735,9 @@ handle_sync_cleanup() {
 #   1 on error (via error() function)
 #
 cmd_sync() {
-	# Check if any mode is initialized
-	if [ "${HAS_COMMIT_MODE}" = "false" ] && [ "${HAS_LOCAL_MODE}" = "false" ]; then
-		error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-	fi
-	
-	# Validate manifest integrity (hard error for mismatched source repos)
-	validate_manifest_integrity
-	
+	# Check if any mode is initialized and validate manifest integrity
+	ensure_initialized_and_valid
+
 	# Get source repo from any available manifest
 	cs_source_repo=""
 	if [ -n "${COMMIT_SOURCE_REPO}" ]; then

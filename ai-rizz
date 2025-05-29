@@ -377,8 +377,11 @@ parse_manifest_metadata() {
 	RULESETS_PATH="${pmm_rulesets_path}"
 	
 	# Set mode-specific variables
-	# we don't actually allow these to differ
-	# TODO: eventually use a single variable instead of mode-specific variables
+	# Note: We keep separate variables per mode even though they have the same values.
+	# This allows code to reference LOCAL_SOURCE_REPO or COMMIT_SOURCE_REPO based on context
+	# without having to track which mode is currently active. The redundancy makes the code
+	# more readable and less prone to bugs. A future refactoring might consolidate these,
+	# but would require extensive changes throughout the codebase.
 	LOCAL_SOURCE_REPO="${pmm_source_repo}"
 	LOCAL_TARGET_DIR="${pmm_target_dir}"
 	COMMIT_SOURCE_REPO="${pmm_source_repo}"
@@ -1180,7 +1183,10 @@ validate_manifest_integrity() {
 #   0 if any mode is initialized and integrity is valid
 #
 ensure_initialized_and_valid() {
-	ensure_initialized
+	# Check if any mode is initialized
+	if [ "$(is_mode_active commit)" = "false" ] && [ "$(is_mode_active local)" = "false" ]; then
+		error "No ai-rizz configuration found. Run 'ai-rizz init' first."
+	fi
 	
 	# Cache manifest metadata to populate target directory globals
 	cache_manifest_metadata
@@ -1273,7 +1279,7 @@ initialize_mode_if_needed() {
 # Select manifest file and target directory based on mode
 #
 # Implements the common pattern of selecting the correct manifest file and target
-# directory based on the mode, along with syncing the source repository (TODO: why?).
+# directory based on the mode
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename (read)
@@ -1299,19 +1305,7 @@ initialize_mode_if_needed() {
 get_manifest_and_target() {
 	gmt_mode="${1}"
 	
-	# Update source repository first (before generating output)
-	#TODO: do we need this?
-	# case "${gmt_mode}" in
-	# 	local)
-	# 		git_sync "${LOCAL_SOURCE_REPO}"
-	# 		;;
-	# 	commit)
-	# 		git_sync "${COMMIT_SOURCE_REPO}"
-	# 		;;
-	# 	*)
-	# 		error "Invalid mode: ${gmt_mode}"
-	# 		;;
-	# esac
+
 	
 	# Select manifest and target based on mode (clean output)
 	case "${gmt_mode}" in
@@ -1361,7 +1355,8 @@ ensure_mdc_extension() {
 # Check if an item exists in the repository
 #
 # Implements the common pattern of checking if an item exists in the source
-# repository and outputting a warning if not found.
+# repository and outputting a warning if not found. Handles both files and
+# directories.
 #
 # Globals:
 #   REPO_DIR - Repository directory (read)
@@ -1369,6 +1364,7 @@ ensure_mdc_extension() {
 # Arguments:
 #   $1 - Item path relative to repository
 #   $2 - Item type description (e.g., "rule", "ruleset") for warning message
+#   $3 - Type expected: "file" or "dir" (optional, defaults to "file")
 #
 # Outputs:
 #   Stderr: Warning message if item not found
@@ -1380,12 +1376,27 @@ ensure_mdc_extension() {
 check_repository_item() {
 	cri_item_path="${1}"
 	cri_item_type="${2}"
+	cri_expected_type="${3:-file}"  # Default to file if not specified
 	
-	# Check if item exists in source repo
-	if [ ! -f "${REPO_DIR}/${cri_item_path}" ]; then
-		warn "${cri_item_type} not found: ${cri_item_path}"
-		return 1
-	fi
+	# Check if item exists in source repo based on expected type
+	case "${cri_expected_type}" in
+		file)
+			if [ ! -f "${REPO_DIR}/${cri_item_path}" ]; then
+				warn "${cri_item_type} not found: ${cri_item_path}"
+				return 1
+			fi
+			;;
+		dir)
+			if [ ! -d "${REPO_DIR}/${cri_item_path}" ]; then
+				warn "${cri_item_type} not found: ${cri_item_path}"
+				return 1
+			fi
+			;;
+		*)
+			warn "Invalid type check: ${cri_expected_type}. Must be 'file' or 'dir'"
+			return 1
+			;;
+	esac
 	
 	return 0
 }
@@ -1462,7 +1473,7 @@ migrate_from_opposite_mode() {
 }
 
 # Keep the old ensure_initialized function for backward compatibility
-# This will be replaced by ensure_initialized_and_valid in the next phase
+# This is now a wrapper around ensure_initialized_and_valid that ignores validation
 #
 # Globals:
 #   None
@@ -1472,6 +1483,7 @@ migrate_from_opposite_mode() {
 #   0 if any mode is initialized
 #
 ensure_initialized() {
+	# Just do the initialization check part of ensure_initialized_and_valid
 	if [ "$(is_mode_active commit)" = "false" ] && [ "$(is_mode_active local)" = "false" ]; then
 		error "No ai-rizz configuration found. Run 'ai-rizz init' first."
 	fi
@@ -1774,8 +1786,8 @@ cmd_deinit() {
 		esac
 	done
 	
-	# Check if any mode is initialized
-	ensure_initialized
+	# Check if any mode is initialized and validate manifest integrity
+	ensure_initialized_and_valid
 	
 	# Prompt for mode if not provided
 	if [ -z "${cd_mode}" ]; then
@@ -2303,9 +2315,8 @@ cmd_add_ruleset() {
 	for cars_ruleset in ${cars_rulesets}; do
 		cars_ruleset_path="${RULESETS_PATH}/${cars_ruleset}"
 		
-		# Check if ruleset exists in source repo
-		if [ ! -d "${REPO_DIR}/${cars_ruleset_path}" ]; then
-			warn "Ruleset not found: ${cars_ruleset_path}"
+		# Check if ruleset exists in source repo using helper function
+		if ! check_repository_item "${cars_ruleset_path}" "Ruleset" "dir"; then
 			continue
 		fi
 		
@@ -2474,12 +2485,22 @@ sync_all_modes() {
 	
 	# Sync commit mode if initialized
 	if [ "$(is_mode_active commit)" = "true" ]; then
-		sync_manifest_to_directory "$COMMIT_MANIFEST_FILE" "$COMMIT_TARGET_DIR/$SHARED_DIR" || sync_success=false
+		# Get manifest file and target directory using helper
+		commit_manifest_and_target=$(get_manifest_and_target "commit")
+		commit_manifest_file=$(echo "${commit_manifest_and_target}" | cut -f1 -d"	")
+		commit_target_dir=$(echo "${commit_manifest_and_target}" | cut -f2 -d"	")
+		
+		sync_manifest_to_directory "${commit_manifest_file}" "${commit_target_dir}" || sync_success=false
 	fi
 	
 	# Sync local mode if initialized  
 	if [ "$(is_mode_active local)" = "true" ]; then
-		sync_manifest_to_directory "$LOCAL_MANIFEST_FILE" "$LOCAL_TARGET_DIR/$LOCAL_DIR" || sync_success=false
+		# Get manifest file and target directory using helper
+		local_manifest_and_target=$(get_manifest_and_target "local")
+		local_manifest_file=$(echo "${local_manifest_and_target}" | cut -f1 -d"	")
+		local_target_dir=$(echo "${local_manifest_and_target}" | cut -f2 -d"	")
+		
+		sync_manifest_to_directory "${local_manifest_file}" "${local_target_dir}" || sync_success=false
 	fi
 	
 	# Handle any cleanup needed

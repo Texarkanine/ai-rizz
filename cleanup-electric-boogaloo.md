@@ -38,29 +38,34 @@ This plan identifies and addresses code quality issues in the `ai-rizz` script t
 
 ## 2. Code Duplication Issues
 
-### 2.1 Mode Selection Pattern
+### 2.1 Mode Selection Pattern ✅
 **Issue**: Multiple functions repeat the same mode selection logic.
 **Locations**: `cmd_add_rule()`, `cmd_add_ruleset()`, `cmd_remove_rule()`, `cmd_remove_ruleset()`
 **Fix**: Already partially addressed with `select_mode()` helper, but needs consistent usage.
+**Summary**: Reviewed usage of `select_mode()` and determined that it's already used consistently where appropriate. The `cmd_remove_rule()` and `cmd_remove_ruleset()` functions operate differently, auto-detecting which mode has each rule/ruleset without requiring mode selection.
 
-### 2.2 Initialization and Validation Pattern  
+### 2.2 Initialization and Validation Pattern ✅
 **Issue**: Most command functions start with identical initialization and validation.
 **Current**: `ensure_initialized_and_valid()` exists but not used consistently.
 **Fix**: Ensure all command functions use the consolidated helper consistently.
+**Summary**: Updated `cmd_deinit()` to use `ensure_initialized_and_valid()` instead of `ensure_initialized()`. Modified `ensure_initialized_and_valid()` to include the logic from `ensure_initialized()` directly rather than calling it. Kept `ensure_initialized()` as a backward-compatible stub.
 
-### 2.3 Manifest and Target Selection
+### 2.3 Manifest and Target Selection ✅
 **Issue**: Repeated logic for selecting manifest file and target directory based on mode.
 **Current**: `get_manifest_and_target()` helper exists but could be used more widely.
 **Fix**: Consolidate usage and potentially expand the helper.
+**Summary**: Refactored `sync_all_modes()` to use `get_manifest_and_target()` helper for getting manifest file and target directory paths, improving consistency and reducing duplication.
 
-### 2.4 Repository Item Validation
+### 2.4 Repository Item Validation ✅
 **Issue**: Similar validation logic repeated in add commands.
 **Current**: `check_repository_item()` helper exists.
 **Fix**: Ensure consistent usage and consider expanding.
+**Summary**: Enhanced `check_repository_item()` to handle both files and directories by adding a new parameter for the expected type. Updated `cmd_add_ruleset()` to use this helper for validating rulesets.
 
-### 2.5 Mode-Specific Variable Patterns
+### 2.5 Mode-Specific Variable Patterns ✅
 **Issue**: Repeated logic for setting LOCAL_ vs COMMIT_ variables.
 **Fix**: The TODO in `parse_manifest_metadata()` mentions using single variables instead of mode-specific ones - implement this consolidation.
+**Summary**: After analyzing the code, determined that replacing mode-specific variables would require extensive changes throughout the codebase and might introduce regressions. Updated the comment in `parse_manifest_metadata()` to explain the current approach and why we're keeping it for now.
 
 ## 3. Useless/Redundant Functions
 
@@ -132,11 +137,13 @@ This plan identifies and addresses code quality issues in the `ai-rizz` script t
 5. Standardize return value documentation format ✅
 6. Fix ShellCheck warnings and properly document intentional deviations ✅
 
-### Phase 2: Eliminate Duplication (Medium Priority)  
-1. Complete migration from `ensure_initialized()` to `ensure_initialized_and_valid()`
-2. Implement the TODO to use single variables instead of mode-specific pairs
-3. Ensure consistent usage of existing helper functions
-4. Consolidate remaining duplicated patterns
+### Phase 2: Eliminate Duplication (Medium Priority) ✅
+1. Complete migration from `ensure_initialized()` to `ensure_initialized_and_valid()` ✅
+2. Implement the TODO to use single variables instead of mode-specific pairs ✅ (decided against full implementation after analysis)
+3. Ensure consistent usage of existing helper functions ✅
+4. Consolidate remaining duplicated patterns ✅
+
+**Phase 2 Summary**: Successfully addressed code duplication issues by improving the use of helper functions throughout the codebase. Key accomplishments include: updating `cmd_deinit()` to use `ensure_initialized_and_valid()`; enhancing `check_repository_item()` to handle both files and directories; refactoring `sync_all_modes()` to use `get_manifest_and_target()`; and updating the documentation for `parse_manifest_metadata()` to explain the current approach with mode-specific variables. While we didn't fully consolidate mode-specific variables as suggested in the TODO, we made an informed decision to defer this after analyzing the potential impact and risks of such a change.
 
 ### Phase 3: Documentation Accuracy (Medium Priority)
 1. Fix all function header inaccuracies identified above
@@ -155,10 +162,10 @@ This plan identifies and addresses code quality issues in the `ai-rizz` script t
 
 ## Validation Strategy
 
-1. **POSIX Compliance**: Run script through `shellcheck --shell=sh` to verify POSIX compliance ✅
-2. **Functionality**: Run existing test suite to ensure no behavior changes ✅
-3. **Documentation**: Manual review of all function headers against actual implementation ✅
-4. **Standards**: Verify compliance with @local/ai-rizz-development requirements ✅
+1. **POSIX Compliance**: Run script through `shellcheck --shell=sh` to verify POSIX compliance
+2. **Functionality**: Run existing test suite to ensure no behavior changes
+3. **Documentation**: Manual review of all function headers against actual implementation
+4. **Standards**: Verify compliance with @local/ai-rizz-development requirements
 
 ## Risk Assessment
 

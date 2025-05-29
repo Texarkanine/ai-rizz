@@ -119,23 +119,6 @@ test_init_twice_same_mode_idempotent() {
     assert_file_not_exists "$COMMIT_MANIFEST_FILE"
 }
 
-test_derive_local_manifest_filename() {
-    # Test: Local manifest filename derivation function
-    # Expected: Correctly derives local manifest filename from root based on format
-    
-    # Extensionless filename
-    result=$(derive_local_manifest_filename "Gyattfile")
-    assertEquals "Should correctly derive local filename for extensionless file" "Gyattfile.local" "$result"
-    
-    # Single extension filename
-    result=$(derive_local_manifest_filename "foo.bar")
-    assertEquals "Should correctly derive local filename for single extension file" "foo.local.bar" "$result"
-    
-    # Multi-dot filename
-    result=$(derive_local_manifest_filename "foo.baz.bar")
-    assertEquals "Should correctly derive local filename for multi-dot file" "foo.baz.local.bar" "$result"
-}
-
 # Load and run shunit2
 # shellcheck disable=SC1090
 . "$(dirname "$0")/../../shunit2"

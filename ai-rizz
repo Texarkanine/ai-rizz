@@ -2723,29 +2723,6 @@ initialize_ai_rizz() {
 	REPO_DIR=$(get_repo_dir)
 }
 
-# Derive the local manifest filename from the commit manifest root
-#
-# Arguments:
-#   $1 - Commit manifest root filename (e.g., foo.bar, Gyattfile)
-#
-# Outputs:
-#   Stdout: Local manifest filename (e.g., foo.local.bar, Gyattfile.local)
-#
-# Returns:
-#   0 always
-#
-derive_local_manifest_filename() {
-    dmf_root="$1"
-    case "$dmf_root" in
-        *.*) 
-            echo "${dmf_root%.*}.local.${dmf_root##*.}"
-            ;;
-        *)
-            echo "${dmf_root}.local"
-            ;;
-    esac
-}
-
 # Parse manifest filename argument and determine root and local names
 #
 # Detects if the provided filename is a local manifest name (contains .local)
@@ -2776,9 +2753,17 @@ parse_manifest_filename_argument() {
             pmfa_local="$pmfa_input"
             ;;
         *)
-            # Not a local manifest - treat as root and derive local
+            # Not a local manifest - treat as root and derive local filename
             pmfa_root="$pmfa_input"
-            pmfa_local="$(derive_local_manifest_filename "$pmfa_input")"
+            # Inline derivation logic: add .local before extension or at end
+            case "$pmfa_input" in
+                *.*) 
+                    pmfa_local="${pmfa_input%.*}.local.${pmfa_input##*.}"
+                    ;;
+                *)
+                    pmfa_local="$pmfa_input.local"
+                    ;;
+            esac
             ;;
     esac
     

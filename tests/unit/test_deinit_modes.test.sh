@@ -27,48 +27,55 @@ source_ai_rizz
 
 test_deinit_local_mode_only() {
     # Setup: Both modes exist
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    pwd
+    ls -hal
+    set -x
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    set +x
+    pwd
+    ls -hal
     cmd_add_rule "rule1.mdc" --commit  # Creates both modes
     
     # Test: Deinit local mode only
+
     cmd_deinit --local -y
-    
+
     # Expected: Local mode removed, commit mode preserved
-    assert_file_not_exists "$LOCAL_MANIFEST_FILE"
+    assert_file_not_exists "$TEST_LOCAL_MANIFEST_FILE"
     assert_commit_mode_exists
-    assert_git_exclude_not_contains "$LOCAL_MANIFEST_FILE"
+    assert_git_exclude_not_contains "$TEST_LOCAL_MANIFEST_FILE"
 }
 
 test_deinit_commit_mode_only() {
     # Setup: Both modes exist
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit
     
     # Test: Deinit commit mode only
     cmd_deinit --commit -y
     
     # Expected: Commit mode removed, local mode preserved
-    assert_file_not_exists "$COMMIT_MANIFEST_FILE"
+    assert_file_not_exists "$TEST_COMMIT_MANIFEST_FILE"
     assert_local_mode_exists
 }
 
 test_deinit_all_modes() {
     # Setup: Both modes exist
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit
     
     # Test: Deinit all modes
     cmd_deinit --all -y
-    
     # Expected: All ai-rizz modes removed, but target directory preserved (may contain user files)
     assert_no_modes_exist
-    assertFalse "Local subdirectory should be removed" "[ -d '$TARGET_DIR/$LOCAL_DIR' ]"
-    assertFalse "Shared subdirectory should be removed" "[ -d '$TARGET_DIR/$SHARED_DIR' ]"
+    assertFalse "Local subdirectory should be removed" "[ -d '$TEST_TARGET_DIR/$TEST_LOCAL_DIR' ]"
+    assertFalse "Shared subdirectory should be removed" "[ -d '$TEST_TARGET_DIR/$TEST_SHARED_DIR' ]"
 }
 
 test_deinit_requires_mode_selection() {
     # Setup: Both modes exist
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    echo "cmd_init '$TEST_SOURCE_REPO' -d '$TEST_TARGET_DIR' --local"
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit
     
     # Test: Deinit without mode flag (provide empty input to prompt)
@@ -80,7 +87,7 @@ test_deinit_requires_mode_selection() {
 
 test_deinit_single_mode_direct() {
     # Setup: Only local mode exists
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     
     # Test: Deinit without mode flag when only one mode exists
@@ -92,35 +99,35 @@ test_deinit_single_mode_direct() {
 
 test_deinit_local_removes_git_excludes() {
     # Setup: Local mode
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
-    assert_git_exclude_contains "$LOCAL_MANIFEST_FILE"
+    assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
     
     # Test: Deinit local mode
     cmd_deinit --local -y
     
     # Expected: Git exclude entries removed
-    assert_git_exclude_not_contains "$LOCAL_MANIFEST_FILE"
-    assert_git_exclude_not_contains "$TARGET_DIR/$LOCAL_DIR"
+    assert_git_exclude_not_contains "$TEST_LOCAL_MANIFEST_FILE"
+    assert_git_exclude_not_contains "$TEST_TARGET_DIR/$TEST_LOCAL_DIR"
 }
 
 test_deinit_commit_preserves_git_excludes() {
     # Setup: Both modes
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit
-    assert_git_exclude_contains "$LOCAL_MANIFEST_FILE"
+    assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
     
     # Test: Deinit commit mode only
     cmd_deinit --commit -y
     
     # Expected: Local git excludes should remain
-    assert_git_exclude_contains "$LOCAL_MANIFEST_FILE"
-    assert_git_exclude_contains "$TARGET_DIR/$LOCAL_DIR"
+    assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
+    assert_git_exclude_contains "$TEST_TARGET_DIR/$TEST_LOCAL_DIR"
 }
 
 test_deinit_preserves_files_in_other_mode() {
     # Setup: Rules in both modes
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --commit
     
@@ -128,27 +135,27 @@ test_deinit_preserves_files_in_other_mode() {
     cmd_deinit --local -y
     
     # Expected: Commit files preserved, local files removed
-    assert_file_not_exists "$TARGET_DIR/$LOCAL_DIR/rule1.mdc"
-    assert_file_exists "$TARGET_DIR/$SHARED_DIR/rule2.mdc"
+    assert_file_not_exists "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc"
+    assert_file_exists "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rule2.mdc"
 }
 
 test_deinit_custom_target_directory() {
     # Setup: Custom target directory with both modes
     custom_dir=".custom/rules"
-    cmd_init "$SOURCE_REPO" -d "$custom_dir" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$custom_dir" --local
     cmd_add_rule "rule1.mdc" --commit
     
     # Test: Deinit local mode
     cmd_deinit --local -y
     
     # Expected: Custom local directory removed, shared preserved
-    assertFalse "Custom local dir should be removed" "[ -d '$custom_dir/$LOCAL_DIR' ]"
-    assertTrue "Custom shared dir should remain" "[ -d '$custom_dir/$SHARED_DIR' ]"
+    assertFalse "Custom local dir should be removed" "[ -d '$custom_dir/$TEST_LOCAL_DIR' ]"
+    assertTrue "Custom shared dir should remain" "[ -d '$custom_dir/$TEST_SHARED_DIR' ]"
 }
 
 test_deinit_nonexistent_mode_graceful() {
     # Setup: Only local mode exists
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     
     # Test: Try to deinit commit mode that doesn't exist
     output=$(cmd_deinit --commit -y 2>&1 || echo "ERROR_OCCURRED")
@@ -162,7 +169,7 @@ test_deinit_nonexistent_mode_graceful() {
 
 test_deinit_all_with_single_mode() {
     # Setup: Only commit mode
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --commit
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
     cmd_add_rule "rule1.mdc" --commit
     
     # Test: Deinit all when only one mode exists
@@ -170,12 +177,12 @@ test_deinit_all_with_single_mode() {
     
     # Expected: All ai-rizz modes removed, but target directory preserved (may contain user files)
     assert_no_modes_exist
-    assertFalse "Shared subdirectory should be removed" "[ -d '$TARGET_DIR/$SHARED_DIR' ]"
+    assertFalse "Shared subdirectory should be removed" "[ -d '$TEST_TARGET_DIR/$TEST_SHARED_DIR' ]"
 }
 
 test_deinit_confirmation_prompts() {
     # Setup: Both modes with rules
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --commit
     
@@ -188,13 +195,13 @@ test_deinit_confirmation_prompts() {
 
 test_deinit_partial_cleanup_on_error() {
     # Setup: Both modes with separate rules to ensure both manifests exist
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --commit
     
     # Make local manifest read-only to simulate error (only if it exists)
-    if [ -f "$LOCAL_MANIFEST_FILE" ]; then
-        chmod 444 "$LOCAL_MANIFEST_FILE"
+    if [ -f "$TEST_LOCAL_MANIFEST_FILE" ]; then
+        chmod 444 "$TEST_LOCAL_MANIFEST_FILE"
     fi
     
     # Test: Deinit local mode with permission error
@@ -204,31 +211,31 @@ test_deinit_partial_cleanup_on_error() {
     echo "$output" | grep -q "error\|permission\|failed" || true
     
     # Restore permissions for cleanup (only if file exists)
-    if [ -f "$LOCAL_MANIFEST_FILE" ]; then
-        chmod 644 "$LOCAL_MANIFEST_FILE"
+    if [ -f "$TEST_LOCAL_MANIFEST_FILE" ]; then
+        chmod 644 "$TEST_LOCAL_MANIFEST_FILE"
     fi
 }
 
 test_deinit_removes_empty_directories() {
     # Setup: Local mode with nested structure
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     
     # Create additional nested structure
-    mkdir -p "$TARGET_DIR/$LOCAL_DIR/nested"
-    touch "$TARGET_DIR/$LOCAL_DIR/nested/dummy"
+    mkdir -p "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/nested"
+    touch "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/nested/dummy"
     
     # Test: Deinit local mode
     cmd_deinit --local -y
     
     # Expected: Empty parent directories should be cleaned up
-    assertFalse "Nested directory should be removed" "[ -d '$TARGET_DIR/$LOCAL_DIR/nested' ]"
-    assertFalse "Local directory should be removed" "[ -d '$TARGET_DIR/$LOCAL_DIR' ]"
+    assertFalse "Nested directory should be removed" "[ -d '$TEST_TARGET_DIR/$TEST_LOCAL_DIR/nested' ]"
+    assertFalse "Local directory should be removed" "[ -d '$TEST_TARGET_DIR/$TEST_LOCAL_DIR' ]"
 }
 
 test_deinit_interactive_mode_selection() {
     # Setup: Both modes exist
-    cmd_init "$SOURCE_REPO" -d "$TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit
     
     # Test: Interactive mode (provide empty input to prompt)

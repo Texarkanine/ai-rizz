@@ -143,13 +143,15 @@ This plan identifies and addresses code quality issues in the `ai-rizz` script t
 3. Ensure consistent usage of existing helper functions ✅
 4. Consolidate remaining duplicated patterns ✅
 
-**Phase 2 Summary**: Successfully addressed code duplication issues by improving the use of helper functions throughout the codebase. Key accomplishments include: updating `cmd_deinit()` to use `ensure_initialized_and_valid()`; enhancing `check_repository_item()` to handle both files and directories; refactoring `sync_all_modes()` to use `get_manifest_and_target()`; and updating the documentation for `parse_manifest_metadata()` to explain the current approach with mode-specific variables. While we didn't fully consolidate mode-specific variables as suggested in the TODO, we made an informed decision to defer this after analyzing the potential impact and risks of such a change.
+**Phase 2 Summary**: Successfully addressed code duplication issues by improving the use of helper functions throughout the codebase. Key accomplishments include: updating `cmd_deinit()` to use `ensure_initialized_and_valid()`; enhancing `check_repository_item()` to handle both files and directories; refactoring `sync_all_modes()` to use `get_manifest_and_target()`; and updating the documentation for `parse_manifest_metadata()` to explain the current approach with mode-specific variables. While we didn't fully consolidate mode-specific variables as suggested in the TODO, we made an informed decision to defer this after analyzing the potential impact and risks of such a change. We later went back and finished it.
 
-### Phase 3: Documentation Accuracy (Medium Priority)
-1. Fix all function header inaccuracies identified above
-2. Cross-reference `cmd_help()` with actual command implementations
-3. Remove documentation for unused globals
-4. Add missing flag documentation per development standards
+### Phase 3: Documentation Accuracy (Medium Priority) ✅
+1. Fix all function header inaccuracies identified above ✅
+2. Cross-reference `cmd_help()` with actual command implementations ✅
+3. Remove documentation for unused globals ✅
+4. Add missing flag documentation per development standards ✅
+
+**Phase 3 Summary**: Successfully updated function documentation to accurately reflect actual behavior and current variable usage. Key improvements include: fixing `git_sync()` documentation to correctly state that it returns 0/1 instead of "never returns"; updating `initialize_ai_rizz()` to remove references to legacy variables that are no longer set directly; correcting `cmd_sync()` documentation to reference the unified `SOURCE_REPO` variable instead of mode-specific variables; ensuring `cmd_deinit()` properly documents all its supported flags including `--all`/`-a`; and updating `sync_all_modes()` to reference the unified `TARGET_DIR` variable. These changes align the documentation with the actual code implementation and make it easier for future developers to understand the codebase.
 
 ### Phase 4: Remove Redundancy (Low Priority)
 1. Evaluate single-use helper functions for inline implementation

@@ -1717,25 +1717,20 @@ cleanup_empty_parents() {
 # Deinitialize the repository (progressive mode-aware)
 #
 # Removes specified mode(s) including manifest files, target directories,
-# and git excludes. Prompts for confirmation unless -y flag used. Supports
-# selective removal (--local, --commit) or complete removal (--all).
-# Cleans up empty parent directories after removal.
-#
-# Note: Unlike other commands, deinit doesn't validate manifest integrity
-# since it needs to be able to clean up invalid or partially initialized states.
+# and git exclude configurations. Interactive with confirmation prompt unless -y flag
+# is used. Performs cleanup of empty parent directories after removal.
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename
 #   COMMIT_MANIFEST_FILE - Commit manifest filename
-#   TARGET_DIR - Target directory for rules
-#   LOCAL_DIR - Local directory name
-#   SHARED_DIR - Shared directory name
+#   TARGET_DIR - Target directory base path
+#   SOURCE_REPO - Source repository URL
 #
 # Arguments:
-#   [-y]                 - Skip confirmation prompts
 #   [--local|-l]         - Remove local mode only
 #   [--commit|-c]        - Remove commit mode only
-#   [--all|-a]           - Remove all modes (default if both exist)
+#   [--all|-a]           - Remove all modes (default if neither --local nor --commit specified)
+#   [-y]                 - Skip confirmation prompts
 #
 # Outputs:
 #   Stdout: Confirmation prompts and success messages
@@ -2452,8 +2447,7 @@ cmd_remove_ruleset() {
 # Globals:
 #   COMMIT_MANIFEST_FILE - Commit manifest filename
 #   LOCAL_MANIFEST_FILE - Local manifest filename
-#   COMMIT_TARGET_DIR - Commit target directory
-#   LOCAL_TARGET_DIR - Local target directory
+#   TARGET_DIR - Target directory base path
 #   SHARED_DIR - Shared directory name
 #   LOCAL_DIR - Local directory name
 #
@@ -2705,8 +2699,7 @@ handle_sync_cleanup() {
 # gracefully, and ensures target directories match manifest contents.
 #
 # Globals:
-#   COMMIT_SOURCE_REPO - Commit mode source repository
-#   LOCAL_SOURCE_REPO - Local mode source repository
+#   SOURCE_REPO - Source repository URL
 #
 # Arguments:
 #   None
@@ -2805,10 +2798,6 @@ EOF
 #   REPO_DIR - Set to the repository directory for current project
 #   SOURCE_REPO - Set during cache_manifest_metadata
 #   TARGET_DIR - Set during cache_manifest_metadata
-#   COMMIT_SOURCE_REPO - Set during cache_manifest_metadata (legacy)
-#   LOCAL_SOURCE_REPO - Set during cache_manifest_metadata (legacy)
-#   COMMIT_TARGET_DIR - Set during cache_manifest_metadata (legacy)
-#   LOCAL_TARGET_DIR - Set during cache_manifest_metadata (legacy)
 #
 # Arguments:
 #   None

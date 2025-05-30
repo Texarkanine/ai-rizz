@@ -475,7 +475,8 @@ The project uses [shunit2](https://github.com/kward/shunit2) for unit and integr
 tests/
 ├── common.sh                        # Common test utilities and helper functions  
 ├── run_tests.sh                     # Test runner script
-└── unit/                            # Unit tests
+├── integration/                     # Integration tests (against CLI interface)
+└── unit/                            # Unit tests (against functions)
 ```
 
 #### Running Tests

@@ -114,6 +114,236 @@ warn() {
   echo "Warning: ${1}" >&2
 }
 
+# Show command usage error with example and exit
+#
+# Displays a user-friendly error message for command usage errors
+# with an example of correct usage to guide the user
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Error message to display (required)
+#   $2 - Command example to show (required)
+#   $3 - Exit code (optional, defaults to 1)
+#
+# Outputs:
+#   Stderr: Formatted error message with usage example
+#
+# Returns:
+#   Never returns (exits with specified code)
+#
+show_command_usage_error() {
+  cat >&2 << EOF
+Error: ${1}
+
+Example usage:
+  ${2}
+
+Run 'ai-rizz help' for full documentation of available commands.
+EOF
+  exit "${3:-1}"
+}
+
+# Show file permission error with potential solutions
+#
+# Displays a user-friendly error message for file permission issues
+# with specific guidance on how to resolve the problem
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Path that has permission issues (required)
+#   $2 - Operation that failed (e.g., "write to", "read from") (required)
+#   $3 - Exit code (optional, defaults to 1)
+#
+# Outputs:
+#   Stderr: Formatted error message with resolution steps
+#
+# Returns:
+#   Never returns (exits with specified code)
+#
+show_permission_error() {
+  cat >&2 << EOF
+Error: Cannot ${2} ${1} (permission denied)
+
+Possible solutions:
+  1. Check ownership: ls -la ${1}
+  2. Fix permissions: chmod u+rw ${1}
+  3. Use a different location with sufficient permissions
+EOF
+  exit "${3:-1}"
+}
+
+# Show repository error with troubleshooting steps
+#
+# Displays a user-friendly error message for repository access issues
+# with specific guidance on how to resolve common problems
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Repository URL with issue (required)
+#   $2 - Exit code (optional, defaults to 1)
+#
+# Outputs:
+#   Stderr: Formatted error message with troubleshooting steps
+#
+# Returns:
+#   Never returns (exits with specified code)
+#
+show_repository_error() {
+  cat >&2 << EOF
+Error: Failed to access repository: ${1}
+
+Possible issues:
+  1. Network connection problem
+  2. Repository URL is incorrect
+  3. Repository requires authentication
+  4. Repository no longer exists
+
+Troubleshooting:
+  • Verify network connection: ping github.com
+  • Check URL manually: git ls-remote ${1}
+  • Try with explicit protocol: https://github.com/user/repo.git
+EOF
+  exit "${2:-1}"
+}
+
+# Show initialization error with setup instructions
+#
+# Displays a user-friendly error message when ai-rizz is not initialized
+# with specific instructions on how to initialize it
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Exit code (optional, defaults to 1)
+#
+# Outputs:
+#   Stderr: Formatted error message with initialization instructions
+#
+# Returns:
+#   Never returns (exits with specified code)
+#
+show_initialization_error() {
+  cat >&2 << EOF
+Error: No ai-rizz configuration found. Run 'ai-rizz init' first.
+
+You need to initialize ai-rizz with one of these commands:
+
+  ai-rizz init <repository-url>                     # Interactive initialization
+  ai-rizz init <repository-url> --local             # Local mode (git-ignored)
+  ai-rizz init <repository-url> --commit            # Commit mode (git-tracked)
+  ai-rizz init <repository-url> -d <target-dir>     # Custom target directory
+
+Example:
+  ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
+EOF
+  exit "${1:-1}"
+}
+
+# Show mode selection error with guidance
+#
+# Displays a user-friendly error message when mode selection is ambiguous
+# with clear instructions on how to specify the desired mode
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Command being used (e.g., "add rule", "add ruleset") (required)
+#   $2 - Exit code (optional, defaults to 1)
+#
+# Outputs:
+#   Stderr: Formatted error message with mode selection instructions
+#
+# Returns:
+#   Never returns (exits with specified code)
+#
+show_mode_selection_error() {
+  cat >&2 << EOF
+Error: Both modes available. Please specify which mode to use.
+
+To specify mode:
+  ai-rizz ${1} --local     # Use local mode (git-ignored)
+  ai-rizz ${1} --commit    # Use commit mode (git-tracked)
+
+For more information on modes, run: ai-rizz help
+EOF
+  exit "${2:-1}"
+}
+
+# Show invalid mode error with guidance
+#
+# Displays a user-friendly error message when an invalid mode is specified
+# with clear instructions on valid mode options
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Invalid mode that was provided (required)
+#   $2 - Exit code (optional, defaults to 1)
+#
+# Outputs:
+#   Stderr: Formatted error message with valid mode options
+#
+# Returns:
+#   Never returns (exits with specified code)
+#
+show_invalid_mode_error() {
+  cat >&2 << EOF
+Error: Invalid mode: '${1}'
+
+Valid modes are:
+  --local, -l     Local mode (git-ignored)
+  --commit, -c    Commit mode (git-tracked)
+
+Example usage:
+  ai-rizz add rule example-rule --local
+EOF
+  exit "${2:-1}"
+}
+
+# Show git repository context error with setup instructions
+#
+# Displays a user-friendly error message when ai-rizz is not run in a git repository
+# with instructions on how to set up a git repository
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Exit code (optional, defaults to 1)
+#
+# Outputs:
+#   Stderr: Formatted error message with git setup instructions
+#
+# Returns:
+#   Never returns (exits with specified code)
+#
+show_git_context_error() {
+  cat >&2 << EOF
+Error: Not in a git repository.
+
+ai-rizz must be run inside a git repository. To set up a new git repository:
+
+  mkdir myproject
+  cd myproject
+  git init
+  ai-rizz init <repository-url>
+
+Or initialize git in the current directory:
+
+  git init
+  ai-rizz init <repository-url>
+EOF
+  exit "${1:-1}"
+}
 
 # Progressive Manifest Utilities  
 # ==============================
@@ -243,7 +473,7 @@ add_manifest_entry_to_file() {
 	
 	# Add the entry with error handling
 	if ! echo "${ametf_entry}" >> "${ametf_target_manifest_file}" 2>/dev/null; then
-		error "Cannot write to manifest file: ${ametf_target_manifest_file} (permission denied or read-only)"
+		show_permission_error "${ametf_target_manifest_file}" "write to"
 	fi
 }
 
@@ -758,7 +988,7 @@ lazy_init_mode() {
 		lim_rulesets_path="${DEFAULT_RULESETS_PATH}"
 		
 		# Debug info
-		echo "Using default paths for lazy init: rules=${lim_rules_path}, rulesets=${lim_rulesets_path}" >&2
+		warn "Using default paths for lazy init: rules=${lim_rules_path}, rulesets=${lim_rulesets_path}"
 	else
 		# New format - extract values
 		lim_rules_path=$(echo "${lim_metadata}" | cut -f3 -d"	")
@@ -1182,7 +1412,7 @@ validate_manifest_integrity() {
 ensure_initialized_and_valid() {
 	# Check if any mode is initialized
 	if [ "$(is_mode_active commit)" = "false" ] && [ "$(is_mode_active local)" = "false" ]; then
-		error "No ai-rizz configuration found. Run 'ai-rizz init' first."
+		show_initialization_error
 	fi
 	
 	# Cache manifest metadata to populate target directory globals
@@ -1222,7 +1452,7 @@ select_mode() {
 				return 0
 				;;
 			*)
-				error "Invalid mode: ${sm_current_mode}. Must be 'local' or 'commit'"
+				show_invalid_mode_error "${sm_current_mode}"
 				;;
 			esac
 	fi
@@ -1233,7 +1463,7 @@ select_mode() {
 	elif [ "$(is_mode_active commit)" = "true" ] && [ "$(is_mode_active local)" = "false" ]; then
 		echo "commit"
 	else
-		error "Both modes available. Please specify --local or --commit flag."
+		show_mode_selection_error "command"
 	fi
 	
 	return 0
@@ -1465,23 +1695,6 @@ migrate_from_opposite_mode() {
 	return 0
 }
 
-# Keep the old ensure_initialized function for backward compatibility
-# This is now a wrapper around ensure_initialized_and_valid that ignores validation
-#
-# Globals:
-#   None
-#
-# Returns:
-#   Never returns on error (calls error() function)
-#   0 if any mode is initialized
-#
-ensure_initialized() {
-	# Just do the initialization check part of ensure_initialized_and_valid
-	if [ "$(is_mode_active commit)" = "false" ] && [ "$(is_mode_active local)" = "false" ]; then
-		error "No ai-rizz configuration found. Run 'ai-rizz init' first."
-	fi
-}
-
 # Commands
 # ========
 
@@ -1639,12 +1852,12 @@ cmd_init() {
 	
 	# Ensure git repository context
 	if [ ! -d ".git" ]; then
-		error "Not in a git repository"
+		show_git_context_error
 	fi
 	
 	# Clone/sync source repository first
 	if ! git_sync "${ci_source_repo}"; then
-		error "Failed to initialize: repository unavailable"
+		show_repository_error "${ci_source_repo}"
 	fi
 	
 	# Initialize the requested mode
@@ -2189,9 +2402,15 @@ cmd_add_rule() {
 
 	# Process each rule
 	for car_rule in ${car_rules}; do
-		# Add .mdc extension if not present using helper function
-		
-		car_item=$(ensure_mdc_extension "${car_rule}")
+		# Add .mdc extension if not present
+		case "${car_rule}" in
+			*".mdc") 
+				car_item="${car_rule}"
+				;;  
+			*) 
+				car_item="${car_rule}.mdc"
+				;;  
+		esac
 		
 		car_rule_path="${RULES_PATH}/${car_item}"
 		
@@ -2210,7 +2429,7 @@ cmd_add_rule() {
 
 		# Check if target directory is writable before adding to manifest
 		if [ ! -w "${car_target_dir}" ]; then
-			error "Cannot write to target directory: ${car_target_dir} (permission denied)"
+			show_permission_error "${car_target_dir}" "write to"
 		fi
 		
 		# Add to target manifest
@@ -2344,8 +2563,15 @@ cmd_remove_rule() {
 
 	# Process each rule
 	for rule in "$@"; do
-		# Add .mdc extension if not present using helper function
-		crr_item=$(ensure_mdc_extension "${rule}")
+		# Add .mdc extension if not present
+		case "${rule}" in
+			*".mdc") 
+				crr_item="${rule}"
+				;;  
+			*) 
+				crr_item="${rule}.mdc"
+				;;  
+		esac
 		
 		removed=false
 		rule_path="${RULES_PATH}/${crr_item}"
@@ -2929,7 +3155,7 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 		;;
 	add)
 		if [ $# -eq 0 ]; then
-			error "Missing type: 'rule' or 'ruleset'"
+			show_command_usage_error "Missing type: 'rule' or 'ruleset'" "ai-rizz add rule example-rule"
 		fi
 		
 		main_type=$1
@@ -2938,24 +3164,24 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 		case "${main_type}" in
 			rule)
 				if [ $# -eq 0 ]; then
-					error "Missing rule name"
+					show_command_usage_error "Missing rule name" "ai-rizz add rule example-rule [--local|--commit]"
 				fi
 				cmd_add_rule "$@"
 				;;
 			ruleset)
 				if [ $# -eq 0 ]; then
-					error "Missing ruleset name"
+					show_command_usage_error "Missing ruleset name" "ai-rizz add ruleset example-ruleset [--local|--commit]"
 				fi
 				cmd_add_ruleset "$@"
 				;;
 			*)
-				error "Invalid type: ${main_type}. Must be 'rule' or 'ruleset'"
+				show_command_usage_error "Invalid type: ${main_type}. Must be 'rule' or 'ruleset'" "ai-rizz add rule example-rule\nai-rizz add ruleset example-ruleset"
 				;;
 		esac
 		;;
 	remove)
 		if [ $# -eq 0 ]; then
-			error "Missing type: 'rule' or 'ruleset'"
+			show_command_usage_error "Missing type: 'rule' or 'ruleset'" "ai-rizz remove rule example-rule"
 		fi
 		
 		main_type=$1
@@ -2964,18 +3190,18 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 		case "${main_type}" in
 			rule)
 				if [ $# -eq 0 ]; then
-					error "Missing rule name"
+					 show_command_usage_error "Missing rule name" "ai-rizz remove rule example-rule"
 				fi
 				cmd_remove_rule "$@"
 				;;
 			ruleset)
 				if [ $# -eq 0 ]; then
-					error "Missing ruleset name"
+					show_command_usage_error "Missing ruleset name" "ai-rizz remove ruleset example-ruleset"
 				fi
 				cmd_remove_ruleset "$@"
 				;;
 			*)
-				error "Invalid type: ${main_type}. Must be 'rule' or 'ruleset'"
+				show_command_usage_error "Invalid type: ${main_type}. Must be 'rule' or 'ruleset'" "ai-rizz remove rule example-rule\nai-rizz remove ruleset example-ruleset"
 				;;
 		esac
 		;;
@@ -2986,7 +3212,7 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 		cmd_help "$@"
 		;;
 	*)
-		error "Unknown command: ${main_command}. Run 'ai-rizz help' for usage"
+		show_command_usage_error "Unknown command: ${main_command}" "ai-rizz init https://github.com/user/rules.git --local"
 		;;
 	esac
 fi

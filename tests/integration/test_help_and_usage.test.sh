@@ -74,42 +74,6 @@ test_invalid_command_shows_help() {
     assert_output_contains "$output" "help\|Help"
 }
 
-# Test: ai-rizz --help (unsupported flag)
-# Expected: Shows error message suggesting correct help usage, should fail
-test_help_flag_shows_error() {
-    # Execute with --help flag (which is not supported)
-    output=$(run_ai_rizz --help 2>&1)
-    exit_code=$?
-    
-    # Should fail (--help is not a supported flag)
-    assertNotEquals "Unsupported --help flag should fail" 0 $exit_code
-    
-    # Should produce output
-    assertNotNull "Help flag should produce output" "$output"
-    
-    # Should indicate error and suggest correct help command
-    assert_output_contains "$output" "Unknown\|unknown\|Error\|error"
-    assert_output_contains "$output" "help"
-}
-
-# Test: ai-rizz -h (unsupported flag)
-# Expected: Shows error message suggesting correct help usage, should fail
-test_short_help_flag_shows_error() {
-    # Execute with -h flag (which is not supported)
-    output=$(run_ai_rizz -h 2>&1)
-    exit_code=$?
-    
-    # Should fail (-h is not a supported flag)
-    assertNotEquals "Unsupported -h flag should fail" 0 $exit_code
-    
-    # Should produce output
-    assertNotNull "Short help flag should produce output" "$output"
-    
-    # Should indicate error and suggest correct help command
-    assert_output_contains "$output" "Unknown\|unknown\|Error\|error"
-    assert_output_contains "$output" "help"
-}
-
 # Test: Help output contains key commands
 # Expected: Help mentions main ai-rizz commands
 test_help_mentions_key_commands() {

@@ -39,7 +39,6 @@ test_list_shows_correct_glyphs_local_only() {
     assertEquals "Setup should succeed" 0 $?
     
     # Run list command
-    local output
     output=$(run_ai_rizz list 2>&1)
     assertEquals "List should succeed" 0 $?
     
@@ -65,7 +64,6 @@ test_list_shows_correct_glyphs_commit_only() {
     assertEquals "Setup should succeed" 0 $?
     
     # Run list command
-    local output
     output=$(run_ai_rizz list 2>&1)
     assertEquals "List should succeed" 0 $?
     
@@ -98,7 +96,6 @@ test_list_shows_correct_glyphs_dual_mode() {
     assertEquals "Setup should succeed" 0 $?
     
     # Run list command
-    local output
     output=$(run_ai_rizz list 2>&1)
     assertEquals "List should succeed" 0 $?
     
@@ -151,7 +148,7 @@ test_sync_handles_repository_failures() {
     assertEquals "Init should succeed" 0 $?
     
     # Manually corrupt the manifest to point to invalid repository
-    echo "invalid://nonexistent	.cursor/rules" > ai-rizz.local.inf
+    echo "invalid://nonexistent	.cursor/rules" > ai-rizz.local.skbd
     
     # Remove repository cache to force fresh clone attempt with invalid URL
     # The repository cache is at ~/.config/ai-rizz/repos/{project_name}/repo
@@ -160,7 +157,6 @@ test_sync_handles_repository_failures() {
     rm -rf ~/.config/ai-rizz/repos/"$project_name"
     
     # Try to sync - should fail gracefully
-    local output
     output=$(run_ai_rizz sync 2>&1 || echo "SYNC_FAILED")
     
     # Should fail but not crash
@@ -187,8 +183,8 @@ test_sync_resolves_conflicts_commit_wins() {
     # So we expect the rule to be in commit mode only after the second add
     
     # Verify the rule was migrated to commit mode
-    assert_manifest_not_contains "ai-rizz.local.inf" "rules/rule2.mdc"
-    assert_manifest_contains "ai-rizz.inf" "rules/rule2.mdc"
+    assert_manifest_not_contains "ai-rizz.local.skbd" "rules/rule2.mdc"
+    assert_manifest_contains "ai-rizz.skbd" "rules/rule2.mdc"
     
     # Rule should be deployed to shared directory
     assert_rule_deployed ".cursor/rules/shared" "rule2"
@@ -201,7 +197,6 @@ test_sync_resolves_conflicts_commit_wins() {
 # Expected: Should show appropriate error message
 test_sync_without_initialization() {
     # Try to sync without any initialization
-    local output
     output=$(run_ai_rizz sync 2>&1 || echo "SYNC_FAILED")
     
     # Should fail with helpful error
@@ -212,7 +207,6 @@ test_sync_without_initialization() {
 # Expected: Should show appropriate error message
 test_list_without_initialization() {
     # Try to list without any initialization
-    local output
     output=$(run_ai_rizz list 2>&1 || echo "LIST_FAILED")
     
     # Should fail with helpful error

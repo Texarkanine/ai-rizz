@@ -30,5 +30,10 @@ uninstall:
 	@echo "ai-rizz has been uninstalled from $(BINDIR)"
 	@echo "Bash completion has been uninstalled from $(BASH_COMPLETION_DIR)"
 
-test:
-	@sh tests/run_tests.sh
+test: test-unit test-integration
+
+test-unit:
+	@sh tests/run_tests.sh --unit
+
+test-integration:
+	@sh tests/run_tests.sh --integration

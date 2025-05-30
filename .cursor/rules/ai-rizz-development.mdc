@@ -8,6 +8,8 @@ alwaysApply: true
 ## Project-Specific Testing Standards
 
 1. **Test Execution**: Always run tests with `make test` for consistency. Individual test suites can be run directly for debugging only.
+    - all tests: `make test`
+    - single test: `./tests/unit/test_conflict_resolution.sh`
 
 2. **Test Environment Setup**: 
    - Set git user and email in all dummy repositories used for testing

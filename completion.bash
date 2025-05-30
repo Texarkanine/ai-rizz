@@ -65,6 +65,13 @@ _ai_rizz_completion() {
 		add|remove)
 			COMPREPLY=( $(compgen -W "rule ruleset" -- "${cur}") )
 			;;
+		init)
+			COMPREPLY=( $(compgen -W "--local -l --commit -c -d -f --manifest -s --skibidi" -- "${cur}") )
+			;;
+		-d|-f|--manifest|-s|--skibidi)
+			# These options take a value, no completion needed
+			COMPREPLY=()
+			;;
 		rule)
 			# Get available rules from the current project's repo
 			local repo_dir

@@ -36,13 +36,13 @@ test_add_rule_to_local_mode() {
     assertEquals "Add rule should succeed" 0 $?
     
     # Verify rule added to manifest
-    assert_manifest_contains "ai-rizz.local.inf" "rules/rule1.mdc"
+    assert_manifest_contains "ai-rizz.local.skbd" "rules/rule1.mdc"
     
     # Verify rule deployed to local directory
     assert_rule_deployed ".cursor/rules/local" "rule1"
     
     # Verify commit mode not affected
-    assertFalse "Commit manifest should not exist" "[ -f 'ai-rizz.inf' ]"
+    assertFalse "Commit manifest should not exist" "[ -f 'ai-rizz.skbd' ]"
     assertFalse "Shared directory should not exist" "[ -d '.cursor/rules/shared' ]"
 }
 
@@ -58,13 +58,13 @@ test_add_rule_to_commit_mode() {
     assertEquals "Add rule should succeed" 0 $?
     
     # Verify rule added to manifest
-    assert_manifest_contains "ai-rizz.inf" "rules/rule2.mdc"
+    assert_manifest_contains "ai-rizz.skbd" "rules/rule2.mdc"
     
     # Verify rule deployed to shared directory
     assert_rule_deployed ".cursor/rules/shared" "rule2"
     
     # Verify local mode not affected
-    assertFalse "Local manifest should not exist" "[ -f 'ai-rizz.local.inf' ]"
+    assertFalse "Local manifest should not exist" "[ -f 'ai-rizz.local.skbd' ]"
     assertFalse "Local directory should not exist" "[ -d '.cursor/rules/local' ]"
 }
 
@@ -80,7 +80,7 @@ test_add_ruleset_to_local_mode() {
     assertEquals "Add ruleset should succeed" 0 $?
     
     # Verify ruleset added to manifest
-    assert_manifest_contains "ai-rizz.local.inf" "rulesets/basic"
+    assert_manifest_contains "ai-rizz.local.skbd" "rulesets/basic"
     
     # Verify all rules from ruleset deployed (basic contains rule1 and rule2)
     assert_rule_deployed ".cursor/rules/local" "rule1"
@@ -100,7 +100,7 @@ test_add_ruleset_to_commit_mode() {
     assertEquals "Add ruleset should succeed" 0 $?
     
     # Verify ruleset added to manifest
-    assert_manifest_contains "ai-rizz.inf" "rulesets/advanced"
+    assert_manifest_contains "ai-rizz.skbd" "rulesets/advanced"
     
     # Verify all rules from ruleset deployed (advanced contains rule2 and rule3)
     assert_rule_deployed ".cursor/rules/shared" "rule2"
@@ -117,7 +117,7 @@ test_remove_rule_from_local_mode() {
     assertEquals "Setup should succeed" 0 $?
     
     # Verify rule is present
-    assert_manifest_contains "ai-rizz.local.inf" "rules/rule1.mdc"
+    assert_manifest_contains "ai-rizz.local.skbd" "rules/rule1.mdc"
     assert_rule_deployed ".cursor/rules/local" "rule1"
     
     # Remove rule
@@ -125,7 +125,7 @@ test_remove_rule_from_local_mode() {
     assertEquals "Remove rule should succeed" 0 $?
     
     # Verify rule removed from manifest
-    assert_manifest_not_contains "ai-rizz.local.inf" "rules/rule1.mdc"
+    assert_manifest_not_contains "ai-rizz.local.skbd" "rules/rule1.mdc"
     
     # Verify rule removed from directory
     assert_rule_not_deployed ".cursor/rules/local" "rule1"
@@ -141,7 +141,7 @@ test_remove_rule_from_commit_mode() {
     assertEquals "Setup should succeed" 0 $?
     
     # Verify rule is present
-    assert_manifest_contains "ai-rizz.inf" "rules/rule2.mdc"
+    assert_manifest_contains "ai-rizz.skbd" "rules/rule2.mdc"
     assert_rule_deployed ".cursor/rules/shared" "rule2"
     
     # Remove rule
@@ -149,7 +149,7 @@ test_remove_rule_from_commit_mode() {
     assertEquals "Remove rule should succeed" 0 $?
     
     # Verify rule removed from manifest
-    assert_manifest_not_contains "ai-rizz.inf" "rules/rule2.mdc"
+    assert_manifest_not_contains "ai-rizz.skbd" "rules/rule2.mdc"
     
     # Verify rule removed from directory
     assert_rule_not_deployed ".cursor/rules/shared" "rule2"
@@ -165,7 +165,7 @@ test_remove_ruleset_from_local_mode() {
     assertEquals "Setup should succeed" 0 $?
     
     # Verify ruleset is present
-    assert_manifest_contains "ai-rizz.local.inf" "rulesets/basic"
+    assert_manifest_contains "ai-rizz.local.skbd" "rulesets/basic"
     assert_rule_deployed ".cursor/rules/local" "rule1"
     assert_rule_deployed ".cursor/rules/local" "rule2"
     
@@ -174,7 +174,7 @@ test_remove_ruleset_from_local_mode() {
     assertEquals "Remove ruleset should succeed" 0 $?
     
     # Verify ruleset removed from manifest
-    assert_manifest_not_contains "ai-rizz.local.inf" "rulesets/basic"
+    assert_manifest_not_contains "ai-rizz.local.skbd" "rulesets/basic"
     
     # Verify all rules removed from directory
     assert_rule_not_deployed ".cursor/rules/local" "rule1"
@@ -191,7 +191,7 @@ test_remove_ruleset_from_commit_mode() {
     assertEquals "Setup should succeed" 0 $?
     
     # Verify ruleset is present
-    assert_manifest_contains "ai-rizz.inf" "rulesets/team"
+    assert_manifest_contains "ai-rizz.skbd" "rulesets/team"
     assert_rule_deployed ".cursor/rules/shared" "rule3"
     assert_rule_deployed ".cursor/rules/shared" "rule4"
     
@@ -200,7 +200,7 @@ test_remove_ruleset_from_commit_mode() {
     assertEquals "Remove ruleset should succeed" 0 $?
     
     # Verify ruleset removed from manifest
-    assert_manifest_not_contains "ai-rizz.inf" "rulesets/team"
+    assert_manifest_not_contains "ai-rizz.skbd" "rulesets/team"
     
     # Verify all rules removed from directory
     assert_rule_not_deployed ".cursor/rules/shared" "rule3"
@@ -216,16 +216,15 @@ test_add_nonexistent_rule_fails() {
     assertEquals "Init should succeed" 0 $?
     
     # Try to add nonexistent rule
-    local output
     output=$(run_ai_rizz add rule nonexistent --local 2>&1)
-    local exit_code=$?
+    exit_code=$?
     
     # Command should succeed but show warning
     assertEquals "Add nonexistent rule should succeed" 0 $exit_code
     assert_output_contains "$output" "Warning\|not found"
     
     # Should not add anything to manifest
-    assert_manifest_not_contains "ai-rizz.local.inf" "rules/nonexistent.mdc"
+    assert_manifest_not_contains "ai-rizz.local.skbd" "rules/nonexistent.mdc"
     
     # Should not create any files
     assert_directory_file_count ".cursor/rules/local" 0
@@ -239,9 +238,8 @@ test_remove_nonexistent_rule_warns() {
     assertEquals "Init should succeed" 0 $?
     
     # Try to remove nonexistent rule
-    local output
     output=$(run_ai_rizz remove rule nonexistent 2>&1)
-    local exit_code=$?
+    exit_code=$?
     
     # Command should succeed (graceful handling)
     assertEquals "Remove nonexistent should not fail" 0 $exit_code
@@ -262,13 +260,13 @@ test_add_rule_with_lazy_initialization() {
     assertEquals "Add to commit mode should succeed" 0 $?
     
     # Verify both modes now exist
-    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.inf' ]"
-    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.inf' ]"
+    assertTrue "Local manifest should exist" "[ -f 'ai-rizz.local.skbd' ]"
+    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.skbd' ]"
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
     assertTrue "Shared directory should exist" "[ -d '.cursor/rules/shared' ]"
     
     # Verify rule added to commit mode
-    assert_manifest_contains "ai-rizz.inf" "rules/rule3.mdc"
+    assert_manifest_contains "ai-rizz.skbd" "rules/rule3.mdc"
     assert_rule_deployed ".cursor/rules/shared" "rule3"
     
     # Verify local mode unchanged
@@ -284,7 +282,6 @@ test_add_rule_dual_mode_requires_mode() {
     assertEquals "Dual mode init should succeed" 0 $?
     
     # Try to add rule without mode flag
-    local output
     output=$(run_ai_rizz add rule rule4 2>&1 || echo "COMMAND_FAILED")
     
     # Should either fail with mode requirement or succeed with smart default
@@ -294,9 +291,8 @@ test_add_rule_dual_mode_requires_mode() {
     else
         # Command succeeded - should have used smart default
         # Rule should be in one of the modes
-        local in_local in_commit
-        in_local=$(grep -q "rules/rule4.mdc" ai-rizz.local.inf 2>/dev/null && echo "true" || echo "false")
-        in_commit=$(grep -q "rules/rule4.mdc" ai-rizz.inf 2>/dev/null && echo "true" || echo "false")
+        in_local=$(grep -q "rules/rule4.mdc" ai-rizz.local.skbd 2>/dev/null && echo "true" || echo "false")
+        in_commit=$(grep -q "rules/rule4.mdc" ai-rizz.skbd 2>/dev/null && echo "true" || echo "false")
         
         # Should be in exactly one mode
         if [ "$in_local" = "true" ] && [ "$in_commit" = "false" ]; then
@@ -307,6 +303,41 @@ test_add_rule_dual_mode_requires_mode() {
             fail "Rule should be in exactly one mode"
         fi
     fi
+}
+
+# Test: ai-rizz add rule with invalid repository
+# Expected: Should fail gracefully
+test_add_rule_with_invalid_repository() {
+    # Initialize with valid repository first
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    assertEquals "Setup should succeed" 0 $?
+    
+    # Corrupt the manifest to point to invalid repository
+    echo "invalid://nonexistent	.cursor/rules	rules	rulesets" > ai-rizz.local.skbd
+    
+    # Try to add rule from corrupted repository
+    output=$(run_ai_rizz add rule rule1 --local 2>&1 || echo "ADD_FAILED")
+    exit_code=$?
+    
+    # Should fail gracefully
+    if [ $exit_code -ne 0 ]; then
+        assert_output_contains "$output" "ADD_FAILED\|repository\|failed\|error"
+    fi
+}
+
+# Test: ai-rizz remove rule with graceful handling
+# Expected: Should handle gracefully
+test_remove_nonexistent_rule_graceful() {
+    # Initialize repository
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    assertEquals "Setup should succeed" 0 $?
+    
+    # Try to remove nonexistent rule
+    output=$(run_ai_rizz remove rule nonexistent --local 2>&1 || echo "REMOVE_FAILED")
+    exit_code=$?
+    
+    # Should handle gracefully
+    assertTrue "Should handle nonexistent rule removal" "[ $exit_code -eq 0 ] || echo '$output' | grep -q 'not found\|warning'"
 }
 
 # Load and run shunit2

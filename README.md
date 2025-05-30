@@ -163,7 +163,7 @@ Sets up one mode in your repository:
 - `-d <target_dir>`: Target directory (default: `.cursor/rules`)
 - `--local, -l`: Set up local mode (git-ignored rules)
 - `--commit, -c`: Set up commit mode (git-tracked rules)
-- `-f, --manifest <file>`: Use custom manifest filename instead of default ai-rizz.inf
+- `-f, --manifest <file>`: Use custom manifest filename instead of default ai-rizz.skbd
 - `-s, --skibidi <file>`: Alias for --manifest
 
 If you don't specify `--local` or `--commit`, ai-rizz will ask which you want.
@@ -388,7 +388,7 @@ ai-rizz add rule shell-tdd.mdc --commit     # Re-add others to commit mode
 **Solution**: Promote local ruleset to commit mode
 ```bash
 ai-rizz add ruleset python --commit         # Moves to commit mode
-git add ai-rizz.inf .cursor/rules/shared/   # Stage for commit
+git add ai-rizz.skbd .cursor/rules/shared/   # Stage for commit
 git commit -m "Add team Python ruleset"    # Share with team
 ```
 
@@ -410,12 +410,12 @@ ai-rizz uses a dual-manifest system to support per-rule mode selection:
 
 #### Manifest Files
 
-**`ai-rizz.inf`** (Committed Manifest):
+**`ai-rizz.skbd`** (Committed Manifest):
 - Always git-tracked when it exists
 - Contains rules/rulesets intended to be committed
 - Located in repository root
 
-**`ai-rizz.local.inf`** (Local Manifest):
+**`ai-rizz.local.skbd`** (Local Manifest):
 - Automatically added to `.git/info/exclude` (git-ignored)
 - Contains rules/rulesets intended to be local-only
 - Located in repository root

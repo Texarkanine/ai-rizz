@@ -241,7 +241,7 @@ You need to initialize ai-rizz with one of these commands:
   ai-rizz init <repository-url> -d <target-dir>     # Custom target directory
 
 Example:
-  ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
+  ai-rizz init https://github.com/user/repo.git --local
 EOF
   exit "${1:-1}"
 }

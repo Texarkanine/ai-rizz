@@ -24,8 +24,8 @@
 set -e  # Exit on error
 
 # Configuration constants
-COMMIT_MANIFEST_FILE="ai-rizz.skbd"                 # Changed from ai-rizz.inf
-LOCAL_MANIFEST_FILE="ai-rizz.local.skbd"            # Changed from ai-rizz.local.inf
+COMMIT_MANIFEST_FILE="ai-rizz.skbd"
+LOCAL_MANIFEST_FILE="ai-rizz.local.skbd"
 SHARED_DIR="shared"
 LOCAL_DIR="local" 
 CONFIG_DIR="$HOME/.config/ai-rizz"

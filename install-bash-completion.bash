@@ -1,12 +1,12 @@
 #!/bin/sh
 # install-bash-completion.bash
 #
-# Installs or uninstalls the ai-rizz bash completion fenced block in ~/.bash_completions.
+# Installs or uninstalls the ai-rizz bash completion fenced block in ~/.bash_completion.
 # Usage:
 #   ./install-bash-completion.bash install   # Add or update fenced block
 #   ./install-bash-completion.bash uninstall # Remove fenced block
 #
-# - Always uses ~/.bash_completions (cross-platform)
+# - Always uses ~/.bash_completion (cross-platform)
 # - Idempotent: removes any previous ai-rizz block before adding
 # - Sourcing path is always the absolute path to completion.bash in the current directory
 #
@@ -16,7 +16,7 @@ set -e
 
 FENCE_START="# >>> ai-rizz bash completion >>>"
 FENCE_END="# <<< ai-rizz bash completion <<<"
-COMPLETIONS_FILE="$HOME/.bash_completions"
+COMPLETIONS_FILE="$HOME/.bash_completion"
 COMPLETION_BASH_PATH="$(cd "$(dirname "$0")" && pwd)/completion.bash"
 
 usage() {

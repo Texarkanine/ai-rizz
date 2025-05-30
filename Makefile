@@ -26,7 +26,7 @@ uninstall:
 	rm -f $(BINDIR)/ai-rizz
 	@./install-bash-completion.bash uninstall
 	@echo "ai-rizz has been uninstalled from $(BINDIR)"
-	@echo "Bash completion block has been removed from ~/.bash_completions"
+	@echo "Bash completion block has been removed from ~/.bash_completion"
 
 test: test-unit test-integration
 

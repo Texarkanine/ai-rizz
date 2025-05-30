@@ -92,7 +92,7 @@ get_repo_dir() {
 #   Never returns (exits with specified code)
 #
 error() {
-  echo "Error: ${1}" >&2
+  printf '%b' "Error: ${1}\n" >&2
   exit "${2:-1}"
 }
 
@@ -111,7 +111,7 @@ error() {
 #   0 on success
 #
 warn() {
-  echo "Warning: ${1}" >&2
+  printf '%b' "Warning: ${1}\n" >&2
 }
 
 # Show command usage error with example and exit
@@ -135,10 +135,10 @@ warn() {
 #
 show_command_usage_error() {
   cat >&2 << EOF
-Error: ${1}
+Error: $(printf "%b" "${1}")
 
 Example usage:
-  ${2}
+  $(printf "%b" "${2}" | sed '2,$s/^/  /')
 
 Run 'ai-rizz help' for full documentation of available commands.
 EOF
@@ -2990,20 +2990,28 @@ Available commands:
   add ruleset <ruleset>... Add ruleset(s) to the repository
   remove rule <rule>...    Remove rule(s) from the repository (.mdc extension optional)
   remove ruleset <ruleset>... Remove ruleset(s) from the repository
-  sync                     Sync the repository
+  sync                     Sync the rules
   help                     Show this help
+
+General options:
+	-f, --manifest <file>  Alias for --skibidi
+	-s, --skibidi <file>   Use custom manifest filename
 
 Command-specific options:
   init options:
+	-c, --commit           Use commit mode (commit files)
 	-d <target_dir>        Target directory (default: .cursor/rules)
-	--local, -l            Use local mode (ignore files)
-	--commit, -c           Use commit mode (commit files)
-	-s, --skibidi <file>   Use custom manifest filename
-	-f, --manifest <file>  Alias for --skibidi
+	-l, --local            Use local mode (ignore files)
 	--rule-path <path>     Source repository rules path (default: rules)
 	--ruleset-path <path>  Source repository rulesets path (default: rulesets)
 
+  add & remove options:
+	--commit, -c           Use commit mode (commit files)
+	--local, -l            Use local mode (ignore files)
+
   deinit options:
+	-c, --commit           Use commit mode (commit files)
+	-l, --local            Use local mode (ignore files)
 	-y                     Skip confirmation prompts
 EOF
   return 0
@@ -3208,7 +3216,7 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 	sync)
 		cmd_sync "$@"
 		;;
-	help)
+	help|--help|-h)
 		cmd_help "$@"
 		;;
 	*)

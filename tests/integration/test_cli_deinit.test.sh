@@ -237,21 +237,14 @@ test_deinit_nonexistent_mode() {
 }
 
 # Test: ai-rizz deinit without initialization
-# Expected: Should show appropriate error message
+# Expected: Should succeed silently since there's nothing to deinit
 test_deinit_without_initialization() {
-	# Try to deinit without any initialization
-	output=$(run_ai_rizz deinit --local -y 2>&1)
-	exit_code=$?
-	
-	# If command returns 0, it should indicate that nothing was done
-	# If command returns non-zero, it should provide an error message
-	if [ $exit_code -eq 0 ]; then
-		# Command was successful, should mention no configuration found or similar
-		assertTrue "Should indicate no configuration was found" "echo \"$output\" | grep -q 'not found\|nothing to remove\|no configuration\|not initialized' || [ -z \"$output\" ]"
-	else
-		# Command failed, should have an error message
-		assertNotEquals "Error output should not be empty" "" "$output"
-	fi
+    # Try to deinit without any initialization
+    output=$(run_ai_rizz deinit --local -y 2>&1)
+    exit_code=$?
+    
+    # Should succeed with no output
+    assertEquals "Deinit should succeed" 0 $exit_code
 }
 
 # Test: ai-rizz deinit preserves parent directory structure
@@ -372,40 +365,31 @@ test_deinit_all_removes_everything() {
 	assertTrue "(empty) target directory parent should not exist" "[ ! -d '.cursor/rules' ]"
 }
 
-# Test: ai-rizz deinit without flags (should show error or prompt)
+# Test: ai-rizz deinit without flags (should succeed in single mode)
 test_deinit_requires_mode_flag() {
-	# Initialize a mode first
-	run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
-	
-	# Try deinit without mode flag
-	output=$(run_ai_rizz deinit 2>&1 || echo "DEINIT_FAILED")
-	exit_code=$?
-	
-	# Should fail and show helpful error
-	if [ $exit_code -ne 0 ]; then
-		assert_output_contains "$output" "DEINIT_FAILED\|mode\|flag\|--local\|--commit\|--all"
-	else
-		# If it succeeded, it should have shown prompts
-		assert_output_contains "$output" "mode\|choose\|select\|local\|commit\|all"
-	fi
+    # Initialize a mode first
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    
+    # Try deinit without mode flag (should succeed in local mode)
+    output=$(run_ai_rizz deinit -y 2>&1)
+    assertEquals "Deinit should succeed in single mode" 0 $?
+    
+    # Verify local mode was removed
+    assertFalse "Local manifest should be removed" "[ -f 'ai-rizz.local.skbd' ]"
+    assertFalse "Local directory should be removed" "[ -d '.cursor/rules/local' ]"
 }
 
 test_deinit_nonexistent_mode_graceful() {
-	# Initialize only local mode
-	run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
-	
-	# Try to deinitialize nonexistent commit mode
-	output=$(run_ai_rizz deinit --commit 2>&1)
-	
-	# Should handle gracefully (succeed with warning or fail gracefully)
-	# Either way, should not crash and should give informative message
-	if echo "$output" | grep -q "error\|Error\|ERROR"; then
-		assert_output_contains "$output" "not.*found\|not.*initialized\|does.*not.*exist"
-	else
-		# If it "succeeded", local mode should still be intact
-		assertTrue "Local manifest should be preserved" "[ -f 'ai-rizz.local.skbd' ]"
-		assertTrue "Local directory should be preserved" "[ -d '.cursor/rules/local' ]"
-	fi
+    # Initialize only local mode
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    
+    # Try to deinitialize nonexistent commit mode
+    output=$(run_ai_rizz deinit --commit -y 2>&1)
+    assertEquals "Deinit of nonexistent mode should succeed" 0 $?
+    
+    # Verify local mode remains untouched
+    assertTrue "Local manifest should be preserved" "[ -f 'ai-rizz.local.skbd' ]"
+    assertTrue "Local directory should be preserved" "[ -d '.cursor/rules/local' ]"
 }
 
 # Load and run shunit2

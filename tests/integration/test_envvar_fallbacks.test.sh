@@ -333,70 +333,16 @@ test_remove_rule_mode_envvar_fallback() {
     run_ai_rizz add rule rule2.mdc --commit
     
     # Set the environment variable 
-    AI_RIZZ_MODE="local"
+    AI_RIZZ_MODE="commit"
     export AI_RIZZ_MODE
     
-    # Create cmd_remove_rule function temporarily for testing
-    # This is a workaround for the issue where the function isn't found
-    cat > cmd_remove_rule.sh << 'EOF'
-#!/bin/sh
-# Simplified cmd_remove_rule for testing
-for rule in "$@"; do
-    # Add .mdc extension if not present
-    case "${rule}" in
-        *".mdc") item="${rule}" ;;  
-        *) item="${rule}.mdc" ;;  
-    esac
-    
-    path="rules/${item}"
-    
-    # Check environment variable for preferred mode
-    if [ -n "${AI_RIZZ_MODE}" ] && [ "${AI_RIZZ_MODE}" = "commit" ]; then
-        # Try commit first
-        if grep -q "^${path}$" ai-rizz.skbd 2>/dev/null; then
-            grep -v "^${path}$" ai-rizz.skbd > ai-rizz.skbd.tmp
-            mv ai-rizz.skbd.tmp ai-rizz.skbd
-            echo "Removed rule: ${path}"
-            exit 0
-        fi
-    fi
-    
-    # Try local
-    if grep -q "^${path}$" ai-rizz.local.skbd 2>/dev/null; then
-        grep -v "^${path}$" ai-rizz.local.skbd > ai-rizz.local.skbd.tmp
-        mv ai-rizz.local.skbd.tmp ai-rizz.local.skbd
-        echo "Removed rule: ${path}"
-        exit 0
-    fi
-    
-    # If we haven't checked commit yet, try it now
-    if [ -z "${AI_RIZZ_MODE}" ] || [ "${AI_RIZZ_MODE}" != "commit" ]; then
-        if grep -q "^${path}$" ai-rizz.skbd 2>/dev/null; then
-            grep -v "^${path}$" ai-rizz.skbd > ai-rizz.skbd.tmp
-            mv ai-rizz.skbd.tmp ai-rizz.skbd
-            echo "Removed rule: ${path}"
-            exit 0
-        fi
-    fi
-    
-    echo "Rule not found: ${item}" >&2
-    exit 0
-done
-EOF
-    chmod +x cmd_remove_rule.sh
-    
     # Environment variable is used implicitly in the remove command
-    # when determining which mode to check first
-    
-    # Removing rule2 should work with our temporary script
-    ./cmd_remove_rule.sh rule2.mdc
+    # when determining which mode to use
+    run_ai_rizz remove rule rule2.mdc
     assertEquals "Remove should succeed" 0 $?
     
-    # rule2 should be gone from commit manifest - use a different approach
+    # rule2 should be gone from commit manifest
     assertFalse "Rule should be removed from commit manifest" "grep -q 'rules/rule2.mdc' ai-rizz.skbd"
-    
-    # Clean up
-    rm -f cmd_remove_rule.sh
 }
 
 # ============================================================================

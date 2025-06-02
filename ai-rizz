@@ -8,6 +8,15 @@
 # Copyright 2024 ai-rizz project
 # POSIX-compliant shell script for maximum portability
 #
+# Environment Variable Support:
+# This script supports environment variables as fallbacks for CLI arguments:
+# - AI_RIZZ_MANIFEST: Fallback for --manifest/--skibidi option
+# - AI_RIZZ_SOURCE_REPO: Fallback for <source_repo> argument in init
+# - AI_RIZZ_TARGET_DIR: Fallback for -d <target_dir> option
+# - AI_RIZZ_RULE_PATH: Fallback for --rule-path option
+# - AI_RIZZ_RULESET_PATH: Fallback for --ruleset-path option
+# - AI_RIZZ_MODE: Fallback for --local/--commit mode selection
+#
 # Variable Consolidation:
 # This script has completed the transition from mode-specific repository variables
 # (LOCAL_SOURCE_REPO/COMMIT_SOURCE_REPO and LOCAL_TARGET_DIR/COMMIT_TARGET_DIR)
@@ -1426,6 +1435,7 @@ ensure_initialized_and_valid() {
 #
 # Implements the common pattern of selecting a mode when not explicitly provided
 # by choosing the single available mode or prompting for selection when both exist.
+# Will check AI_RIZZ_MODE environment variable as a fallback if no mode is provided.
 #
 # Globals:
 #   None
@@ -1455,6 +1465,19 @@ select_mode() {
 				show_invalid_mode_error "${sm_current_mode}"
 				;;
 			esac
+	fi
+
+	# Check environment variable as fallback
+	if [ -n "${AI_RIZZ_MODE}" ]; then
+		case "${AI_RIZZ_MODE}" in
+			local|commit)
+				echo "${AI_RIZZ_MODE}"
+				return 0
+				;;
+			*)
+				# Invalid mode in environment variable - just ignore it
+				;;
+		esac
 	fi
 	
 	# Smart mode selection
@@ -1713,6 +1736,7 @@ migrate_from_opposite_mode() {
 # • Creates manifest files and directory structure
 # • Sets up git excludes for local mode only
 # • Handles idempotent re-initialization
+# • Uses environment variable fallbacks if available
 #
 # Globals:
 #   COMMIT_MANIFEST_FILE - Commit manifest filename (read)
@@ -1777,7 +1801,28 @@ cmd_init() {
 		esac
 	done
 	
-	# Use defaults if not provided
+	# Use environment variables as fallbacks
+	if [ -z "${ci_source_repo}" ] && [ -n "${AI_RIZZ_SOURCE_REPO}" ]; then
+		ci_source_repo="${AI_RIZZ_SOURCE_REPO}"
+	fi
+	
+	if [ -z "${ci_target_dir}" ] && [ -n "${AI_RIZZ_TARGET_DIR}" ]; then
+		ci_target_dir="${AI_RIZZ_TARGET_DIR}"
+	fi
+	
+	if [ -z "${ci_mode}" ] && [ -n "${AI_RIZZ_MODE}" ]; then
+		ci_mode="${AI_RIZZ_MODE}"
+	fi
+	
+	if [ -z "${ci_rule_path}" ] && [ -n "${AI_RIZZ_RULE_PATH}" ]; then
+		ci_rule_path="${AI_RIZZ_RULE_PATH}"
+	fi
+	
+	if [ -z "${ci_ruleset_path}" ] && [ -n "${AI_RIZZ_RULESET_PATH}" ]; then
+		ci_ruleset_path="${AI_RIZZ_RULESET_PATH}"
+	fi
+	
+	# Use defaults if still not provided
 	if [ -z "${ci_rule_path}" ]; then
 		ci_rule_path="${DEFAULT_RULES_PATH}"
 	fi
@@ -1932,6 +1977,7 @@ cleanup_empty_parents() {
 # Removes specified mode(s) including manifest files, target directories,
 # and git exclude configurations. Interactive with confirmation prompt unless -y flag
 # is used. Performs cleanup of empty parent directories after removal.
+# Uses AI_RIZZ_MODE environment variable as a fallback when no mode flag is provided.
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename
@@ -1982,18 +2028,31 @@ cmd_deinit() {
 		esac
 	done
 	
+	# Check for environment variable fallback if no mode provided
+	if [ -z "${cd_mode}" ] && [ -n "${AI_RIZZ_MODE}" ]; then
+		case "${AI_RIZZ_MODE}" in
+			local|commit)
+				cd_mode="${AI_RIZZ_MODE}"
+				;;
+			all)
+				cd_mode="all"
+				;;
+			*)
+				# Invalid mode in environment variable - just ignore it
+				;;
+		esac
+	fi
+
 	# Just cache metadata without validation for deinit
 	# This allows deinit to work with invalid or partially initialized states
 	cache_manifest_metadata
 	
-	# Prompt for mode if not provided
+	# Prompt for mode if still not provided
 	if [ -z "${cd_mode}" ]; then
 		if [ "$(is_mode_active local)" = "true" ] && [ "$(is_mode_active commit)" = "true" ]; then
+			# Both modes active - prompt user
 			printf "Which mode to remove [local/commit/all]: "
 			read -r cd_mode
-			if [ -z "${cd_mode}" ]; then
-				cd_mode="all"
-			fi
 		elif [ "$(is_mode_active local)" = "true" ]; then
 			cd_mode="local"
 		elif [ "$(is_mode_active commit)" = "true" ]; then
@@ -2539,6 +2598,8 @@ cmd_add_ruleset() {
 # Removes individual rules from whichever mode contains them. Auto-detects
 # which mode has each rule and removes from the appropriate manifest.
 # Triggers sync to clean up target directories after removal.
+# Uses AI_RIZZ_MODE environment variable to determine which mode to check first
+# when both modes are active.
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename
@@ -2561,6 +2622,21 @@ cmd_remove_rule() {
 	# Check if any mode is initialized and validate manifest integrity
 	ensure_initialized_and_valid
 
+	# If both modes are active, check if we can use environment variable for mode
+	if [ "$(is_mode_active commit)" = "true" ] && [ "$(is_mode_active local)" = "true" ] && [ -n "${AI_RIZZ_MODE}" ]; then
+		case "${AI_RIZZ_MODE}" in
+			local|commit)
+				crr_mode="${AI_RIZZ_MODE}"
+				;;
+			*)
+				# Invalid mode in environment variable - ignore it
+				crr_mode=""
+				;;
+		esac
+	else
+		crr_mode=""
+	fi
+
 	# Process each rule
 	for rule in "$@"; do
 		# Add .mdc extension if not present
@@ -2576,25 +2652,53 @@ cmd_remove_rule() {
 		removed=false
 		rule_path="${RULES_PATH}/${crr_item}"
 		
-		# Remove from whichever mode contains it
-		if [ "$(is_mode_active local)" = "true" ]; then
-			if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-				remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
-				echo "Removed rule: $rule_path"
-				removed=true
+		# If we have a specific mode from environment variable, only remove from that mode
+		if [ -n "${crr_mode}" ]; then
+			case "${crr_mode}" in
+				local)
+					if [ "$(is_mode_active local)" = "true" ]; then
+						if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+							remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
+							echo "Removed rule: $rule_path"
+							removed=true
+						else
+							warn "Rule not found in local mode: ${crr_item}"
+						fi
+					fi
+					;;
+				commit)
+					if [ "$(is_mode_active commit)" = "true" ]; then
+						if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+							remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
+							echo "Removed rule: $rule_path"
+							removed=true
+						else
+							warn "Rule not found in commit mode: ${crr_item}"
+						fi
+					fi
+					;;
+			esac
+		else
+			# No specific mode - remove from whichever mode contains it
+			if [ "$(is_mode_active local)" = "true" ]; then
+				if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+					remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
+					echo "Removed rule: $rule_path"
+					removed=true
+				fi
 			fi
-		fi
-		
-		if [ "$(is_mode_active commit)" = "true" ]; then
-			if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-				remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
-				echo "Removed rule: $rule_path"
-				removed=true
+			
+			if [ "$(is_mode_active commit)" = "true" ] && [ "$removed" = "false" ]; then
+				if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+					remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
+					echo "Removed rule: $rule_path"
+					removed=true
+				fi
 			fi
-		fi
-		
-		if [ "$removed" = "false" ]; then
-			warn "Rule not found in any mode: ${crr_item}"
+			
+			if [ "$removed" = "false" ]; then
+				warn "Rule not found in any mode: ${crr_item}"
+			fi
 		fi
 	done
 	
@@ -2986,33 +3090,33 @@ Available commands:
   init [<source_repo>]     Initialize the repository
   deinit                   Deinitialize the repository
   list                     List available rules and rulesets
-  add rule <rule>...       Add rule(s) to the repository (.mdc extension optional)
+  add rule <rule>...       Add rule(s) to the repository
   add ruleset <ruleset>... Add ruleset(s) to the repository
-  remove rule <rule>...    Remove rule(s) from the repository (.mdc extension optional)
+  remove rule <rule>...    Remove rule(s) from the repository
   remove ruleset <ruleset>... Remove ruleset(s) from the repository
   sync                     Sync the rules
   help                     Show this help
 
 General options:
-	-f, --manifest <file>  Alias for --skibidi
-	-s, --skibidi <file>   Use custom manifest filename
+  -f, --manifest <file>  Alias for --skibidi
+  -s, --skibidi <file>   Use custom manifest filename
 
 Command-specific options:
   init options:
-	-c, --commit           Use commit mode (commit files)
-	-d <target_dir>        Target directory (default: .cursor/rules)
-	-l, --local            Use local mode (ignore files)
-	--rule-path <path>     Source repository rules path (default: rules)
-	--ruleset-path <path>  Source repository rulesets path (default: rulesets)
+    -c, --commit           Use commit mode
+    -d <target_dir>        Target directory
+    -l, --local            Use local mode (gitignore files)
+    --rule-path <path>     Source repository rules path
+    --ruleset-path <path>  Source repository rulesets path
 
   add & remove options:
-	--commit, -c           Use commit mode (commit files)
-	--local, -l            Use local mode (ignore files)
+    --commit, -c           Use commit mode
+    --local, -l            Use local mode (gitignore files)
 
   deinit options:
-	-c, --commit           Use commit mode (commit files)
-	-l, --local            Use local mode (ignore files)
-	-y                     Skip confirmation prompts
+    -c, --commit           Use commit mode
+    -l, --local            Use local mode (gitignore files)
+    -y                     Skip confirmation prompts
 EOF
   return 0
 }
@@ -3115,6 +3219,13 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 	
 	# Process manifest options first - no subshell to preserve variable updates
 	PROCESSED_ARGS=""
+
+	# Check for environment variable fallback for manifest
+	if [ -n "${AI_RIZZ_MANIFEST}" ]; then
+		manifest_names=$(parse_manifest_filename_argument "${AI_RIZZ_MANIFEST}")
+		COMMIT_MANIFEST_FILE=$(echo "$manifest_names" | cut -f1 -d"	")
+		LOCAL_MANIFEST_FILE=$(echo "$manifest_names" | cut -f2 -d"	")
+	fi
 	
 	while [ $# -gt 0 ]; do
 		case "$1" in
@@ -3124,6 +3235,7 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 				fi
 				# Parse the provided filename to determine root and local names
 				manifest_names=$(parse_manifest_filename_argument "$2")
+				
 				COMMIT_MANIFEST_FILE=$(echo "$manifest_names" | cut -f1 -d"	")
 				LOCAL_MANIFEST_FILE=$(echo "$manifest_names" | cut -f2 -d"	")
 				shift 2
@@ -3139,7 +3251,7 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 				;;
 		esac
 	done
-	
+
 	# Set the processed arguments back for command processing
 	# shellcheck disable=SC2086 # Intentional word splitting to restore original argument structure
 	set -- $PROCESSED_ARGS

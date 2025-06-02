@@ -5,11 +5,18 @@ alwaysApply: true
 ---
 # AI-Rizz Development Practices
 
+## Project Environment
+
+1. **NEVER** test `ai-rizz` commands in the project directory. `ai-rizz` *uses* itself to manage its own rules and you'll break the project configuration. **ALWAY** test `ai-rizz` using the test suites, or in a temporary directory.
+
 ## Project-Specific Testing Standards
 
 1. **Test Execution**: Always run tests with `make test` for consistency. Individual test suites can be run directly for debugging only.
     - all tests: `make test`
     - single test: `./tests/unit/test_conflict_resolution.sh`
+    - single test, verbose: `VERBOSE_TESTS=true ./tests/unit/test_conflict_resolution.sh`
+        - there is NO more verbosity than this. You cannot run an individual test. If you have the output of a test suite run like the above, there is NO POINT in trying to run it in other ways. Add verbosity to the test suite, or modify the codebase. Do not keep running the tests and grepping for different things.
+        - **NEVER** waste time doing this: `VERBOSE_TESTS=true ./tests/integration/test_envvar_fallbacks.test.sh | grep -B5 -A5 "ASSERT.*expected"`; just read the regular test suite output by running as shown for "single test, verbose".
 
 2. **Test Environment Setup**: 
    - Set git user and email in all dummy repositories used for testing

@@ -1435,6 +1435,7 @@ ensure_initialized_and_valid() {
 #
 # Implements the common pattern of selecting a mode when not explicitly provided
 # by choosing the single available mode or prompting for selection when both exist.
+# Will check AI_RIZZ_MODE environment variable as a fallback if no mode is provided.
 #
 # Globals:
 #   None
@@ -1735,6 +1736,7 @@ migrate_from_opposite_mode() {
 # • Creates manifest files and directory structure
 # • Sets up git excludes for local mode only
 # • Handles idempotent re-initialization
+# • Uses environment variable fallbacks if available
 #
 # Globals:
 #   COMMIT_MANIFEST_FILE - Commit manifest filename (read)
@@ -1975,6 +1977,7 @@ cleanup_empty_parents() {
 # Removes specified mode(s) including manifest files, target directories,
 # and git exclude configurations. Interactive with confirmation prompt unless -y flag
 # is used. Performs cleanup of empty parent directories after removal.
+# Uses AI_RIZZ_MODE environment variable as a fallback when no mode flag is provided.
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename
@@ -2595,6 +2598,8 @@ cmd_add_ruleset() {
 # Removes individual rules from whichever mode contains them. Auto-detects
 # which mode has each rule and removes from the appropriate manifest.
 # Triggers sync to clean up target directories after removal.
+# Uses AI_RIZZ_MODE environment variable to determine which mode to check first
+# when both modes are active.
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename
@@ -3085,9 +3090,9 @@ Available commands:
   init [<source_repo>]     Initialize the repository
   deinit                   Deinitialize the repository
   list                     List available rules and rulesets
-  add rule <rule>...       Add rule(s) to the repository (.mdc extension optional)
+  add rule <rule>...       Add rule(s) to the repository
   add ruleset <ruleset>... Add ruleset(s) to the repository
-  remove rule <rule>...    Remove rule(s) from the repository (.mdc extension optional)
+  remove rule <rule>...    Remove rule(s) from the repository
   remove ruleset <ruleset>... Remove ruleset(s) from the repository
   sync                     Sync the rules
   help                     Show this help
@@ -3098,19 +3103,19 @@ General options:
 
 Command-specific options:
   init options:
-    -c, --commit           Use commit mode (commit files)
-    -d <target_dir>        Target directory (default: .cursor/rules)
-    -l, --local            Use local mode (ignore files)
-    --rule-path <path>     Source repository rules path (default: rules)
-    --ruleset-path <path>  Source repository rulesets path (default: rulesets)
+    -c, --commit           Use commit mode
+    -d <target_dir>        Target directory
+    -l, --local            Use local mode (gitignore files)
+    --rule-path <path>     Source repository rules path
+    --ruleset-path <path>  Source repository rulesets path
 
   add & remove options:
-    --commit, -c           Use commit mode (commit files)
-    --local, -l            Use local mode (ignore files)
+    --commit, -c           Use commit mode
+    --local, -l            Use local mode (gitignore files)
 
   deinit options:
-    -c, --commit           Use commit mode (commit files)
-    -l, --local            Use local mode (ignore files)
+    -c, --commit           Use commit mode
+    -l, --local            Use local mode (gitignore files)
     -y                     Skip confirmation prompts
 EOF
   return 0

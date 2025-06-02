@@ -124,7 +124,7 @@ test_deinit_all_modes() {
 }
 
 # Test: ai-rizz deinit (no flags)
-# Expected: Should prompt for mode selection or show error
+# Expected: Should prompt for mode selection
 test_deinit_requires_mode_selection() {
 	# Initialize dual mode
 	run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
@@ -134,14 +134,8 @@ test_deinit_requires_mode_selection() {
 	# Try deinit without mode flag, provide empty input to prompt
 	output=$(echo "" | run_ai_rizz deinit 2>&1 || echo "DEINIT_FAILED")
 	
-	# Should either show mode selection prompt or require mode flag
-	if echo "$output" | grep -q "DEINIT_FAILED"; then
-		# Command failed - should show helpful error about mode selection
-		assert_output_contains "$output" "mode\|local\|commit\|all"
-	else
-		# Command showed prompt - should contain mode selection text
-		assert_output_contains "$output" "mode\|local\|commit\|all\|choose\|select"
-	fi
+	# Command showed prompt - should contain mode selection text
+	assert_output_contains "$output" "mode\|local\|commit\|all\|choose\|select"
 }
 
 # Test: ai-rizz deinit --local (with confirmation prompt)
@@ -155,15 +149,8 @@ test_deinit_requires_confirmation() {
 	# Try deinit without -y flag, provide "n" to decline
 	output=$(echo "n" | run_ai_rizz deinit --local 2>&1 || echo "DEINIT_CANCELLED")
 	
-	# Should either show confirmation prompt or require -y flag
-	if echo "$output" | grep -q "DEINIT_CANCELLED"; then
-		# Command was cancelled or failed - files should remain
-		assertTrue "Local manifest should remain after cancellation" "[ -f 'ai-rizz.local.skbd' ]"
-		assertTrue "Local directory should remain after cancellation" "[ -d '.cursor/rules/local' ]"
-	else
-		# Command showed prompt - should contain confirmation text
-		assert_output_contains "$output" "confirm\|sure\|delete\|remove\|yes\|no"
-	fi
+	# Command showed prompt - should contain confirmation text
+	assert_output_contains "$output" "confirm\|sure\|delete\|remove\|yes\|no"
 }
 
 # Test: ai-rizz deinit --local -y

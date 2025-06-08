@@ -51,6 +51,14 @@ test_fail() {
 
 # Create a temporary test directory and set up test environment
 setUp() {
+  # Unset all AI_RIZZ_* environment variables to prevent host pollution
+  unset AI_RIZZ_MANIFEST
+  unset AI_RIZZ_SOURCE_REPO
+  unset AI_RIZZ_TARGET_DIR
+  unset AI_RIZZ_RULE_PATH
+  unset AI_RIZZ_RULESET_PATH
+  unset AI_RIZZ_MODE
+
   # Create a temporary test directory
   TEST_DIR="$(mktemp -d)"
   cd "$TEST_DIR" || fail "Failed to change to test directory"

@@ -87,15 +87,32 @@ test_error_invalid_target_directory() {
     echo "$output" | grep -q "directory\|path\|permission" || fail "Should mention directory issue"
 }
 
-test_error_git_repo_required() {
+test_error_git_repo_required_for_commit_mode() {
     # Setup: Non-git directory
     rm -rf .git
     
-    # Test: Any command should error
-    output=$(cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local 2>&1 || echo "ERROR_OCCURRED")
+    # Test: Commit mode should require git repository and fail
+    # Use subshell to capture exit code without exiting the test
+    (cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit >/dev/null 2>&1)
+    exit_code=$?
+    assertFalse "Commit mode init should fail outside a git repo" $exit_code
+
+    output=$(cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit 2>&1)
+    echo "$output" | grep -q "git.*repository\|not.*git" || \
+        fail "Should require git repo for commit mode"
+}
+
+test_local_mode_allowed_without_git() {
+    # Setup: Non-git directory
+    rm -rf .git
     
-    # Expected: Should require git repository
-    echo "$output" | grep -q "git.*repository\|not.*git" || fail "Should require git repo"
+    # Test: Local mode should work without git repository
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    assertTrue "Local mode init should succeed outside a git repo" $?
+    
+    # Expected: Should succeed and create local mode
+    assertTrue "Should create local manifest" "[ -f '$TEST_LOCAL_MANIFEST_FILE' ]"
+    assertTrue "Should create local directory" "[ -d '$TEST_TARGET_DIR/$TEST_LOCAL_DIR' ]"
 }
 
 test_graceful_missing_git_exclude() {

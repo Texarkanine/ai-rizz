@@ -703,6 +703,11 @@ update_git_exclude() {
 	uge_path="${1}"
 	uge_action="${2}"  # "add" or "remove"
 	
+	# Return early if no git repository exists
+	if [ ! -d ".git" ]; then
+		return 0
+	fi
+	
 	# Create .git/info directory if it doesn't exist
 	mkdir -p ".git/info"
 	
@@ -799,6 +804,11 @@ remove_local_mode_excludes() {
 #
 validate_git_exclude_state() {
 	vges_target_dir="${1}"
+	
+	# Return early if no git repository exists
+	if [ ! -d ".git" ]; then
+		return 0
+	fi
 	
 	if [ "$(is_mode_active local)" = "true" ]; then
 		# Local mode should be excluded
@@ -1895,8 +1905,8 @@ cmd_init() {
 			;;
 	esac
 	
-	# Ensure git repository context
-	if [ ! -d ".git" ]; then
+	# Ensure git repository context for commit mode only
+	if [ "${ci_mode}" = "commit" ] && [ ! -d ".git" ]; then
 		show_git_context_error
 	fi
 	

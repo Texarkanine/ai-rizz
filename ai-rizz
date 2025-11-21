@@ -3243,9 +3243,6 @@ cmd_remove_cmd() {
 				# Remove from manifest
 				remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${crc_cmd_path}"
 				
-				# Clean up deployed files
-				remove_command "${crc_item}"
-				
 				echo "Removed command: ${crc_cmd_path}"
 			else
 				warn "Command not found: ${crc_item}"
@@ -3254,6 +3251,9 @@ cmd_remove_cmd() {
 			warn "Cannot remove command: no commit mode initialized"
 		fi
 	done
+	
+	# Sync to ensure proper cleanup
+	sync_all_modes
 	
 	return 0
 }

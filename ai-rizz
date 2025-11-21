@@ -1943,26 +1943,58 @@ sync_commands() {
   fi
   
   # Step 2: Deploy commands from manifest
-  sc_entries=$(read_manifest_entries "${COMMIT_MANIFEST_FILE}" 2>/dev/null | grep "^${COMMANDS_PATH}/" || true)
+  sc_all_entries=$(read_manifest_entries "${COMMIT_MANIFEST_FILE}" 2>/dev/null || true)
   
-  # No commands to sync
-  if [ -z "${sc_entries}" ]; then
+  if [ -z "${sc_all_entries}" ]; then
     return 0
   fi
   
-  # Deploy each command (use temp file to avoid subshell)
-  sc_temp_file=$(mktemp)
-  echo "${sc_entries}" > "${sc_temp_file}"
+  # Filter for commands and commandsets
+  sc_command_entries=$(echo "${sc_all_entries}" | grep "^${COMMANDS_PATH}/" || true)
+  sc_commandset_entries=$(echo "${sc_all_entries}" | grep "^${COMMANDSETS_PATH}/" || true)
   
-  while IFS= read -r sc_entry; do
-    if [ -n "${sc_entry}" ]; then
-      sc_cmd_name=$(basename "${sc_entry}")
-      # Continue with other commands even if one fails
-      deploy_command "${sc_cmd_name}" || true
-    fi
-  done < "${sc_temp_file}"
+  # Deploy individual commands
+  if [ -n "${sc_command_entries}" ]; then
+    sc_temp_file=$(mktemp)
+    echo "${sc_command_entries}" > "${sc_temp_file}"
+    
+    while IFS= read -r sc_entry; do
+      if [ -n "${sc_entry}" ]; then
+        sc_cmd_name=$(basename "${sc_entry}")
+        # Continue with other commands even if one fails
+        deploy_command "${sc_cmd_name}" || true
+      fi
+    done < "${sc_temp_file}"
+    
+    rm -f "${sc_temp_file}"
+  fi
   
-  rm -f "${sc_temp_file}"
+  # Deploy commandsets (expand to individual commands)
+  if [ -n "${sc_commandset_entries}" ]; then
+    sc_temp_file=$(mktemp)
+    echo "${sc_commandset_entries}" > "${sc_temp_file}"
+    
+    while IFS= read -r sc_entry; do
+      if [ -n "${sc_entry}" ]; then
+        sc_commandset_path="${REPO_DIR}/${sc_entry}"
+        
+        # Check if commandset directory exists
+        if [ -d "${sc_commandset_path}" ]; then
+          # Find all .md files in commandset and deploy them
+          find "${sc_commandset_path}" -name "*.md" \( -type f -o -type l \) 2>/dev/null | \
+            while IFS= read -r sc_cmd_file; do
+              if [ -f "${sc_cmd_file}" ] || [ -L "${sc_cmd_file}" ]; then
+                sc_cmd_name=$(basename "${sc_cmd_file}")
+                # Continue with other commands even if one fails
+                deploy_command "${sc_cmd_name}" || true
+              fi
+            done
+        fi
+      fi
+    done < "${sc_temp_file}"
+    
+    rm -f "${sc_temp_file}"
+  fi
   
   return 0
 }
@@ -3017,6 +3049,263 @@ cmd_remove_ruleset() {
 	return 0
 }
 
+# Add command(s) to the repository (commit-only)
+#
+# Adds one or more commands to the commit manifest and deploys them to
+# .cursor/shared-commands/ with symlinks in .cursor/commands/. Commands
+# do not support --local mode; personal commands should use ~/.cursor/commands/.
+#
+# Validates command existence in source repository, adds .md extension if
+# missing, and syncs to deploy files.
+#
+# Globals:
+#   COMMANDS_PATH - Path to commands in source repository
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#
+# Arguments:
+#   $@ - Command names (with or without .md extension) and optional flags
+#        --local/-l: Error (not supported for commands)
+#        --commit/-c: Accepted (redundant but allowed)
+#
+# Outputs:
+#   Success/error messages for each command
+#
+# Returns:
+#   0 on success, 1 on error
+#
+cmd_add_cmd() {
+	cac_commands=""
+	
+	# Parse arguments (no mode flags supported for commands)
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			--local|-l)
+				error "Commands do not support --local mode. Use ~/.cursor/commands/ for personal commands."
+				;;
+			--commit|-c)
+				# Accept but ignore (commit is the only mode)
+				shift
+				;;
+			*)
+				if [ -z "${cac_commands}" ]; then
+					cac_commands="$1"
+				else
+					cac_commands="${cac_commands} $1"
+				fi
+				shift
+				;;
+		esac
+	done
+	
+	# Ensure initialized
+	ensure_initialized_and_valid
+	
+	# Process each command
+	for cac_cmd in ${cac_commands}; do
+		# Add .md extension if not present
+		case "${cac_cmd}" in
+			*".md") 
+				cac_item="${cac_cmd}"
+				;;  
+			*) 
+				cac_item="${cac_cmd}.md"
+				;;  
+		esac
+		
+		cac_cmd_path="${COMMANDS_PATH}/${cac_item}"
+		
+		# Check if command exists in source repo
+		if ! check_repository_item "${cac_cmd_path}" "Command"; then
+			continue
+		fi
+		
+		# Add to manifest (commands are always commit-only)
+		add_manifest_entry_to_file "${COMMIT_MANIFEST_FILE}" "${cac_cmd_path}"
+		
+		echo "Added command: ${cac_cmd_path}"
+	done
+	
+	# Sync to deploy files based on manifest
+	sync_all_modes
+	
+	return 0
+}
+
+# Add commandset(s) to the repository (commit-only)
+#
+# Adds all commands from one or more commandsets to the commit manifest.
+# Commandsets are directories containing command files, similar to rulesets.
+#
+# Globals:
+#   COMMANDSETS_PATH - Path to commandsets in source repository
+#   COMMANDS_PATH - Path to commands in source repository
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#
+# Arguments:
+#   $@ - Commandset names and optional flags
+#        --local/-l: Error (not supported for commands)
+#        --commit/-c: Accepted (redundant but allowed)
+#
+# Outputs:
+#   Success/error messages for each command in the commandset
+#
+# Returns:
+#   0 on success, 1 on error
+#
+cmd_add_cmdset() {
+	cacs_commandsets=""
+	
+	# Parse arguments (no mode flags supported for commands)
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			--local|-l)
+				error "Commands do not support --local mode. Use ~/.cursor/commands/ for personal commands."
+				;;
+			--commit|-c)
+				# Accept but ignore (commit is the only mode)
+				shift
+				;;
+			*)
+				if [ -z "${cacs_commandsets}" ]; then
+					cacs_commandsets="$1"
+				else
+					cacs_commandsets="${cacs_commandsets} $1"
+				fi
+				shift
+				;;
+		esac
+	done
+	
+	# Ensure initialized
+	ensure_initialized_and_valid
+	
+	# Process each commandset
+	for cacs_commandset in ${cacs_commandsets}; do
+		cacs_commandset_path="${COMMANDSETS_PATH}/${cacs_commandset}"
+		
+		# Check if commandset exists in source repo
+		if ! check_repository_item "${cacs_commandset_path}" "Commandset" "dir"; then
+			continue
+		fi
+		
+		# Add to manifest (commands are always commit-only)
+		add_manifest_entry_to_file "${COMMIT_MANIFEST_FILE}" "${cacs_commandset_path}"
+		
+		echo "Added commandset: ${cacs_commandset_path}"
+	done
+	
+	# Sync to deploy files based on manifest
+	sync_all_modes
+	
+	return 0
+}
+
+# Remove command(s) from the repository
+#
+# Removes one or more commands from the commit manifest and cleans up
+# deployed files (both .cursor/shared-commands/ and symlinks in
+# .cursor/commands/).
+#
+# Globals:
+#   COMMANDS_PATH - Path to commands in source repository
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#
+# Arguments:
+#   $@ - Command names (with or without .md extension)
+#
+# Outputs:
+#   Success/warning messages for each command
+#
+# Returns:
+#   0 always
+#
+cmd_remove_cmd() {
+	# Ensure initialized
+	ensure_initialized_and_valid
+	
+	# Process each command
+	for crc_cmd in "$@"; do
+		# Add .md extension if not present
+		case "${crc_cmd}" in
+			*".md") 
+				crc_item="${crc_cmd}"
+				;;  
+			*) 
+				crc_item="${crc_cmd}.md"
+				;;  
+		esac
+		
+		crc_cmd_path="${COMMANDS_PATH}/${crc_item}"
+		
+		# Commands are always commit-only, so only check commit manifest
+		if [ "$(is_mode_active commit)" = "true" ]; then
+			if read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${crc_cmd_path}$"; then
+				# Remove from manifest
+				remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${crc_cmd_path}"
+				
+				# Clean up deployed files
+				remove_command "${crc_item}"
+				
+				echo "Removed command: ${crc_cmd_path}"
+			else
+				warn "Command not found: ${crc_item}"
+			fi
+		else
+			warn "Cannot remove command: no commit mode initialized"
+		fi
+	done
+	
+	return 0
+}
+
+# Remove commandset(s) from the repository
+#
+# Removes all commands from one or more commandsets from the commit manifest
+# and cleans up deployed files.
+#
+# Globals:
+#   COMMANDSETS_PATH - Path to commandsets in source repository
+#   COMMANDS_PATH - Path to commands in source repository
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#
+# Arguments:
+#   $@ - Commandset names
+#
+# Outputs:
+#   Success/warning messages for each command in the commandset
+#
+# Returns:
+#   0 always
+#
+cmd_remove_cmdset() {
+	# Ensure initialized
+	ensure_initialized_and_valid
+	
+	# Process each commandset
+	for crcs_commandset in "$@"; do
+		crcs_commandset_path="${COMMANDSETS_PATH}/${crcs_commandset}"
+		
+		# Commands are always commit-only, so only check commit manifest
+		if [ "$(is_mode_active commit)" = "true" ]; then
+			if read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${crcs_commandset_path}$"; then
+				# Remove from manifest
+				remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${crcs_commandset_path}"
+				
+				echo "Removed commandset: ${crcs_commandset_path}"
+			else
+				warn "Commandset not found: ${crcs_commandset}"
+			fi
+		else
+			warn "Cannot remove commandset: no commit mode initialized"
+		fi
+	done
+	
+	# Sync to ensure proper cleanup
+	sync_all_modes
+	
+	return 0
+}
+
 # Sync all available manifests to their target directories
 #
 # Orchestrates complete sync process: resolves conflicts using "commit wins"
@@ -3529,7 +3818,7 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 		;;
 	add)
 		if [ $# -eq 0 ]; then
-			show_command_usage_error "Missing type: 'rule' or 'ruleset'" "ai-rizz add rule example-rule"
+			show_command_usage_error "Missing type: 'rule', 'ruleset', 'cmd', or 'cmdset'" "ai-rizz add rule example-rule"
 		fi
 		
 		main_type=$1
@@ -3548,14 +3837,26 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 				fi
 				cmd_add_ruleset "$@"
 				;;
+			cmd|command)
+				if [ $# -eq 0 ]; then
+					show_command_usage_error "Missing command name" "ai-rizz add cmd example-command"
+				fi
+				cmd_add_cmd "$@"
+				;;
+			cmdset|commandset)
+				if [ $# -eq 0 ]; then
+					show_command_usage_error "Missing commandset name" "ai-rizz add cmdset example-commandset"
+				fi
+				cmd_add_cmdset "$@"
+				;;
 			*)
-				show_command_usage_error "Invalid type: ${main_type}. Must be 'rule' or 'ruleset'" "ai-rizz add rule example-rule\nai-rizz add ruleset example-ruleset"
+				show_command_usage_error "Invalid type: ${main_type}. Must be 'rule', 'ruleset', 'cmd', or 'cmdset'" "ai-rizz add rule example-rule\nai-rizz add ruleset example-ruleset\nai-rizz add cmd example-command\nai-rizz add cmdset example-commandset"
 				;;
 		esac
 		;;
 	remove)
 		if [ $# -eq 0 ]; then
-			show_command_usage_error "Missing type: 'rule' or 'ruleset'" "ai-rizz remove rule example-rule"
+			show_command_usage_error "Missing type: 'rule', 'ruleset', 'cmd', or 'cmdset'" "ai-rizz remove rule example-rule"
 		fi
 		
 		main_type=$1
@@ -3574,8 +3875,20 @@ if [ "${0##*/}" = "ai-rizz" ]; then
 				fi
 				cmd_remove_ruleset "$@"
 				;;
+			cmd|command)
+				if [ $# -eq 0 ]; then
+					show_command_usage_error "Missing command name" "ai-rizz remove cmd example-command"
+				fi
+				cmd_remove_cmd "$@"
+				;;
+			cmdset|commandset)
+				if [ $# -eq 0 ]; then
+					show_command_usage_error "Missing commandset name" "ai-rizz remove cmdset example-commandset"
+				fi
+				cmd_remove_cmdset "$@"
+				;;
 			*)
-				show_command_usage_error "Invalid type: ${main_type}. Must be 'rule' or 'ruleset'" "ai-rizz remove rule example-rule\nai-rizz remove ruleset example-ruleset"
+				show_command_usage_error "Invalid type: ${main_type}. Must be 'rule', 'ruleset', 'cmd', or 'cmdset'" "ai-rizz remove rule example-rule\nai-rizz remove ruleset example-ruleset\nai-rizz remove cmd example-command\nai-rizz remove cmdset example-commandset"
 				;;
 		esac
 		;;

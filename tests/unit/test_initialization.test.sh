@@ -88,11 +88,11 @@ test_init_custom_target_dir() {
 }
 
 test_init_creates_correct_manifest_headers() {
-    # Test both modes create proper headers
+    # Test both modes create proper headers (V2 format with 6 fields)
     
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     first_line=$(head -n1 "$TEST_LOCAL_MANIFEST_FILE")
-    assertEquals "Local manifest header incorrect" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	rules	rulesets" "$first_line"
+    assertEquals "Local manifest header incorrect" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	rules	rulesets	commands	commandsets" "$first_line"
     
     # Clean up and test commit mode in separate directory
     tearDown
@@ -100,7 +100,7 @@ test_init_creates_correct_manifest_headers() {
     
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit  
     first_line=$(head -n1 "$TEST_COMMIT_MANIFEST_FILE")
-    assertEquals "Commit manifest header incorrect" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	rules	rulesets" "$first_line"
+    assertEquals "Commit manifest header incorrect" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	rules	rulesets	commands	commandsets" "$first_line"
 }
 
 test_init_twice_same_mode_idempotent() {

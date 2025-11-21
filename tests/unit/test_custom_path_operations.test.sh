@@ -87,12 +87,12 @@ test_init_works_with_custom_path_args() {
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --rule-path "docs" --ruleset-path "kb/sections"
     assertTrue "cmd_init should work with custom path arguments" $?
     
-    # Verify manifest has correct format
+    # Verify manifest has correct format (V2 with 6 fields)
     test -f "$TEST_LOCAL_MANIFEST_FILE"
     assertTrue "Local manifest should be created" $?
     
     first_line=$(head -n 1 "$TEST_LOCAL_MANIFEST_FILE")
-    assertEquals "Should use custom paths in manifest" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	kb/sections" "$first_line"
+    assertEquals "Should use custom paths in manifest" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	kb/sections	commands	commandsets" "$first_line"
 }
 
 # Test that standard initialization still works (baseline test)
@@ -108,9 +108,9 @@ test_standard_init_works() {
     test -d "$TEST_TARGET_DIR/local"
     assertTrue "Local directory should be created" $?
     
-    # Verify manifest has standard format with defaults
+    # Verify manifest has standard format with defaults (V2 with 6 fields)
     first_line=$(head -n 1 "$TEST_LOCAL_MANIFEST_FILE")
-    assertEquals "Should use standard format with defaults" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	rules	rulesets" "$first_line"
+    assertEquals "Should use standard format with defaults" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	rules	rulesets	commands	commandsets" "$first_line"
 }
 
 # Test adding rule with custom paths

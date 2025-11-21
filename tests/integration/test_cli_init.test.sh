@@ -43,9 +43,9 @@ test_init_local_mode_creates_proper_structure() {
     assert_git_excludes "ai-rizz.local.skbd"
     assert_git_excludes ".cursor/rules/local"
     
-    # Verify manifest header (new 4-field format with defaults)
+    # Verify manifest header (V2 format with 6 fields)
     first_line=$(head -n1 ai-rizz.local.skbd)
-    assertEquals "Local manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
+    assertEquals "Local manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets	commands	commandsets" "$first_line"
 }
 
 # Test: ai-rizz init <repo> --commit
@@ -67,9 +67,9 @@ test_init_commit_mode_creates_proper_structure() {
     assert_git_tracks "ai-rizz.skbd"
     assert_git_tracks ".cursor/rules/shared"
     
-    # Verify manifest header (new 4-field format with defaults)
+    # Verify manifest header (V2 format with 6 fields)
     first_line=$(head -n1 ai-rizz.skbd)
-    assertEquals "Commit manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
+    assertEquals "Commit manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets	commands	commandsets" "$first_line"
 }
 
 # Test: ai-rizz init <repo> (no mode flag)
@@ -101,9 +101,9 @@ test_init_custom_target_directory() {
     assertTrue "Custom local directory should exist" "[ -d '$custom_dir/local' ]"
     assert_git_excludes "$custom_dir/local"
     
-    # Verify manifest uses custom directory
+    # Verify manifest uses custom directory (V2 format)
     first_line=$(head -n1 ai-rizz.local.skbd)
-    assertEquals "Manifest should use custom directory" "file://$MOCK_REPO_DIR	$custom_dir	rules	rulesets" "$first_line"
+    assertEquals "Manifest should use custom directory" "file://$MOCK_REPO_DIR	$custom_dir	rules	rulesets	commands	commandsets" "$first_line"
 }
 
 # Test: ai-rizz init invalid://repo --local
@@ -178,9 +178,9 @@ test_init_with_extensionless_manifest_root() {
     assertTrue "Custom manifest should not exist " "[ ! -f 'Gyattfile' ]"
     # Should create local directory
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
-    # Manifest header should be correct
+    # Manifest header should be correct (V2 format)
     first_line=$(head -n1 Gyattfile.local)
-    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
+    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets	commands	commandsets" "$first_line"
 }
 
 # Test: ai-rizz init <repo> -f foo.bar --commit
@@ -192,9 +192,9 @@ test_init_with_single_extension_manifest_root() {
     assertTrue "Custom local manifest should not exist yet" "[ ! -f 'foo.local.bar' ]"
     # Should create shared directory
     assertTrue "Shared directory should exist" "[ -d '.cursor/rules/shared' ]"
-    # Manifest header should be correct
+    # Manifest header should be correct (V2 format)
     first_line=$(head -n1 foo.bar)
-    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
+    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets	commands	commandsets" "$first_line"
 }
 
 # Test: ai-rizz init <repo> -f foo.baz.bar --local
@@ -206,9 +206,9 @@ test_init_with_multi_dot_manifest_root() {
     assertTrue "Custom manifest should not exist yet" "[ ! -f 'foo.baz.bar' ]"
     # Should create local directory
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
-    # Manifest header should be correct
+    # Manifest header should be correct (V2 format)
     first_line=$(head -n1 foo.baz.local.bar)
-    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
+    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets	commands	commandsets" "$first_line"
 }
 
 # Test: ai-rizz init <repo> -f "manifest with spaces.conf" --local
@@ -220,9 +220,9 @@ test_init_with_spaces_in_manifest_name() {
     assertTrue "Custom manifest should not exist yet" "[ ! -f 'manifest with spaces.conf' ]"
     # Should create local directory
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
-    # Manifest header should be correct
+    # Manifest header should be correct (V2 format)
     first_line=$(head -n1 "manifest with spaces.local.conf")
-    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
+    assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets	commands	commandsets" "$first_line"
 }
 
 # Test: ai-rizz init with target but no mode (should prompt and set default)

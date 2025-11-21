@@ -1793,12 +1793,14 @@ migrate_from_opposite_mode() {
 #
 # Returns:
 #   0   - Success (file copied and symlink created)
-#   1   - Validation failure (source missing, collision detected)
-#   201 - Failed to create shared-commands directory
-#   202 - Failed to copy file to shared-commands
-#   203 - Failed to verify copied file exists
-#   204 - Failed to create commands directory
-#   205 - Failed to create symlink
+#   200 - Source file not found in repository
+#   201 - Collision with user's non-symlink file
+#   202 - Collision with non-managed symlink
+#   203 - Failed to create shared-commands directory
+#   204 - Failed to copy file to shared-commands
+#   205 - Failed to verify copied file exists
+#   206 - Failed to create commands directory
+#   207 - Failed to create symlink
 #
 deploy_command() {
   dc_cmd_name="$1"
@@ -1809,13 +1811,13 @@ deploy_command() {
   # Validate source exists
   if [ ! -f "${dc_source_file}" ]; then
     warn "Command '${dc_cmd_name}' not found in source repository, skipping"
-    return 1
+    return 200
   fi
   
   # Check for collision with user's files
   if [ -e "${dc_symlink}" ] && [ ! -L "${dc_symlink}" ]; then
     warn "Cannot deploy command '${dc_cmd_name}': file exists in .cursor/commands/ (not managed by ai-rizz)"
-    return 1
+    return 201
   fi
   
   # If symlink exists, verify it's ours
@@ -1823,38 +1825,38 @@ deploy_command() {
     dc_existing_target=$(readlink "${dc_symlink}")
     if [ "${dc_existing_target}" != "../${SHARED_COMMANDS_DIR}/${dc_cmd_name}" ]; then
       warn "Cannot deploy command '${dc_cmd_name}': symlink exists but not managed by ai-rizz"
-      return 1
+      return 202
     fi
   fi
   
   # Create target directory
   mkdir -p ".cursor/${SHARED_COMMANDS_DIR}" || {
     warn "Failed to create directory .cursor/${SHARED_COMMANDS_DIR}"
-    return 201
+    return 203
   }
   
   # Copy actual file to shared-commands
   cp "${dc_source_file}" "${dc_target_file}" || {
     warn "Failed to copy ${dc_cmd_name} to shared-commands/"
-    return 202
+    return 204
   }
   
   # Verify copy succeeded before creating symlink (prevent broken symlinks)
   if [ ! -f "${dc_target_file}" ]; then
     warn "Copy appeared to succeed but file does not exist: ${dc_target_file}"
-    return 203
+    return 205
   fi
   
   # Create symlink directory
   mkdir -p ".cursor/commands" || {
     warn "Failed to create directory .cursor/commands"
-    return 204
+    return 206
   }
   
   # Create symlink (target verified to exist, so symlink will be valid)
   ln -sf "../${SHARED_COMMANDS_DIR}/${dc_cmd_name}" "${dc_symlink}" || {
     warn "Failed to create symlink for ${dc_cmd_name}"
-    return 205
+    return 207
   }
   
   return 0
@@ -1914,7 +1916,7 @@ remove_command() {
 #   SHARED_COMMANDS_DIR - Shared commands directory name (read)
 #
 # Returns:
-#   0 on success (always succeeds, warnings for individual failures)
+#   0 on success (emits warnings for individual failures)
 #
 sync_commands() {
   # Step 1: Cleanup stale commands (not in manifest)

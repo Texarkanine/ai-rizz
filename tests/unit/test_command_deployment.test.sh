@@ -125,7 +125,8 @@ test_collision_detection_non_symlink_file() {
   echo "User's own command" > .cursor/commands/review-code.md
   
   # Attempt to deploy should fail
-  output=$(deploy_command "review-code.md" 2>&1) && result=$? || result=$?
+  output=$(deploy_command "review-code.md" 2>&1)
+  result=$?
   
   # Verify it failed
   assertNotEquals "Should fail with non-zero exit code" 0 "$result"
@@ -148,7 +149,8 @@ test_collision_detection_wrong_symlink_target() {
   ln -s /tmp/elsewhere/test-cmd.md .cursor/commands/test-cmd.md
   
   # Attempt to deploy should fail
-  output=$(deploy_command "test-cmd.md" 2>&1) && result=$? || result=$?
+  output=$(deploy_command "test-cmd.md" 2>&1)
+  result=$?
   
   # Verify it failed
   assertNotEquals "Should fail with non-zero exit code" 0 "$result"

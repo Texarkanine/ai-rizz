@@ -1780,7 +1780,8 @@ migrate_from_opposite_mode() {
 # 2. Creating a symlink in .cursor/commands/ pointing to it
 #
 # This function validates the source exists, detects collisions with user files,
-# and ensures proper directory structure before deployment.
+# and ensures proper directory structure before deployment. Used by sync_commands()
+# and can be called directly for manual deployment.
 #
 # Globals:
 #   REPO_DIR - Repository directory path (read)
@@ -1792,7 +1793,7 @@ migrate_from_opposite_mode() {
 #
 # Returns:
 #   0 on success
-#   1 on error (via error() function)
+#   1 on failure (warns and continues, suitable for sync operations)
 #
 deploy_command() {
   dc_cmd_name="$1"
@@ -1802,19 +1803,22 @@ deploy_command() {
   
   # Validate source exists
   if [ ! -f "${dc_source_file}" ]; then
-    error "Command '${dc_cmd_name}' not found in source repository"
+    warn "Command '${dc_cmd_name}' not found in source repository, skipping"
+    return 1
   fi
   
   # Check for collision with user's files
   if [ -e "${dc_symlink}" ] && [ ! -L "${dc_symlink}" ]; then
-    error "Cannot add command '${dc_cmd_name}': file exists in .cursor/commands/ but not managed by ai-rizz. Please remove or rename the existing file and try again."
+    warn "Cannot deploy command '${dc_cmd_name}': file exists in .cursor/commands/ (not managed by ai-rizz)"
+    return 1
   fi
   
   # If symlink exists, verify it's ours
   if [ -L "${dc_symlink}" ]; then
     dc_existing_target=$(readlink "${dc_symlink}")
     if [ "${dc_existing_target}" != "../${SHARED_COMMANDS_DIR}/${dc_cmd_name}" ]; then
-      error "Cannot add command '${dc_cmd_name}': symlink exists but not managed by ai-rizz. Please remove or rename the symlink and try again."
+      warn "Cannot deploy command '${dc_cmd_name}': symlink exists but not managed by ai-rizz"
+      return 1
     fi
   fi
   
@@ -1868,6 +1872,64 @@ remove_command() {
   if [ -f "${rc_target_file}" ]; then
     rm "${rc_target_file}"
   fi
+  
+  return 0
+}
+
+# sync_commands - Sync commands from manifest to filesystem
+#
+# Syncs commands to match the commit manifest by:
+# 1. Removing stale commands (symlinks not in manifest)
+# 2. Deploying all commands from manifest
+#
+# This function is called by sync_all_modes() and provides manifest-driven
+# command deployment similar to how rules are synced.
+#
+# Globals:
+#   COMMIT_MANIFEST_FILE - Commit manifest filename (read)
+#   COMMANDS_PATH - Commands path in source repo (read)
+#   SHARED_COMMANDS_DIR - Shared commands directory name (read)
+#
+# Returns:
+#   0 on success (always succeeds, warnings for individual failures)
+#
+sync_commands() {
+  # Step 1: Cleanup stale commands (not in manifest)
+  if [ -d ".cursor/commands" ]; then
+    for sc_file in .cursor/commands/*.md; do
+      # Skip if no .md files exist
+      [ -e "${sc_file}" ] || continue
+      
+      # Only process symlinks (our managed commands)
+      if [ -L "${sc_file}" ]; then
+        sc_target=$(readlink "${sc_file}")
+        sc_basename=$(basename "${sc_file}")
+        
+        # Only touch our symlinks (pointing to shared-commands/)
+        if [ "${sc_target}" = "../${SHARED_COMMANDS_DIR}/${sc_basename}" ]; then
+          # Check if command is in manifest
+          if ! read_manifest_entries "${COMMIT_MANIFEST_FILE}" 2>/dev/null | grep -q "^${COMMANDS_PATH}/${sc_basename}$"; then
+            # Stale command - remove it
+            remove_command "${sc_basename}"
+          fi
+        fi
+      fi
+    done
+  fi
+  
+  # Step 2: Deploy commands from manifest
+  sc_entries=$(read_manifest_entries "${COMMIT_MANIFEST_FILE}" 2>/dev/null | grep "^${COMMANDS_PATH}/" || true)
+  
+  # No commands to sync
+  if [ -z "${sc_entries}" ]; then
+    return 0
+  fi
+  
+  # Deploy each command
+  echo "${sc_entries}" | while IFS= read -r sc_entry; do
+    sc_cmd_name=$(basename "${sc_entry}")
+    deploy_command "${sc_cmd_name}"
+  done
   
   return 0
 }
@@ -2968,6 +3030,11 @@ sync_all_modes() {
 		local_target_dir=$(echo "${local_manifest_and_target}" | cut -f2 -d"	")
 		
 		sync_manifest_to_directory "${local_manifest_file}" "${local_target_dir}" || sync_success=false
+	fi
+	
+	# Sync commands if commit mode initialized
+	if [ "$(is_mode_active commit)" = "true" ]; then
+		sync_commands || sync_success=false
 	fi
 	
 	# Handle any cleanup needed

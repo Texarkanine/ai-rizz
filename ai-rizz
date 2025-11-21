@@ -1773,6 +1773,105 @@ migrate_from_opposite_mode() {
 	return 0
 }
 
+# deploy_command - Deploy a command file and create symlink
+#
+# Deploys a command from the source repository to the filesystem by:
+# 1. Copying the actual file to .cursor/shared-commands/
+# 2. Creating a symlink in .cursor/commands/ pointing to it
+#
+# This function validates the source exists, detects collisions with user files,
+# and ensures proper directory structure before deployment.
+#
+# Globals:
+#   REPO_DIR - Repository directory path (read)
+#   COMMANDS_PATH - Commands path in source repo (read)
+#   SHARED_COMMANDS_DIR - Shared commands directory name (read)
+#
+# Arguments:
+#   $1 - Command filename (e.g., "review-code.md")
+#
+# Returns:
+#   0 on success
+#   1 on error (via error() function)
+#
+deploy_command() {
+  dc_cmd_name="$1"
+  dc_source_file="${REPO_DIR}/${COMMANDS_PATH}/${dc_cmd_name}"
+  dc_target_file=".cursor/${SHARED_COMMANDS_DIR}/${dc_cmd_name}"
+  dc_symlink=".cursor/commands/${dc_cmd_name}"
+  
+  # Validate source exists
+  if [ ! -f "${dc_source_file}" ]; then
+    error "Command '${dc_cmd_name}' not found in source repository"
+  fi
+  
+  # Check for collision with user's files
+  if [ -e "${dc_symlink}" ] && [ ! -L "${dc_symlink}" ]; then
+    error "Cannot add command '${dc_cmd_name}': file exists in .cursor/commands/ but not managed by ai-rizz. Please remove or rename the existing file and try again."
+  fi
+  
+  # If symlink exists, verify it's ours
+  if [ -L "${dc_symlink}" ]; then
+    dc_existing_target=$(readlink "${dc_symlink}")
+    if [ "${dc_existing_target}" != "../${SHARED_COMMANDS_DIR}/${dc_cmd_name}" ]; then
+      error "Cannot add command '${dc_cmd_name}': symlink exists but not managed by ai-rizz. Please remove or rename the symlink and try again."
+    fi
+  fi
+  
+  # Create target directory
+  mkdir -p ".cursor/${SHARED_COMMANDS_DIR}"
+  
+  # Copy actual file to shared-commands
+  cp "${dc_source_file}" "${dc_target_file}"
+  
+  # Create symlink directory
+  mkdir -p ".cursor/commands"
+  
+  # Create symlink (relative path for portability)
+  ln -sf "../${SHARED_COMMANDS_DIR}/${dc_cmd_name}" "${dc_symlink}"
+  
+  return 0
+}
+
+# remove_command - Remove a command file and its symlink
+#
+# Removes a command from the filesystem by:
+# 1. Removing the symlink in .cursor/commands/ (if it's ours)
+# 2. Removing the actual file from .cursor/shared-commands/
+#
+# This function only removes symlinks that point to our managed files,
+# ensuring user's own files in .cursor/commands/ are never touched.
+#
+# Globals:
+#   SHARED_COMMANDS_DIR - Shared commands directory name (read)
+#
+# Arguments:
+#   $1 - Command filename (e.g., "review-code.md")
+#
+# Returns:
+#   0 on success (always succeeds, even if files don't exist)
+#
+remove_command() {
+  rc_cmd_name="$1"
+  rc_target_file=".cursor/${SHARED_COMMANDS_DIR}/${rc_cmd_name}"
+  rc_symlink=".cursor/commands/${rc_cmd_name}"
+  
+  # Only remove if symlink exists and points to our file
+  if [ -L "${rc_symlink}" ]; then
+    rc_link_target=$(readlink "${rc_symlink}")
+    if [ "${rc_link_target}" = "../${SHARED_COMMANDS_DIR}/${rc_cmd_name}" ]; then
+      rm "${rc_symlink}"
+    fi
+  fi
+  
+  # Remove actual file
+  if [ -f "${rc_target_file}" ]; then
+    rm "${rc_target_file}"
+  fi
+  
+  return 0
+}
+
 # Commands
 # ========
 

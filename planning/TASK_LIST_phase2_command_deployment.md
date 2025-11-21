@@ -2,8 +2,9 @@
 
 **Goal**: Deploy commands with symlink creation
 
-**Status**: In Progress  
+**Status**: ✅ Complete  
 **Started**: 2025-11-21  
+**Completed**: 2025-11-21  
 
 ---
 
@@ -20,34 +21,34 @@ Implement command deployment functionality with symlink creation, following TDD 
 - [x] Identify test scenarios needed
 - [x] Identify functions to implement
 
-### 2. Preparation (Stubbing)
-- [ ] Create test file: `test_command_deployment.test.sh`
-- [ ] Stub test cases with empty implementations
-- [ ] Add `deploy_command()` stub to `ai-rizz`
-- [ ] Add `remove_command()` stub to `ai-rizz`
-- [ ] Verify test file runs (all tests should skip/pass empty)
+### 2. Preparation (Stubbing) ✅
+- [x] Create test file: `test_command_deployment.test.sh`
+- [x] Stub test cases with empty implementations
+- [x] Add `deploy_command()` stub to `ai-rizz`
+- [x] Add `remove_command()` stub to `ai-rizz`
+- [x] Verify test file runs (all tests should skip/pass empty)
 
-### 3. Write Tests
-- [ ] Implement test: deploy command creates file in shared-commands/
-- [ ] Implement test: deploy command creates symlink in commands/
-- [ ] Implement test: symlink points to correct target
-- [ ] Implement test: collision detection (non-symlink file exists)
-- [ ] Implement test: collision detection (wrong symlink target)
-- [ ] Implement test: remove command deletes both files
-- [ ] Implement test: remove command ignores non-symlink files
-- [ ] Run tests - verify they fail (expected)
+### 3. Write Tests ✅
+- [x] Implement test: deploy command creates file in shared-commands/
+- [x] Implement test: deploy command creates symlink in commands/
+- [x] Implement test: symlink points to correct target
+- [x] Implement test: collision detection (non-symlink file exists)
+- [x] Implement test: collision detection (wrong symlink target)
+- [x] Implement test: remove command deletes both files
+- [x] Implement test: remove command ignores non-symlink files
+- [x] Run tests - verify they fail (expected)
 
-### 4. Write Code
-- [ ] Implement `deploy_command()` function
-- [ ] Implement `remove_command()` function
-- [ ] Run tests - iterate until all pass
-- [ ] Run full test suite to verify no regressions
+### 4. Write Code ✅
+- [x] Implement `deploy_command()` function
+- [x] Implement `remove_command()` function
+- [x] Run tests - iterate until all pass
+- [x] Run full test suite to verify no regressions
 
-### 5. Verification
-- [ ] All new tests pass
-- [ ] All existing tests still pass
-- [ ] Code follows project conventions
-- [ ] Functions properly documented
+### 5. Verification ✅
+- [x] All new tests pass (7/7)
+- [x] All existing tests still pass (17/17 total)
+- [x] Code follows project conventions
+- [x] Functions properly documented
 
 ---
 

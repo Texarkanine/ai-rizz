@@ -1,0 +1,1 @@
+../shared-commands/local/say-hi.md

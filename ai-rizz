@@ -36,11 +36,14 @@ set -e  # Exit on error
 COMMIT_MANIFEST_FILE="ai-rizz.skbd"
 LOCAL_MANIFEST_FILE="ai-rizz.local.skbd"
 SHARED_DIR="shared"
-LOCAL_DIR="local" 
+LOCAL_DIR="local"
+SHARED_COMMANDS_DIR="shared-commands"               # Added for command storage
 CONFIG_DIR="$HOME/.config/ai-rizz"
 DEFAULT_TARGET_DIR=".cursor/rules"
 DEFAULT_RULES_PATH="rules"                          # Added for default rules path
 DEFAULT_RULESETS_PATH="rulesets"                    # Added for default rulesets path
+DEFAULT_COMMANDS_PATH="commands"                    # Added for default commands path
+DEFAULT_COMMANDSETS_PATH="commandsets"              # Added for default commandsets path
 
 # Source repository information (set during initialization)
 SOURCE_REPO=""      # Source repository URL
@@ -52,6 +55,8 @@ REPO_DIR=""
 # Source repository paths (set during initialization, identical across modes)
 RULES_PATH=""                                       # Rules path from manifest
 RULESETS_PATH=""                                    # Rulesets path from manifest
+COMMANDS_PATH=""                                    # Commands path from manifest
+COMMANDSETS_PATH=""                                 # Commandsets path from manifest
 
 # Display formatting variables  
 COMMITTED_GLYPH="●"
@@ -441,9 +446,11 @@ write_manifest_with_entries() {
 	wmwe_target_dir="${3}"
 	wmwe_rules_path="${4:-$DEFAULT_RULES_PATH}"         # Default to DEFAULT_RULES_PATH if not provided
 	wmwe_rulesets_path="${5:-$DEFAULT_RULESETS_PATH}"    # Default to DEFAULT_RULESETS_PATH if not provided
+	wmwe_commands_path="${6:-$DEFAULT_COMMANDS_PATH}"    # Default to DEFAULT_COMMANDS_PATH if not provided (V2)
+	wmwe_commandsets_path="${7:-$DEFAULT_COMMANDSETS_PATH}" # Default to DEFAULT_COMMANDSETS_PATH if not provided (V2)
 	
-	# Write header with all fields using printf to ensure literal tabs
-	printf "%s\t%s\t%s\t%s\n" "${wmwe_source_repo}" "${wmwe_target_dir}" "${wmwe_rules_path}" "${wmwe_rulesets_path}" > "${wmwe_manifest_file}"
+	# Write header with all fields using printf to ensure literal tabs (V2 format - 6 fields)
+	printf "%s\t%s\t%s\t%s\t%s\t%s\n" "${wmwe_source_repo}" "${wmwe_target_dir}" "${wmwe_rules_path}" "${wmwe_rulesets_path}" "${wmwe_commands_path}" "${wmwe_commandsets_path}" > "${wmwe_manifest_file}"
 	
 	# Read from stdin and append if there's content
 	while IFS= read -r wmwe_line; do
@@ -526,17 +533,33 @@ remove_manifest_entry_from_file() {
 	rmeff_target_dir=$(echo "${rmeff_metadata}" | cut -f2 -d"	")
 	
 	if [ "${rmeff_tab_count}" -eq 1 ]; then
-		# Old format - upgrade to new format with defaults
+		# V0 format - upgrade to V2 with defaults
 		rmeff_rules_path="${DEFAULT_RULES_PATH}"
 		rmeff_rulesets_path="${DEFAULT_RULESETS_PATH}"
-	else
-		# New format - extract values
+		rmeff_commands_path="${DEFAULT_COMMANDS_PATH}"
+		rmeff_commandsets_path="${DEFAULT_COMMANDSETS_PATH}"
+	elif [ "${rmeff_tab_count}" -eq 3 ]; then
+		# V1 format - extract rules paths, use defaults for commands
 		rmeff_rules_path=$(echo "${rmeff_metadata}" | cut -f3 -d"	")
 		rmeff_rulesets_path=$(echo "${rmeff_metadata}" | cut -f4 -d"	")
+		rmeff_commands_path="${DEFAULT_COMMANDS_PATH}"
+		rmeff_commandsets_path="${DEFAULT_COMMANDSETS_PATH}"
+	elif [ "${rmeff_tab_count}" -eq 5 ]; then
+		# V2 format - extract all paths
+		rmeff_rules_path=$(echo "${rmeff_metadata}" | cut -f3 -d"	")
+		rmeff_rulesets_path=$(echo "${rmeff_metadata}" | cut -f4 -d"	")
+		rmeff_commands_path=$(echo "${rmeff_metadata}" | cut -f5 -d"	")
+		rmeff_commandsets_path=$(echo "${rmeff_metadata}" | cut -f6 -d"	")
+	else
+		# Invalid format - use defaults
+		rmeff_rules_path="${DEFAULT_RULES_PATH}"
+		rmeff_rulesets_path="${DEFAULT_RULESETS_PATH}"
+		rmeff_commands_path="${DEFAULT_COMMANDS_PATH}"
+		rmeff_commandsets_path="${DEFAULT_COMMANDSETS_PATH}"
 	fi
 	
-	# Write header with all fields (new format)
-	printf "%s\t%s\t%s\t%s\n" "${rmeff_source_repo}" "${rmeff_target_dir}" "${rmeff_rules_path}" "${rmeff_rulesets_path}" > "${rmeff_local_manifest_file}"
+	# Write header with all fields (V2 format)
+	printf "%s\t%s\t%s\t%s\t%s\t%s\n" "${rmeff_source_repo}" "${rmeff_target_dir}" "${rmeff_rules_path}" "${rmeff_rulesets_path}" "${rmeff_commands_path}" "${rmeff_commandsets_path}" > "${rmeff_local_manifest_file}"
 	
 	# Append entries if any exist
 	if [ -n "${rmeff_entries}" ]; then
@@ -614,18 +637,33 @@ parse_manifest_metadata() {
 	pmm_target_dir=$(echo "${pmm_metadata}" | cut -f2 -d"	")
 	
 	if [ "${pmm_tab_count}" -eq 1 ]; then
-		# Old format - use defaults
+		# V0 format (old) - 2 fields - use defaults for everything
 		pmm_rules_path="${DEFAULT_RULES_PATH}"
 		pmm_rulesets_path="${DEFAULT_RULESETS_PATH}"
-	else
-		# New format - extract values
+		pmm_commands_path="${DEFAULT_COMMANDS_PATH}"
+		pmm_commandsets_path="${DEFAULT_COMMANDSETS_PATH}"
+	elif [ "${pmm_tab_count}" -eq 3 ]; then
+		# V1 format - 4 fields - extract rules paths, use defaults for commands
 		pmm_rules_path=$(echo "${pmm_metadata}" | cut -f3 -d"	")
 		pmm_rulesets_path=$(echo "${pmm_metadata}" | cut -f4 -d"	")
+		pmm_commands_path="${DEFAULT_COMMANDS_PATH}"
+		pmm_commandsets_path="${DEFAULT_COMMANDSETS_PATH}"
+	elif [ "${pmm_tab_count}" -eq 5 ]; then
+		# V2 format - 6 fields - extract all paths
+		pmm_rules_path=$(echo "${pmm_metadata}" | cut -f3 -d"	")
+		pmm_rulesets_path=$(echo "${pmm_metadata}" | cut -f4 -d"	")
+		pmm_commands_path=$(echo "${pmm_metadata}" | cut -f5 -d"	")
+		pmm_commandsets_path=$(echo "${pmm_metadata}" | cut -f6 -d"	")
+	else
+		# Invalid format
+		return 1
 	fi
 	
 	# Set global paths (identical across modes)
 	RULES_PATH="${pmm_rules_path}"
 	RULESETS_PATH="${pmm_rulesets_path}"
+	COMMANDS_PATH="${pmm_commands_path}"
+	COMMANDSETS_PATH="${pmm_commandsets_path}"
 	
 	# Set unified variables
 	SOURCE_REPO="${pmm_source_repo}"
@@ -1027,8 +1065,8 @@ lazy_init_mode() {
 			# Create local mode structure
 			mkdir -p "${lim_target_dir}/${LOCAL_DIR}"
 			
-			# Write empty manifest with metadata (including custom paths)
-			echo "" | write_manifest_with_entries "${LOCAL_MANIFEST_FILE}" "${lim_source_repo}" "${lim_target_dir}" "${lim_rules_path}" "${lim_rulesets_path}"
+			# Write empty manifest with metadata (including custom paths) - V2 format
+			echo "" | write_manifest_with_entries "${LOCAL_MANIFEST_FILE}" "${lim_source_repo}" "${lim_target_dir}" "${lim_rules_path}" "${lim_rulesets_path}" "${DEFAULT_COMMANDS_PATH}" "${DEFAULT_COMMANDSETS_PATH}"
 			
 			# Update git excludes
 			setup_local_mode_excludes "${lim_target_dir}"
@@ -1038,8 +1076,8 @@ lazy_init_mode() {
 			# Create commit mode structure  
 			mkdir -p "${lim_target_dir}/${SHARED_DIR}"
 			
-			# Write empty manifest with metadata (including custom paths)
-			echo "" | write_manifest_with_entries "${COMMIT_MANIFEST_FILE}" "${lim_source_repo}" "${lim_target_dir}" "${lim_rules_path}" "${lim_rulesets_path}"
+			# Write empty manifest with metadata (including custom paths) - V2 format
+			echo "" | write_manifest_with_entries "${COMMIT_MANIFEST_FILE}" "${lim_source_repo}" "${lim_target_dir}" "${lim_rules_path}" "${lim_rulesets_path}" "${DEFAULT_COMMANDS_PATH}" "${DEFAULT_COMMANDSETS_PATH}"
 			;;
 			
 		*)
@@ -1399,8 +1437,15 @@ validate_manifest_integrity() {
 		local_metadata=$(head -n1 "${LOCAL_MANIFEST_FILE}")
 		commit_metadata=$(head -n1 "${COMMIT_MANIFEST_FILE}")
 		
-		# Compare the entire metadata line
-		if [ "${local_metadata}" != "${commit_metadata}" ]; then
+		# Extract critical fields (source_repo and target_dir) from both manifests
+		# These are fields 1 and 2, which are consistent across all format versions
+		vmi_local_source=$(echo "${local_metadata}" | cut -f1 -d"	")
+		vmi_local_target=$(echo "${local_metadata}" | cut -f2 -d"	")
+		vmi_commit_source=$(echo "${commit_metadata}" | cut -f1 -d"	")
+		vmi_commit_target=$(echo "${commit_metadata}" | cut -f2 -d"	")
+		
+		# Compare only the critical fields (allow format version differences)
+		if [ "${vmi_local_source}" != "${vmi_commit_source}" ] || [ "${vmi_local_target}" != "${vmi_commit_target}" ]; then
 			show_manifest_integrity_error
 			exit 1
 		fi
@@ -1921,8 +1966,8 @@ cmd_init() {
 			# Create local mode structure
 			mkdir -p "${ci_target_dir}/${LOCAL_DIR}"
 			
-			# Write empty manifest with metadata (including custom paths)
-			echo "" | write_manifest_with_entries "${LOCAL_MANIFEST_FILE}" "${ci_source_repo}" "${ci_target_dir}" "${ci_rule_path}" "${ci_ruleset_path}"
+			# Write empty manifest with metadata (including custom paths) - V2 format
+			echo "" | write_manifest_with_entries "${LOCAL_MANIFEST_FILE}" "${ci_source_repo}" "${ci_target_dir}" "${ci_rule_path}" "${ci_ruleset_path}" "${DEFAULT_COMMANDS_PATH}" "${DEFAULT_COMMANDSETS_PATH}"
 			
 			# Update git excludes
 			setup_local_mode_excludes "${ci_target_dir}"
@@ -1936,8 +1981,8 @@ cmd_init() {
 			# Create commit mode structure  
 			mkdir -p "${ci_target_dir}/${SHARED_DIR}"
 			
-			# Write empty manifest with metadata (including custom paths)
-			echo "" | write_manifest_with_entries "${COMMIT_MANIFEST_FILE}" "${ci_source_repo}" "${ci_target_dir}" "${ci_rule_path}" "${ci_ruleset_path}"
+			# Write empty manifest with metadata (including custom paths) - V2 format
+			echo "" | write_manifest_with_entries "${COMMIT_MANIFEST_FILE}" "${ci_source_repo}" "${ci_target_dir}" "${ci_rule_path}" "${ci_ruleset_path}" "${DEFAULT_COMMANDS_PATH}" "${DEFAULT_COMMANDSETS_PATH}"
 			
 			# Update mode state and cache - set unified variables
 			SOURCE_REPO="${ci_source_repo}"

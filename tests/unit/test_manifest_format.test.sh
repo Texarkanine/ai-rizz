@@ -127,15 +127,20 @@ test_read_old_format_manifest() {
 
 # Test writing manifest with custom paths - should now PASS
 test_write_manifest_with_custom_paths() {
-    # Test calling with old parameters first
+    # Test calling with old parameters (should default to V2 with default command paths)
     echo "" | write_manifest_with_entries "test_manifest_old.inf" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR"
     first_line=$(head -n 1 "test_manifest_old.inf")
-    assertEquals "Old format should work with defaults" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	rules	rulesets" "$first_line"
+    assertEquals "Should write V2 format with defaults" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	rules	rulesets	commands	commandsets" "$first_line"
     
-    # Test calling with new parameters
-    echo "" | write_manifest_with_entries "test_manifest_new.skbd" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR" "docs" "examples"
+    # Test calling with custom rule paths only (should use default command paths)
+    echo "" | write_manifest_with_entries "test_manifest_partial.skbd" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR" "docs" "examples"
+    first_line=$(head -n 1 "test_manifest_partial.skbd")
+    assertEquals "Should write V2 format with custom rule paths and default command paths" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	examples	commands	commandsets" "$first_line"
+    
+    # Test calling with all custom parameters
+    echo "" | write_manifest_with_entries "test_manifest_new.skbd" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR" "docs" "examples" "cmds" "cmdsets"
     first_line=$(head -n 1 "test_manifest_new.skbd")
-    assertEquals "New format should include custom paths" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	examples" "$first_line"
+    assertEquals "Should write V2 format with all custom paths" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	examples	cmds	cmdsets" "$first_line"
 }
 
 # Test initialization with custom paths
@@ -149,13 +154,14 @@ test_init_with_custom_paths() {
     assertTrue "Local manifest file should exist" $?
     
     first_line=$(head -n 1 "$TEST_LOCAL_MANIFEST_FILE")
-    assertEquals "Should use new format with custom paths" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	examples" "$first_line"
+    # Should now use V2 format (6 fields) with default command paths
+    assertEquals "Should use V2 format with custom rule paths and default command paths" "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	examples	commands	commandsets" "$first_line"
 }
 
 # Test that current manifest reading works and supports new fields
 test_current_manifest_capabilities() {
-    # Create a new format manifest with custom paths
-    echo "$TEST_SOURCE_REPO	$TEST_TARGET_DIR	docs	examples" > ai-rizz.skbd
+    # Create a V2 format manifest with custom paths (6 fields)
+    printf "%s\t%s\t%s\t%s\t%s\t%s\n" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR" "docs" "examples" "cmds" "cmdsets" > ai-rizz.skbd
     echo "docs/test-rule.mdc" >> ai-rizz.skbd
     
     # Current read_manifest_metadata should work
@@ -166,10 +172,12 @@ test_current_manifest_capabilities() {
     entries=$(read_manifest_entries "ai-rizz.skbd")
     assertEquals "Should read entries correctly" "docs/test-rule.mdc" "$entries"
     
-    # Test that parse_manifest_metadata works with the new format
-    parse_manifest_metadata "ai-rizz.skbd" "commit"
+    # Test that parse_manifest_metadata works with V2 format
+    parse_manifest_metadata "ai-rizz.skbd"
     assertEquals "Should parse custom rules path" "docs" "$RULES_PATH"
     assertEquals "Should parse custom rulesets path" "examples" "$RULESETS_PATH"
+    assertEquals "Should parse custom commands path" "cmds" "$COMMANDS_PATH"
+    assertEquals "Should parse custom commandsets path" "cmdsets" "$COMMANDSETS_PATH"
 }
 
 # Test smart manifest filename parsing for CLI arguments
@@ -210,6 +218,102 @@ test_smart_manifest_filename_parsing() {
     local_name=$(echo "$result" | cut -f2)
     assertEquals "Should use as root when extensionless" "Gyattfile" "$root"
     assertEquals "Should derive local name for extensionless" "Gyattfile.local" "$local_name"
+}
+
+# Test reading V2 format manifest (6 fields, 5 tabs)
+test_read_v2_format_manifest() {
+    # Create V2 format manifest with 6 fields (5 tabs)
+    printf "%s\t%s\t%s\t%s\t%s\t%s\n" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR" "docs" "examples" "cmds" "cmdsets" > ai-rizz.skbd
+    echo "docs/test-rule.mdc" >> ai-rizz.skbd
+    
+    # Read metadata using existing function
+    metadata=$(read_manifest_metadata "ai-rizz.skbd")
+    
+    # Verify correct format is read (should have 5 tabs for 6 fields)
+    tab_count=$(echo "$metadata" | tr -cd '\t' | wc -c)
+    assertEquals "Should detect 5 tabs in V2 format" 5 "$tab_count"
+    
+    # Parse the metadata fields
+    source_repo=$(echo "$metadata" | cut -f1)
+    target_dir=$(echo "$metadata" | cut -f2)
+    rules_path=$(echo "$metadata" | cut -f3)
+    rulesets_path=$(echo "$metadata" | cut -f4)
+    commands_path=$(echo "$metadata" | cut -f5)
+    commandsets_path=$(echo "$metadata" | cut -f6)
+    
+    assertEquals "Source repo should be parsed correctly" "$TEST_SOURCE_REPO" "$source_repo"
+    assertEquals "Target dir should be parsed correctly" "$TEST_TARGET_DIR" "$target_dir"
+    assertEquals "Rules path should be docs" "docs" "$rules_path"
+    assertEquals "Rulesets path should be examples" "examples" "$rulesets_path"
+    assertEquals "Commands path should be cmds" "cmds" "$commands_path"
+    assertEquals "Commandsets path should be cmdsets" "cmdsets" "$commandsets_path"
+}
+
+# Test writing V2 format manifest (6 fields)
+test_write_v2_format_manifest() {
+    # Write manifest with all 6 parameters
+    echo "" | write_manifest_with_entries "test_v2.skbd" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR" "docs" "examples" "cmds" "cmdsets"
+    
+    # Read the first line
+    first_line=$(head -n 1 "test_v2.skbd")
+    
+    # Verify it has 5 tabs (6 fields)
+    tab_count=$(echo "$first_line" | tr -cd '\t' | wc -c)
+    assertEquals "Should write 5 tabs for V2 format" 5 "$tab_count"
+    
+    # Verify all fields are present
+    expected_line=$(printf "%s\t%s\t%s\t%s\t%s\t%s" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR" "docs" "examples" "cmds" "cmdsets")
+    assertEquals "Should write V2 format with all 6 fields" "$expected_line" "$first_line"
+}
+
+# Test parsing V2 manifest sets COMMANDS_PATH and COMMANDSETS_PATH globals
+test_parse_v2_manifest_metadata() {
+    # Create V2 format manifest
+    printf "%s\t%s\t%s\t%s\t%s\t%s\n" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR" "docs" "examples" "cmds" "cmdsets" > ai-rizz.skbd
+    echo "docs/test-rule.mdc" >> ai-rizz.skbd
+    
+    # Parse using the function
+    parse_manifest_metadata "ai-rizz.skbd"
+    assertTrue "Should successfully parse V2 manifest" $?
+    
+    # Verify all global variables are set correctly
+    assertEquals "RULES_PATH should be set to docs" "docs" "$RULES_PATH"
+    assertEquals "RULESETS_PATH should be set to examples" "examples" "$RULESETS_PATH"
+    assertEquals "COMMANDS_PATH should be set to cmds" "cmds" "$COMMANDS_PATH"
+    assertEquals "COMMANDSETS_PATH should be set to cmdsets" "cmdsets" "$COMMANDSETS_PATH"
+    assertEquals "SOURCE_REPO should be set" "$TEST_SOURCE_REPO" "$SOURCE_REPO"
+    assertEquals "TARGET_DIR should be set" "$TEST_TARGET_DIR" "$TARGET_DIR"
+}
+
+# Test V1 to V2 auto-upgrade on write
+test_v1_to_v2_auto_upgrade() {
+    # Create V1 format manifest (4 fields, 3 tabs)
+    printf "%s\t%s\t%s\t%s\n" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR" "rules" "rulesets" > ai-rizz.skbd
+    echo "rules/test-rule.mdc" >> ai-rizz.skbd
+    
+    # Parse V1 manifest
+    parse_manifest_metadata "ai-rizz.skbd"
+    assertTrue "Should successfully parse V1 manifest" $?
+    
+    # Verify defaults are used for command paths
+    assertEquals "COMMANDS_PATH should use default" "commands" "$COMMANDS_PATH"
+    assertEquals "COMMANDSETS_PATH should use default" "commandsets" "$COMMANDSETS_PATH"
+    
+    # Now write a new manifest - should auto-upgrade to V2
+    read_manifest_entries "ai-rizz.skbd" | write_manifest_with_entries "ai-rizz-v2.skbd" "$SOURCE_REPO" "$TARGET_DIR" "$RULES_PATH" "$RULESETS_PATH" "$COMMANDS_PATH" "$COMMANDSETS_PATH"
+    
+    # Verify the new manifest is V2 format
+    first_line=$(head -n 1 "ai-rizz-v2.skbd")
+    tab_count=$(echo "$first_line" | tr -cd '\t' | wc -c)
+    assertEquals "Should auto-upgrade to V2 format with 5 tabs" 5 "$tab_count"
+    
+    # Verify all fields including command paths
+    expected_line=$(printf "%s\t%s\t%s\t%s\t%s\t%s" "$TEST_SOURCE_REPO" "$TEST_TARGET_DIR" "rules" "rulesets" "commands" "commandsets")
+    assertEquals "Should include default command paths" "$expected_line" "$first_line"
+    
+    # Verify entries are preserved
+    entries=$(read_manifest_entries "ai-rizz-v2.skbd")
+    assertEquals "Should preserve manifest entries" "rules/test-rule.mdc" "$entries"
 }
 
 # Include and run shunit2

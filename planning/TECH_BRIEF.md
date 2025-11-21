@@ -247,10 +247,98 @@ Note: Commands are always committed (no --local mode).
 
 ### 5. Code Architecture
 
-#### Deployment Logic
+#### Sync Logic (Manifest-Driven)
+
+Commands follow the same manifest-driven pattern as rules: modify manifest, then sync.
+
+**Why Commands Don't Use `sync_manifest_to_directory()`:**
+
+Commands require different sync logic than rules:
+- **File extension**: Rules use `*.mdc`, commands use `*.md`
+- **Deployment**: Rules copy to one location, commands copy + create symlink in two locations
+- **Directory ownership**: Rules own `.cursor/rules/shared/` (can clear), commands share `.cursor/commands/` with user files (cannot clear)
+- **Cleanup strategy**: Rules clear directory first, commands must check each symlink individually
+
+Therefore, `sync_commands()` is a dedicated sync function parallel to rule sync, not a wrapper around `sync_manifest_to_directory()`.
 
 ```sh
-# Deploy command to filesystem
+# Sync commands from manifest to filesystem
+# Called by sync_all_modes() - reads manifest and deploys all commands
+sync_commands() {
+  # Step 1: Cleanup stale commands (not in manifest)
+  # This matches the behavior of sync_manifest_to_directory() for rules
+  if [ -d ".cursor/commands" ]; then
+    for sc_file in .cursor/commands/*.md; do
+      [ -e "${sc_file}" ] || continue  # Skip if no .md files
+      
+      if [ -L "${sc_file}" ]; then
+        sc_target=$(readlink "${sc_file}")
+        sc_basename=$(basename "${sc_file}")
+        
+        # Only touch our symlinks (pointing to shared-commands/)
+        if [ "${sc_target}" = "../${SHARED_COMMANDS_DIR}/${sc_basename}" ]; then
+          # Check if in manifest
+          if ! read_manifest_entries "${COMMIT_MANIFEST_FILE}" 2>/dev/null | grep -q "^${COMMANDS_PATH}/${sc_basename}$"; then
+            # Stale command - remove it
+            remove_command "${sc_basename}"
+          fi
+        fi
+      fi
+    done
+  fi
+  
+  # Step 2: Deploy commands from manifest
+  sc_entries=$(read_manifest_entries "${COMMIT_MANIFEST_FILE}" 2>/dev/null | grep "^${COMMANDS_PATH}/" || true)
+  
+  if [ -z "${sc_entries}" ]; then
+    return 0  # No commands to sync
+  fi
+  
+  # Deploy each command
+  for sc_entry in ${sc_entries}; do
+    sc_cmd_name=$(basename "${sc_entry}")
+    
+    # Deploy using utility function
+    deploy_command "${sc_cmd_name}"
+  done
+}
+
+# Update sync_all_modes() to handle commands
+sync_all_modes() {
+  # Sync local rules (existing)
+  if [ "$(is_mode_active local)" = "true" ]; then
+    sync_manifest_to_directory "${LOCAL_MANIFEST_FILE}" "${LOCAL_TARGET_DIR}"
+  fi
+  
+  # Sync committed rules (existing)
+  if [ "$(is_mode_active commit)" = "true" ]; then
+    sync_manifest_to_directory "${COMMIT_MANIFEST_FILE}" "${COMMIT_TARGET_DIR}"
+  fi
+  
+  # Sync commands (NEW - different deployment logic)
+  if [ "$(is_mode_active commit)" = "true" ]; then
+    sync_commands
+  fi
+}
+```
+
+**Sync Architecture:**
+```
+sync_all_modes()
+├── Rules: sync_manifest_to_directory()
+│   └── Clear *.mdc → Copy from repo → Done
+└── Commands: sync_commands()
+    ├── Remove stale symlinks (not in manifest)
+    └── Deploy from manifest: deploy_command() → file + symlink
+```
+
+#### Deployment Utilities
+
+Utility functions called by sync logic:
+
+```sh
+# Utility: Deploy single command to filesystem
+# Called by sync_commands() - creates file + symlink
 deploy_command() {
   dc_cmd_name="$1"
   dc_source_file="${REPO_DIR}/${COMMANDS_PATH}/${dc_cmd_name}"
@@ -259,19 +347,22 @@ deploy_command() {
   
   # Validate source exists
   if [ ! -f "${dc_source_file}" ]; then
-    error "Command '${dc_cmd_name}' not found in source repository"
+    warn "Command '${dc_cmd_name}' not found in source repository, skipping"
+    return 1
   fi
   
   # Check for collision with user's files
   if [ -e "${dc_symlink}" ] && [ ! -L "${dc_symlink}" ]; then
-    error "Cannot add command '${dc_cmd_name}': file exists in .cursor/commands/ but not managed by ai-rizz. Please remove or rename the existing file and try again."
+    warn "Cannot deploy command '${dc_cmd_name}': file exists in .cursor/commands/ (not managed by ai-rizz)"
+    return 1
   fi
   
   # If symlink exists, verify it's ours
   if [ -L "${dc_symlink}" ]; then
     dc_existing_target=$(readlink "${dc_symlink}")
     if [ "${dc_existing_target}" != "../${SHARED_COMMANDS_DIR}/${dc_cmd_name}" ]; then
-      error "Cannot add command '${dc_cmd_name}': symlink exists but not managed by ai-rizz. Please remove or rename the symlink and try again."
+      warn "Cannot deploy command '${dc_cmd_name}': symlink exists but not managed by ai-rizz"
+      return 1
     fi
   fi
   
@@ -286,11 +377,10 @@ deploy_command() {
   
   # Create symlink (relative path for portability)
   ln -sf "../${SHARED_COMMANDS_DIR}/${dc_cmd_name}" "${dc_symlink}"
-  
-  echo "Deployed command: ${dc_cmd_name}"
 }
 
-# Remove command from filesystem
+# Utility: Remove command from filesystem
+# Called by sync or cleanup operations
 remove_command() {
   rc_cmd_name="$1"
   rc_target_file=".cursor/${SHARED_COMMANDS_DIR}/${rc_cmd_name}"
@@ -301,19 +391,21 @@ remove_command() {
     rc_link_target=$(readlink "${rc_symlink}")
     if [ "${rc_link_target}" = "../${SHARED_COMMANDS_DIR}/${rc_cmd_name}" ]; then
       rm "${rc_symlink}"
-      echo "Removed symlink: ${rc_symlink}"
     fi
   fi
   
   # Remove actual file
   if [ -f "${rc_target_file}" ]; then
     rm "${rc_target_file}"
-    echo "Removed command: ${rc_target_file}"
   fi
 }
 ```
 
-#### Command Functions
+**Key Design**: Just like rules, commands are deployed by reading the manifest and calling deployment functions. The manifest is the single source of truth.
+
+#### Command Functions (Manifest-Driven)
+
+Commands follow the same pattern as rules: modify manifest, then sync.
 
 ```sh
 cmd_add_cmd() {
@@ -362,14 +454,14 @@ cmd_add_cmd() {
       continue
     fi
     
-    # Deploy command (creates symlink)
-    deploy_command "${cac_item}"
-    
-    # Add to commit manifest
+    # Add to manifest (just like rules)
     add_manifest_entry_to_file "${COMMIT_MANIFEST_FILE}" "${cac_cmd_path}"
     
     echo "Added command: ${cac_cmd_path}"
   done
+  
+  # Sync to deploy files based on manifest (just like rules)
+  sync_all_modes
   
   return 0
 }
@@ -404,11 +496,11 @@ cmd_remove_cmd() {
     
     crc_cmd_path="${COMMANDS_PATH}/${crc_item}"
     
-    # Remove from filesystem (removes symlink + actual file)
-    remove_command "${crc_item}"
-    
-    # Remove from manifest
+    # Remove from manifest (just like rules)
     remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${crc_cmd_path}"
+    
+    # Clean up deployed files
+    remove_command "${crc_item}"
     
     echo "Removed command: ${crc_cmd_path}"
   done
@@ -416,6 +508,8 @@ cmd_remove_cmd() {
   return 0
 }
 ```
+
+**Key Pattern**: Same as rules - modify manifest, call sync. The `sync_all_modes()` function handles deployment.
 
 #### Listing Commands
 
@@ -476,7 +570,8 @@ cmd_list() {
 | `parse_manifest_metadata()` | Add V2 format parsing (6 fields) | Low |
 | `write_manifest_with_entries()` | Write V2 format (6 fields) | Low |
 | `cmd_list()` | Add command listing + filtering | Medium |
-| `cmd_sync()` | Sync commands (deploy symlinks) | Medium |
+| `sync_all_modes()` | Add command sync call after rule sync | Low |
+| `deploy_command()` | Change error() to warn() for sync use | Low |
 | `cmd_init()` | Accept `--cmd-path`, `--cmdset-path` | Low |
 | `cmd_deinit()` | Clean up command directories | Low |
 | `cmd_help()` | Update help text | Low |
@@ -485,13 +580,16 @@ cmd_list() {
 
 | Function | Purpose | Complexity |
 |----------|---------|------------|
-| `deploy_command()` | Deploy command + create symlink | Medium |
-| `remove_command()` | Remove symlink + actual file | Low |
-| `cmd_add_cmd()` | Add individual commands | Low |
-| `cmd_add_cmdset()` | Add command sets | Low |
-| `cmd_remove_cmd()` | Remove individual commands | Low |
-| `cmd_remove_cmdset()` | Remove command sets | Low |
+| `sync_commands()` | Sync commands from manifest (cleanup stale + deploy) | Medium |
+| `deploy_command()` | Utility: Deploy single command + create symlink | Medium |
+| `remove_command()` | Utility: Remove symlink + actual file | Low |
+| `cmd_add_cmd()` | Add commands to manifest + sync | Low |
+| `cmd_add_cmdset()` | Add command sets to manifest + sync | Low |
+| `cmd_remove_cmd()` | Remove commands from manifest + cleanup | Low |
+| `cmd_remove_cmdset()` | Remove command sets from manifest + cleanup | Low |
 | `list_commands()` | List available commands | Low |
+
+**Note**: Rules use `sync_manifest_to_directory()`, commands use `sync_commands()` - parallel sync paths due to different deployment requirements.
 
 ---
 
@@ -521,7 +619,9 @@ cmd_list() {
 
 ### Phase 2: Command Deployment (TDD)
 
-**Goal**: Deploy commands with symlink creation
+**Goal**: Deploy commands with symlink creation (manifest-driven)
+
+**Part A: Deployment Utilities**
 
 1. **Stub Tests**: `test_command_deployment.test.sh` (new file)
    - Test deploy command creates file in shared-commands/
@@ -540,7 +640,25 @@ cmd_list() {
 
 4. **Implement Code**: Make tests pass
 
-**Deliverable**: Commands deploy correctly with symlinks
+**Part B: Sync Integration**
+
+1. **Stub Tests**: `test_command_sync.test.sh` (new file)
+   - Test sync_commands reads manifest
+   - Test sync_commands deploys all commands
+   - Test sync_commands removes stale commands (not in manifest)
+   - Test sync_commands skips missing commands
+   - Test sync_all_modes calls sync_commands
+   - Test sync handles command collisions gracefully
+
+2. **Stub Functions**:
+   - `sync_commands()` - empty implementation (includes stale cleanup)
+   - Update `sync_all_modes()` - add command sync call
+
+3. **Implement Tests**: Write full test implementations
+
+4. **Implement Code**: Make tests pass
+
+**Deliverable**: Commands deploy correctly with symlinks, manifest-driven via sync, with automatic stale cleanup
 
 ### Phase 3: Command Add/Remove (TDD)
 

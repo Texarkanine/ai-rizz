@@ -3100,6 +3100,10 @@ cmd_add_cmd() {
 	# Ensure initialized
 	ensure_initialized_and_valid
 	
+	# Ensure commit mode exists (commands are commit-only)
+	# This lazily creates a proper V2 manifest with header if needed
+	cac_lazy_init_occurred=$(initialize_mode_if_needed "commit")
+	
 	# Process each command
 	for cac_cmd in ${cac_commands}; do
 		# Add .md extension if not present
@@ -3178,6 +3182,10 @@ cmd_add_cmdset() {
 	
 	# Ensure initialized
 	ensure_initialized_and_valid
+	
+	# Ensure commit mode exists (commands are commit-only)
+	# This lazily creates a proper V2 manifest with header if needed
+	cacs_lazy_init_occurred=$(initialize_mode_if_needed "commit")
 	
 	# Process each commandset
 	for cacs_commandset in ${cacs_commandsets}; do

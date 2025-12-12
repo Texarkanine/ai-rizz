@@ -70,6 +70,10 @@ ai-rizz add rule shared-rule.mdc --commit   # creates commit mode
 ai-rizz list                                # shows: ○ ◐ ●
 ```
 
+> ## ⚠️ `.gitignore` and `.cursorignore`
+> Some builds of Cursor [ignore all files ignored by git](https://forum.cursor.com/t/cursor-2-1-50-ignores-rules-in-git-info-exclude-on-mac-not-on-windows-wsl/145695/4).
+> If you find that local rules aren't being applied (quick test: can you [@Mention](https://cursor.com/docs/context/mentions) the files?), see the [--hook-based-ignore `init` option](#--hook-based-ignore-local-mode).
+
 ## User Guide
 
 ```
@@ -113,7 +117,9 @@ ai-rizz stores copies of source repositories in `$HOME/.config/ai-rizz/repos/PRO
 
 #### Local mode (`--local`)
 - Rules stored in `.cursor/rules/local/`
-- Files ignored by bit
+- Files not committed to git
+  - Default: ignored by git (via `.git/info/exclude`)
+  - When `init`ialized with `--hook-based-ignore`: Not ignored by git, protected by pre-commit hook (leaves "dirty" git status)
 - Personal rules that don't get committed
 
 #### Commit mode (`--commit`)
@@ -176,6 +182,12 @@ Examples:
 ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
 ```
 
+**Local mode with hook-based ignore:**
+```bash
+ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local --hook-based-ignore
+```
+Note: This leaves files untracked (visible in `git status`) but prevents them from being committed.
+
 **Commit-only setup (git-tracked rules):**
 ```bash
 ai-rizz init https://github.com/texarkanine/.cursor-rules.git --commit
@@ -185,6 +197,32 @@ ai-rizz init https://github.com/texarkanine/.cursor-rules.git --commit
 ```bash
 ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local -f cursor-rules.conf
 ```
+
+##### --hook-based-ignore Local Mode
+
+Some builds of Cursor [ignore all files ignored by git](https://forum.cursor.com/t/cursor-2-1-50-ignores-rules-in-git-info-exclude-on-mac-not-on-windows-wsl/145695/4).
+If you find that local rules aren't being applied (quick test: can you [@Mention](https://cursor.com/docs/context/mentions) the files?), you can use 
+
+```bash
+ai-rizz init --local --hook-based-ignore
+```
+
+When `init`ialized with `--hook-based-ignore`, local mode files will not be ignored by git.
+Instead, a pre-commit hook will strip them from every commit so they remain visible but un-committed.
+This will ensure that Cursor indexes, and your Agents can see, the rules.
+However, `git status` will always show untracked files:
+
+```
+$ git status
+On branch main
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        .cursor/rules/local/
+        ai-rizz.local.skbd
+```
+
+If you have any local tooling that tries to get a clean `git status`, this may cause a conflict.
+Sorry! You'll have to wait until Cursor updates to offer an alternative.
 
 #### Adding Rules and Rulesets
 
@@ -462,7 +500,8 @@ ai-rizz uses a dual-manifest system to support per-rule mode selection:
 - Located in repository root
 
 **`ai-rizz.local.skbd`** (Local Manifest):
-- Automatically added to `.git/info/exclude` (git-ignored)
+- Automatically added to `.git/info/exclude` (git-ignored) by default
+  - When `init`ialized with `--hook-based-ignore`: Not git-ignored, protected by pre-commit hook instead (leaves "dirty" git status)
 - Contains rules/rulesets intended to be local-only
 - Located in repository root
 
@@ -474,7 +513,8 @@ ai-rizz uses a dual-manifest system to support per-rule mode selection:
 - Created when commit mode is initialized
 
 **`.cursor/rules/local/`** (Local Directory):
-- Automatically git-ignored via `.git/info/exclude`
+- Automatically git-ignored via `.git/info/exclude` by default
+  - When `init`ialized with `--hook-based-ignore`: Not git-ignored, protected by pre-commit hook (leaves "dirty" git status)
 - Contains rules from local manifest
 - Created when local mode is initialized
 

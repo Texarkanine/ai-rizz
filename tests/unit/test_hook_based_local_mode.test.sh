@@ -105,21 +105,25 @@ test_hook_unstages_local_files() {
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --hook-based-ignore
     cmd_add_rule "rule1.mdc" --local
     
+    # Verify files exist
+    assert_file_exists "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc"
+    assert_file_exists "$TEST_LOCAL_MANIFEST_FILE"
+    
     # Stage local files
-    git add "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc" "$TEST_LOCAL_MANIFEST_FILE" 2>/dev/null
+    git add "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc" "$TEST_LOCAL_MANIFEST_FILE"
     
     # Verify files are staged before hook
     staged_before=$(git diff --cached --name-only)
-    echo "$staged_before" | grep -q "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc" || fail "File should be staged before hook"
-    echo "$staged_before" | grep -q "$TEST_LOCAL_MANIFEST_FILE" || fail "Manifest should be staged before hook"
+    assertTrue "File should be staged before hook" "echo '$staged_before' | grep -q '$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc'"
+    assertTrue "Manifest should be staged before hook" "echo '$staged_before' | grep -q '$TEST_LOCAL_MANIFEST_FILE'"
     
     # Test: Run pre-commit hook
     .git/hooks/pre-commit
     
     # Expected: Files unstaged
     staged_after=$(git diff --cached --name-only)
-    echo "$staged_after" | grep -q "$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc" && fail "Local file should be unstaged"
-    echo "$staged_after" | grep -q "$TEST_LOCAL_MANIFEST_FILE" && fail "Local manifest should be unstaged"
+    assertFalse "Local file should be unstaged" "echo '$staged_after' | grep -q '$TEST_TARGET_DIR/$TEST_LOCAL_DIR/rule1.mdc'"
+    assertFalse "Local manifest should be unstaged" "echo '$staged_after' | grep -q '$TEST_LOCAL_MANIFEST_FILE'"
 }
 
 test_hook_preserves_user_hooks() {

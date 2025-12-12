@@ -3313,8 +3313,8 @@ Command-specific options:
     -c, --commit           Use commit mode
     -d <target_dir>        Target directory
     -l, --local            Use local mode (gitignore files)
-    --hook-based-ignore    Use pre-commit hook instead of .git/info/exclude
-                           (files visible to Cursor, leaves "dirty" git status)
+    --hook-based-ignore    local mode: use pre-commit hook instead of .git/info/exclude
+                           (ensures files visible, leaves "dirty" git status)
     --rule-path <path>     Source repository rules path
     --ruleset-path <path>  Source repository rulesets path
 

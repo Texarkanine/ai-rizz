@@ -834,25 +834,6 @@ setup_pre_commit_hook() {
 	# Create .git/hooks directory if it doesn't exist
 	mkdir -p ".git/hooks"
 	
-	# Hook content
-	sph_hook_content="# BEGIN ai-rizz hook (do not edit this section manually)
-# Find local manifest in repo root
-REPO_ROOT=\$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-LOCAL_MANIFEST=\"\"
-for file in \"\$REPO_ROOT\"/*.local.skbd; do
-    [ -f \"\$file\" ] && LOCAL_MANIFEST=\$(basename \"\$file\") && break
-done
-[ -z \"\$LOCAL_MANIFEST\" ] && exit 0
-
-# Parse target directory from manifest
-MANIFEST_PATH=\"\$REPO_ROOT/\$LOCAL_MANIFEST\"
-TARGET_DIR=\$(head -n1 \"\$MANIFEST_PATH\" 2>/dev/null | cut -f2)
-[ -z \"\$TARGET_DIR\" ] && exit 0
-
-# Unstage local files (safe even if already ignored)
-git reset HEAD -- \"\$TARGET_DIR/local/\" \"\$LOCAL_MANIFEST\" 2>/dev/null || true
-# END ai-rizz hook"
-	
 	# Check if hook already exists
 	if [ -f ".git/hooks/pre-commit" ]; then
 		# Check if ai-rizz section already exists
@@ -862,11 +843,52 @@ git reset HEAD -- \"\$TARGET_DIR/local/\" \"\$LOCAL_MANIFEST\" 2>/dev/null || tr
 		fi
 		
 		# Append to existing hook
-		echo "" >> ".git/hooks/pre-commit"
-		echo "${sph_hook_content}" >> ".git/hooks/pre-commit"
+		{
+			echo ""
+			cat <<'HOOKEOF'
+# BEGIN ai-rizz hook (do not edit this section manually)
+# Find local manifest in repo root
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+LOCAL_MANIFEST=""
+for file in "$REPO_ROOT"/*.local.skbd; do
+    [ -f "$file" ] && LOCAL_MANIFEST=$(basename "$file") && break
+done
+[ -z "$LOCAL_MANIFEST" ] && exit 0
+
+# Parse target directory from manifest
+MANIFEST_PATH="$REPO_ROOT/$LOCAL_MANIFEST"
+TARGET_DIR=$(head -n1 "$MANIFEST_PATH" 2>/dev/null | cut -f2)
+[ -z "$TARGET_DIR" ] && exit 0
+
+# Unstage local files (safe even if already ignored)
+git reset HEAD -- "$TARGET_DIR/local/" "$LOCAL_MANIFEST" 2>/dev/null || true
+# END ai-rizz hook
+HOOKEOF
+		} >> ".git/hooks/pre-commit"
 	else
 		# Create new hook file
-		printf "#!/bin/sh\n%s\n" "${sph_hook_content}" > ".git/hooks/pre-commit"
+		{
+			echo "#!/bin/sh"
+			cat <<'HOOKEOF'
+# BEGIN ai-rizz hook (do not edit this section manually)
+# Find local manifest in repo root
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+LOCAL_MANIFEST=""
+for file in "$REPO_ROOT"/*.local.skbd; do
+    [ -f "$file" ] && LOCAL_MANIFEST=$(basename "$file") && break
+done
+[ -z "$LOCAL_MANIFEST" ] && exit 0
+
+# Parse target directory from manifest
+MANIFEST_PATH="$REPO_ROOT/$LOCAL_MANIFEST"
+TARGET_DIR=$(head -n1 "$MANIFEST_PATH" 2>/dev/null | cut -f2)
+[ -z "$TARGET_DIR" ] && exit 0
+
+# Unstage local files (safe even if already ignored)
+git reset HEAD -- "$TARGET_DIR/local/" "$LOCAL_MANIFEST" 2>/dev/null || true
+# END ai-rizz hook
+HOOKEOF
+		} > ".git/hooks/pre-commit"
 	fi
 	
 	# Make hook executable

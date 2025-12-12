@@ -2052,17 +2052,27 @@ cmd_init() {
 						# Switch from regular to hook-based mode
 						remove_local_mode_excludes "${ci_target_dir}"
 						setup_pre_commit_hook "${ci_target_dir}"
-						printf "Switched local mode to hook-based\\n\\tsource: %s\\n\\ttarget: %s\\n\\tmode: %s (hook-based)\\n" "${ci_source_repo}" "${ci_target_dir}" "${ci_mode}"
+						cat <<EOF
+Switched local mode to pre-commit hook
+	source: ${ci_source_repo}
+	target: ${ci_target_dir}
+	mode: ${ci_mode} (pre-commit)
+EOF
 						return 0
 					elif [ "${ci_hook_based}" = "false" ] && [ "${ci_current_hook_based}" = "true" ]; then
 						# Switch from hook-based to regular mode
 						remove_pre_commit_hook
 						setup_local_mode_excludes "${ci_target_dir}"
-						printf "Switched local mode to regular\\n\\tsource: %s\\n\\ttarget: %s\\n\\tmode: %s\\n" "${ci_source_repo}" "${ci_target_dir}" "${ci_mode}"
+						cat <<EOF
+Switched local mode to .git/info/exclude
+	source: ${ci_source_repo}
+	target: ${ci_target_dir}
+	mode: ${ci_mode} (.git/info/exclude)
+EOF
 						return 0
 					else
 						# Same mode, idempotent success
-						printf "Initialized ai-rizz with\\n\\tsource: %s\\n\\ttarget: %s\\n\\tmode: %s\\n" "${ci_source_repo}" "${ci_target_dir}" "${ci_mode}"
+						printf "(already initialized; no changes needed)\n"
 						return 0  # Idempotent success
 					fi
 				else
@@ -3303,6 +3313,8 @@ Command-specific options:
     -c, --commit           Use commit mode
     -d <target_dir>        Target directory
     -l, --local            Use local mode (gitignore files)
+    --hook-based-ignore    Use pre-commit hook instead of .git/info/exclude
+                           (files visible to Cursor, leaves "dirty" git status)
     --rule-path <path>     Source repository rules path
     --ruleset-path <path>  Source repository rulesets path
 

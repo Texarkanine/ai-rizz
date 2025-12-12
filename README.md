@@ -113,8 +113,9 @@ ai-rizz stores copies of source repositories in `$HOME/.config/ai-rizz/repos/PRO
 
 #### Local mode (`--local`)
 - Rules stored in `.cursor/rules/local/`
-- Files ignored by bit
+- Files ignored by git (via `.git/info/exclude`)
 - Personal rules that don't get committed
+- **Hook-based mode** (`--hook-based-ignore`): For Mac users where Cursor ignores all git-ignored files. Uses pre-commit hook instead of `.git/info/exclude`. Files remain visible to Cursor but leave "dirty" git status (untracked files).
 
 #### Commit mode (`--commit`)
 - Rules stored in `.cursor/rules/shared/`
@@ -175,6 +176,12 @@ Examples:
 ```bash
 ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
 ```
+
+**Local mode with hook-based ignore (for Mac Cursor users):**
+```bash
+ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local --hook-based-ignore
+```
+Note: This leaves files untracked (visible in `git status`) but prevents them from being committed.
 
 **Commit-only setup (git-tracked rules):**
 ```bash
@@ -462,7 +469,8 @@ ai-rizz uses a dual-manifest system to support per-rule mode selection:
 - Located in repository root
 
 **`ai-rizz.local.skbd`** (Local Manifest):
-- Automatically added to `.git/info/exclude` (git-ignored)
+- Automatically added to `.git/info/exclude` (git-ignored) by default
+- With `--hook-based-ignore`: Not git-ignored, protected by pre-commit hook instead
 - Contains rules/rulesets intended to be local-only
 - Located in repository root
 
@@ -474,7 +482,8 @@ ai-rizz uses a dual-manifest system to support per-rule mode selection:
 - Created when commit mode is initialized
 
 **`.cursor/rules/local/`** (Local Directory):
-- Automatically git-ignored via `.git/info/exclude`
+- Automatically git-ignored via `.git/info/exclude` by default
+- With `--hook-based-ignore`: Not git-ignored, protected by pre-commit hook (leaves "dirty" git status)
 - Contains rules from local manifest
 - Created when local mode is initialized
 

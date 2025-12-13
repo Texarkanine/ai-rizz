@@ -1,10 +1,22 @@
 # Memory Bank: Active Context
 
 ## Current Focus
-PLAN Mode - Implementation Planning Complete
+PLAN Mode - Implementation Plan Complete, Regression Tests Written
 
 ## Status
-Comprehensive implementation plan created for Level 3 task. Plan includes 4 phases: Detection/Validation, Command Copying, Testing, and Documentation. One creative decision identified (error handling approach) with recommendation provided.
+Implementation plan created and regression tests written for 4 bug fixes:
+1. **Bug 2**: Recursive command copying (isolated fix)
+2. **Bug 4**: Show .mdc files in list (core fix - enables Bug 1 & 3)
+3. **Bug 3**: Tree for all rulesets (auto-fixed by Bug 4)
+4. **Bug 1**: Subdirectory rules display (auto-fixed by Bug 4)
+
+**Phase 0 Complete**: 
+- Created `test_ruleset_bug_fixes.test.sh` with 5 regression tests
+- All tests FAIL as expected (10 failures total)
+- Tests verified to fail before fixes are implemented
+- Ready for Phase 1: Fix Bug 2 (recursive commands)
+
+**Key Insight**: Bug 4 (ignore pattern excluding .mdc files) is the root cause of Bugs 1 and 3. Fixing it will resolve all three.
 
 ## Latest Changes
 - Implementation plan restructured to follow TDD workflow (per `.cursor/rules/local/always-tdd.mdc`):

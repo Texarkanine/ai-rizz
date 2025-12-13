@@ -1,466 +1,373 @@
 # Memory Bank: Tasks
 
 ## Current Task
-Add targeted and limited support for `commands` subdirectory in rulesets to enable delivery of cursor-memory-bank commands to a "rules" repo.
+Fix 4 bugs in commands subdirectory implementation:
+1. Subdirectory rules don't show up in mode list
+2. Commands not copied recursively (only top-level)
+3. List doesn't show tree for rulesets without commands
+4. List doesn't show .mdc files in rulesets
 
 ## Status
 - [x] Task definition
 - [x] Complexity determination
 - [x] Implementation plan
-- [x] Phase 1: Stubbing (TDD Step 2) - Complete
-- [x] Phase 4: Implement Tests (TDD Step 3) - Complete (all tests fail as expected)
-- [x] Phase 5: Implement Code (TDD Step 4) - Complete
-- [x] Phase 6: Documentation - Complete
+- [x] Phase 0: Regression tests written (should fail)
+- [ ] Phase 1: Fix Bug 2 (recursive commands)
+- [ ] Phase 2: Fix Bug 4 (show .mdc files)
+- [ ] Phase 3: Verify all tests pass
 
 ## Requirements
 
-### Core Requirements
-1. Rulesets can have a special `commands` subdirectory
-   - Subdirs work fine in rulesets for RULES currently (can be symlinks or regular dirs)
-2. Commands in a ruleset must be committed (per blog post requirement)
-   - Rulesets with `commands` subdir must error if trying to add in "local" mode
-   - OR accept `/local/` prefix on all commands (creative decision needed)
-   - Local commands are out of scope, but need to prevent damaging operations
-3. Build a "memory-bank" ruleset with:
-   - `commands/` subdir containing command files
-   - Subdirs of all non-symlinked rules
-   - Only addable in commit mode (memory bank MUST be committed anyway)
-4. Commands local to ruleset won't show up in `ai-rizz list` (same as ruleset-local rules)
-   - No need for root `commands` folder
-   - No need for `ai-rizz add command ...` implementations
+### Bug Descriptions
 
-### Workflow
-```
-ai-rizz init --local
-ai-rizz add ruleset memory-bank
-# ERROR! - helpful message about how sets with commands MUST be committed
-ai-rizz init --commit
-ai-rizz add ruleset memory-bank --commit
-```
-This should:
-- Copy `rulesets/memory-bank/commands/*` to `.cursor/commands/`
-- Populate (committable) rules into `.cursor/rules/shared` per normal
+**Bug 1: Subdirectory rules don't show up in mode list**
+- **Issue**: Rules in subdirectories (e.g., `supporting/piracy.mdc`) are copied but don't appear in `ai-rizz list` output
+- **Root Cause Analysis**: 
+  - Files ARE being copied (we see `piracy.mdc` in `.cursor/rules/shared`)
+  - The list command shows rulesets, not individual files from rulesets
+  - The tree display should show `.mdc` files in subdirectories, but Bug 4 prevents this
+  - After fixing Bug 4, subdirectory `.mdc` files should appear in the tree
+- **Impact**: Users can't see which rules from subdirectories are installed
+- **Fix**: This will be resolved by fixing Bug 4 (showing `.mdc` files in tree)
+
+**Bug 2: Commands not copied recursively**
+- **Issue**: Only top-level files in `commands/` directory are copied. Nested files (e.g., `commands/subs/eat.md`) are not copied.
+- **Root Cause**: `copy_ruleset_commands()` uses `find ... -maxdepth 1` which only gets files at the first level
+- **Impact**: Commands in subdirectories are not available
+
+**Bug 3: List doesn't show tree for rulesets without commands**
+- **Issue**: Only `temp-test` (which has commands) shows a tree structure. Other rulesets like `shell`, `meta`, `niko` don't show their contents.
+- **Root Cause**: The tree command's ignore pattern excludes all files, but the logic might only be applied when commands exist, or the pattern is too aggressive
+- **Impact**: Users can't see what's in rulesets without commands
+
+**Bug 4: List doesn't show .mdc files in rulesets**
+- **Issue**: The `temp-test` ruleset shows directories (`commands`, `supporting`) but not the actual `.mdc` files like `temp-test.mdc` or `supporting/piracy.mdc`
+- **Root Cause**: The ignore pattern `find . -name 'commands' -type d -prune -o -type f,l -printf '%f|'` excludes ALL files, including `.mdc` files. The pattern should only exclude non-`.mdc` files.
+- **Impact**: Users can't see which rules are in a ruleset
 
 ## Complexity Level
-**Level 3: Intermediate Feature**
+**Level 2: Simple Enhancement** (Bug Fixes)
 
 ### Complexity Analysis
-- **Scope**: Multiple components (ruleset handling, sync logic, error checking)
-- **Design Decisions**: Required (how to detect commands, error handling approach)
-- **Risk**: Moderate (affects core ruleset functionality)
-- **Implementation Effort**: Moderate (days to 1-2 weeks)
+- **Scope**: Multiple bug fixes in existing functionality
+- **Design Decisions**: Minimal (fixing incorrect logic)
+- **Risk**: Low (targeted fixes to specific bugs)
+- **Implementation Effort**: Low (hours to 1 day)
 - **Components Affected**:
-  - `cmd_add_ruleset()` function
-  - `sync_manifest_to_directory()` / `copy_entry_to_target()` functions
-  - Error handling for local mode restrictions
-  - Command file copying logic
+  - `copy_entry_to_target()` - Fix recursive .mdc file copying
+  - `copy_ruleset_commands()` - Fix recursive command copying
+  - `cmd_list()` - Fix tree display logic and ignore pattern
 
 ## Implementation Plan
 
-**TDD Workflow**: Following `.cursor/rules/local/always-tdd.mdc`, all implementation must follow:
-1. Determine Scope ✓ (already done)
-2. Preparation (Stubbing) - Stub tests AND stub function interfaces
-3. Write Tests - Implement tests, run them (they should fail)
-4. Write Code - Implement code to make tests pass
-
-### Phase 1: Preparation (Stubbing) - Detection and Validation
-
-#### 1.1 Stub Test Suite: `test_ruleset_commands.test.sh`
-**Location**: `tests/unit/test_ruleset_commands.test.sh` (new file)
-**Purpose**: Create test file with empty test cases
+### Phase 1: Fix Bug 2 - Recursive Command Copying
+**Location**: `copy_ruleset_commands()` function (line ~3259)
+**Issue**: `-maxdepth 1` limits to top-level only
+**Fix**: Remove `-maxdepth 1` and copy all files recursively, preserving directory structure
 **Implementation**:
-- Create file with proper header and shunit2 setup
-- Add empty test functions:
-  - `test_ruleset_with_commands_rejects_local_mode()`
-  - `test_ruleset_with_commands_allows_commit_mode()`
-  - `test_ruleset_without_commands_works_in_local_mode()`
-  - `test_commands_copied_to_correct_location()`
-  - `test_commands_directory_created_if_missing()`
-- Add multi-line comments explaining what each test should verify
-- **DO NOT implement test logic yet** - just stubs
-
-#### 1.2 Stub Function Interface: `show_ruleset_commands_error()`
-**Location**: Add with other error functions (after `show_git_context_error()`)
-**Purpose**: Stub the error function interface
-**Implementation**:
-- Add function signature with full documentation
-- Follow pattern of other `show_*_error()` functions
-- Include all documentation sections (Globals, Arguments, Outputs, Returns)
-- **DO NOT implement function body yet** - just empty function that returns
-- Use function-specific variable prefix: `srce_` (show_ruleset_commands_error)
-
-#### 1.3 Stub Validation Logic in `cmd_add_ruleset()`
-**Location**: In `cmd_add_ruleset()`, after mode selection, before adding to manifest
-**Purpose**: Add placeholder for validation check
-**Implementation**:
-- After `cars_mode=$(select_mode "${cars_mode}")`
-- Add comment: `# TODO: Check if ruleset has commands/ subdirectory and reject local mode`
-- **DO NOT implement check yet** - just placeholder comment
-
-### Phase 2: Preparation (Stubbing) - Command File Copying
-
-#### 2.1 Stub Test Cases for Command Copying
-**Location**: Add to `tests/unit/test_ruleset_commands.test.sh`
-**Purpose**: Add empty test cases for command copying behavior
-**Implementation**:
-- Add empty test functions:
-  - `test_commands_copied_to_correct_location()`
-  - `test_commands_symlinks_followed_correctly()`
-  - `test_commands_not_copied_in_local_mode()`
-- Add multi-line comments explaining what each test should verify
-- **DO NOT implement test logic yet** - just stubs
-
-#### 2.2 Stub Function Interface: `copy_ruleset_commands()`
-**Location**: Add before `copy_entry_to_target()` function
-**Purpose**: Stub the command copying function interface
-**Implementation**:
-- Add function signature with full documentation
-- Parameters:
-  - `ruleset_path`: Path to ruleset in source repo (e.g., `rulesets/memory-bank`)
-  - `target_commands_dir`: Target directory (e.g., `.cursor/commands`)
-- Include all documentation sections (Globals, Arguments, Outputs, Returns)
-- **DO NOT implement function body yet** - just empty function that returns 0
-- Use function-specific variable prefix: `crc_`
-
-#### 2.3 Stub Integration Point in `copy_entry_to_target()`
-**Location**: In `copy_entry_to_target()`, when handling ruleset directories
-**Purpose**: Add placeholder for command copying integration
-**Implementation**:
-- In the `elif [ -d "${cett_source_path}" ]` branch (ruleset handling)
-- After copying `.mdc` files, add comment: `# TODO: Copy commands/ subdirectory if exists and in commit mode`
-- **DO NOT implement copying logic yet** - just placeholder comment
-
-### Phase 3: Preparation (Stubbing) - List Display Updates
-
-**IMPORTANT**: This phase EXTENDS the existing `cmd_list()` implementation (lines 2519-2528), it does NOT rewrite it. We are building upon and preserving the existing tree/fallback logic and formatting.
-
-#### 3.1 Stub Test Suite: `test_list_display.test.sh`
-**Location**: `tests/unit/test_list_display.test.sh` (new file)
-**Purpose**: Create test file with empty test cases for list display
-**Implementation**:
-- Create file with proper header and shunit2 setup
-- Add empty test functions:
-  - `test_list_expands_commands_directory()`
-  - `test_list_commands_alignment_correct()`
-  - `test_list_works_without_tree_command()`
-  - `test_list_handles_empty_commands_directory()`
-- Add multi-line comments explaining what each test should verify
-- **DO NOT implement test logic yet** - just stubs
-
-#### 3.2 Stub List Display Modifications in `cmd_list()`
-**Location**: In `cmd_list()`, ruleset contents display section (lines 2519-2528)
-**Purpose**: Add placeholders for extending existing display logic
-**Implementation**:
-- **CRITICAL**: We are EXTENDING the existing code, not rewriting it
-- Current code block (lines 2519-2528):
-  - Tree path: `tree -P "*.mdc" -L 1 --noreport` (shows only .mdc files)
-  - Fallback: `find ... -name "*.mdc" ...` (shows only .mdc files)
-- Add comment before the existing code block:
-  - `# TODO: Extend to show directories and expand commands/ subdirectory`
-- **DO NOT modify existing code yet** - just placeholder comment
-- **Preserve existing behavior**: Continue showing .mdc files as before
-- **Add new behavior**: Also show directories and expand `commands/`
-
-#### 3.3 Detailed Specification
-
-**Current Behavior**:
-- Ruleset contents show only `.mdc` files
-- Directories are shown but collapsed (no contents visible)
-- Example:
+- **Current code** (line 3259):
+  ```bash
+  find "${crc_source_commands_dir}" -mindepth 1 -maxdepth 1 \( -type f -o -type l \) > "${crc_temp_file}"
   ```
-  ◐ test
-    ├── commands
-    ├── foobar.mdc
-    ├── java-gradle-tdd.mdc
-    └── subdir
+- **New code**:
+  ```bash
+  find "${crc_source_commands_dir}" -mindepth 1 \( -type f -o -type l \) > "${crc_temp_file}"
   ```
-
-**Desired Behavior**:
-- `commands/` directory always expanded to first level
-- Other directories shown normally (tree's default behavior - no special prefix needed)
-- Proper tree alignment maintained
-- Example:
+- **Copy logic change**: Preserve relative path structure when copying:
+  - **Current** (line ~3267): `cp -L "${crc_source_file}" "${crc_target_commands_dir}/"`
+  - **New**: Calculate relative path and create target directory structure
+  ```bash
+  while IFS= read -r crc_source_file; do
+      if [ -n "${crc_source_file}" ] && ([ -f "${crc_source_file}" ] || [ -L "${crc_source_file}" ]); then
+          # Calculate relative path from commands directory
+          crc_rel_path="${crc_source_file#${crc_source_commands_dir}/}"
+          crc_target_file="${crc_target_commands_dir}/${crc_rel_path}"
+          
+          # Create target directory structure if needed
+          mkdir -p "$(dirname "${crc_target_file}")" || {
+              warn "Failed to create directory for: ${crc_rel_path}"
+              continue
+          }
+          
+          # Copy file following symlinks
+          if ! cp -L "${crc_source_file}" "${crc_target_file}"; then
+              warn "Failed to copy command file: ${crc_rel_path}"
+          fi
+      fi
+  done < "${crc_temp_file}"
   ```
-  ◐ test
-    ├── commands
-    │   ├── bar.md
-    │   ├── baz.md
-    │   └── subcommands  (if subdirectory exists)
-    ├── foobar.mdc
-    ├── java-gradle-tdd.mdc
-    └── subdir
+- **Result**: `commands/subs/eat.md` → `.cursor/commands/subs/eat.md` (preserves structure)
+
+### Phase 2: Fix Bug 1 - Subdirectory Rules Display
+**Location**: `cmd_list()` function (resolved by Bug 4 fix)
+**Issue**: Rules in subdirectories don't appear in list tree
+**Root Cause**: Bug 4 prevents `.mdc` files from showing in tree, which includes subdirectory files
+**Fix**: This will be automatically resolved when Bug 4 is fixed (tree will show all `.mdc` files including those in subdirectories)
+**Note**: Files are already being copied correctly (flattened structure is intentional). The issue is only in display.
+
+### Phase 3: Fix Bug 4 - List Shows .mdc Files
+**Location**: `cmd_list()` function (line ~2566)
+**Issue**: Ignore pattern excludes ALL files including `.mdc` files
+**Current Pattern**: `find . -name 'commands' -type d -prune -o -type f,l -printf '%f|'`
+**Problem**: This excludes all files (including `.mdc`), but we want to show `.mdc` files and directories
+**Fix**: Modify pattern to exclude only non-`.mdc` files
+**Implementation**:
+- **Current code** (line 2566):
+  ```bash
+  cl_ignore_pattern=$(cd "${cl_ruleset}" && find . -name 'commands' -type d -prune -o -type f,l -printf '%f|' | head -c -1)
   ```
+- **New code**:
+  ```bash
+  cl_ignore_pattern=$(cd "${cl_ruleset}" && find . -name 'commands' -type d -prune -o \( -type f -o -type l \) ! -name '*.mdc' -printf '%f|' | head -c -1)
+  ```
+- **Logic Explanation**:
+  - `-name 'commands' -type d -prune`: Don't traverse into `commands/` directory (we expand it separately with `-L 2`)
+  - `-o \( -type f -o -type l \) ! -name '*.mdc'`: For all other files/links, exclude those that are NOT `.mdc` files
+  - Result: Tree shows all directories + all `.mdc` files (at any depth) + expands `commands/` directory to level 2
+- **Testing**: 
+  - Verify `.mdc` files at root level appear
+  - Verify `.mdc` files in subdirectories appear (e.g., `supporting/piracy.mdc`)
+  - Verify non-`.mdc` files are excluded (except in `commands/` which is expanded separately)
 
-**Implementation Strategy**:
+### Phase 4: Fix Bug 3 - List Shows Tree for All Rulesets
+**Location**: `cmd_list()` function (line ~2560)
+**Issue**: Tree display only works for rulesets with commands or subdirectories
+**Root Cause Analysis**: 
+- The tree command IS being called for all rulesets (code shows it's in the loop)
+- The ignore pattern is excluding everything for rulesets that only have `.mdc` files
+- After fixing Bug 4, this should automatically work (tree will show `.mdc` files)
+**Fix**: After fixing Bug 4, verify tree shows for all rulesets. If not, may need to adjust tree command or ensure it always runs.
 
-**CRITICAL PRINCIPLE**: Extend, don't rewrite. The existing `cmd_list()` code (lines 2519-2528) works correctly for .mdc files. We are adding directory display and `commands/` expansion while preserving all existing behavior and formatting.
+### Phase 0: Write Regression Tests (TDD Step 1-3) ✓
+**Status**: Complete and Verified
+**Location**: `tests/unit/test_ruleset_bug_fixes.test.sh` (created)
+**Purpose**: Write tests that will FAIL with current implementation, then PASS after fixes
+**Test File**: `tests/unit/test_ruleset_bug_fixes.test.sh` (created with 5 test cases)
+**Verification Results**:
+- All 5 tests FAIL as expected (10 total failures)
+- `test_commands_copied_recursively()`: FAILS ✓ (nested commands not copied)
+- `test_subdirectory_rules_visible_in_list()`: FAILS ✓ (subdirectory rules not shown)
+- `test_list_shows_tree_for_all_rulesets()`: FAILS ✓ (tree not shown for simple rulesets)
+- `test_mdc_files_visible_in_list()`: FAILS ✓ (.mdc files not shown)
+- `test_complex_ruleset_display()`: FAILS ✓ (multiple issues)
+- **Ready for Phase 1**: Tests confirmed to fail, can proceed with fixes
 
-**Tree Command Path** (when `tree` is available) - EXTENDING EXISTING CODE:
-- **Current implementation** (line 2524):
-  - `(cd "${cl_ruleset}" && tree -P "*.mdc" -L 1 --noreport) | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'`
-  - Shows only .mdc files, 4-space indentation, strips symlink targets
-- **Extension approach**: Modify the tree command to show directories AND expand `commands/`
-- **New command**: Replace `-P "*.mdc"` with `-I "pattern"` approach
-  - Use `tree -L 2 --noreport -I "pattern"` to exclude files but keep directories
-  - Pattern: `find . -name 'commands' -type d -prune -o -type f,l -printf '%f|' | head -c -1`
-  - This excludes all files/links but keeps all directories visible
-  - Safe assumption: if `tree` is available, `find` and `head` are also available
-- **Preserve existing post-processing**:
-  - Keep `tail -n +2` (skip first line)
-  - Keep `sed 's/^/    /'` (4-space indentation)
-  - Keep `sed 's/ -> .*$//'` (strip symlink targets)
-- **Result**: Tree shows directories (including `commands/` expanded to level 2) with same formatting
-- Example command: `tree . -L 2 --noreport -I "$(find . -name 'commands' -type d -prune -o -type f,l -printf '%f|' | head -c -1)"`
-- Implementation note: Can reuse the `find` command techniques for the fallback path
+#### Test Structure
+Following TDD workflow:
+1. **Stub tests** - Create empty test functions with descriptions
+2. **Implement tests** - Fill out test logic (should fail)
+3. **Run tests** - Verify they fail as expected
+4. **Fix bugs** - Implement fixes
+5. **Re-run tests** - Verify they pass
 
-**Fallback Path** (when `tree` is not available) - EXTENDING EXISTING CODE:
-- **Current implementation** (line 2527):
-  - `find "${cl_ruleset}" -maxdepth 1 \( -name "*.mdc" -type f \) -o \( -name "*.mdc" -type l \) -exec basename {} \; | sort | sed 's/^/    ├── /'`
-  - Shows only .mdc files, sorted, with `├──` prefix and 4-space indentation
-- **Extension approach**: Extend the find command to also show directories and expand `commands/`
-- **New logic**: Build on existing find pattern:
-  - Keep existing: `.mdc` files (current behavior)
-  - Add: Directories at maxdepth 1
-  - Add: `commands/` contents expansion
-- **Preserve existing formatting**:
-  - Keep `sort` (alphabetical sorting)
-  - Keep `sed 's/^/    ├── /'` (4-space indentation + tree character)
-  - Extend to handle multiple items with proper `├──`/`└──` based on position
-- **Implementation**:
-  - Combine existing .mdc find with directory find
-  - Add special handling for `commands/` directory expansion
-  - Maintain same output format (4 spaces + tree character)
+#### Test Cases
 
-**Detailed Formatting Rules**:
-1. **Item Ordering**:
-   - Files first (sorted alphabetically)
-   - `commands/` directory (if exists)
-   - Other directories (sorted alphabetically)
+**Test 1: Bug 2 - Recursive Command Copying**
+```bash
+test_commands_copied_recursively() {
+	# Setup: Create ruleset with nested commands structure
+	mkdir -p "$REPO_DIR/rulesets/test-recursive/commands/subdir"
+	echo "nested command" > "$REPO_DIR/rulesets/test-recursive/commands/subdir/nested.md"
+	echo "top command" > "$REPO_DIR/rulesets/test-recursive/commands/top.md"
+	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-recursive/rule1.mdc"
+	
+	# Commit and initialize
+	cd "$REPO_DIR" && git add . && git commit --no-gpg-sign -m "test" >/dev/null 2>&1
+	cd "$TEST_DIR/app" && cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit >/dev/null 2>&1
+	
+	# Action: Add ruleset
+	cmd_add_ruleset "test-recursive" --commit
+	assertTrue "Should add ruleset successfully" $?
+	
+	# Expected: Both top-level and nested commands copied
+	test -f "commands/top.md" || fail "Top-level command should be copied"
+	test -f "commands/subdir/nested.md" || fail "Nested command should be copied recursively"
+	# CURRENTLY FAILS: nested.md not copied (only top-level copied)
+}
+```
 
-2. **Tree Characters**:
-   - `├──` for non-last items
-   - `└──` for last item in ruleset
-   - `│` for vertical continuation in `commands/` expansion
+**Test 2: Bug 1 - Subdirectory Rules Visible in List**
+```bash
+test_subdirectory_rules_visible_in_list() {
+	# Setup: Create ruleset with rules in subdirectory
+	mkdir -p "$REPO_DIR/rulesets/test-subdir/supporting"
+	echo "subdir rule" > "$REPO_DIR/rulesets/test-subdir/supporting/subrule.mdc"
+	echo "root rule" > "$REPO_DIR/rulesets/test-subdir/rootrule.mdc"
+	
+	# Commit and initialize
+	cd "$REPO_DIR" && git add . && git commit --no-gpg-sign -m "test" >/dev/null 2>&1
+	cd "$TEST_DIR/app" && cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit >/dev/null 2>&1
+	
+	# Action: Add ruleset and list
+	cmd_add_ruleset "test-subdir" --commit >/dev/null 2>&1
+	output=$(cmd_list)
+	
+	# Expected: Both rules visible in list tree
+	echo "$output" | grep -q "rootrule.mdc" || fail "Root rule should appear in list"
+	echo "$output" | grep -q "subrule.mdc" || fail "Subdirectory rule should appear in list"
+	echo "$output" | grep -q "supporting" || fail "Supporting directory should appear in list"
+	# CURRENTLY FAILS: subrule.mdc not shown (ignore pattern excludes .mdc files)
+}
+```
 
-3. **Indentation**:
-   - Ruleset contents: 4 spaces base (`    `)
-   - `commands/` contents: 4 spaces + `│   ` = 8 spaces total
-   - Alignment: Directory names align with file names naturally
+**Test 3: Bug 3 - Tree Shows for All Rulesets**
+```bash
+test_list_shows_tree_for_all_rulesets() {
+	# Setup: Create ruleset with only .mdc files (no commands, no subdirs)
+	mkdir -p "$REPO_DIR/rulesets/test-simple"
+	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-simple/rule1.mdc"
+	ln -sf "$REPO_DIR/rules/rule2.mdc" "$REPO_DIR/rulesets/test-simple/rule2.mdc"
+	
+	# Commit and initialize
+	cd "$REPO_DIR" && git add . && git commit --no-gpg-sign -m "test" >/dev/null 2>&1
+	cd "$TEST_DIR/app" && cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit >/dev/null 2>&1
+	
+	# Action: Add ruleset and list
+	cmd_add_ruleset "test-simple" --commit >/dev/null 2>&1
+	output=$(cmd_list)
+	
+	# Expected: Ruleset shows tree with .mdc files
+	echo "$output" | grep -A 5 "test-simple" | grep -q "rule1.mdc" || fail "rule1.mdc should appear in tree"
+	echo "$output" | grep -A 5 "test-simple" | grep -q "rule2.mdc" || fail "rule2.mdc should appear in tree"
+	# CURRENTLY FAILS: No tree shown (ignore pattern excludes everything)
+}
+```
 
-4. **Commands Expansion Logic**:
-   - Always expand `commands/` to first level
-   - Show all files in `commands/`
-   - Show subdirectories in `commands/` normally (tree's default - no special prefix)
-   - Use proper tree continuation (`│`) for all but last item
+**Test 4: Bug 4 - .mdc Files Visible in List**
+```bash
+test_mdc_files_visible_in_list() {
+	# Setup: Create ruleset with .mdc files and other files
+	mkdir -p "$REPO_DIR/rulesets/test-mdc"
+	echo "rule content" > "$REPO_DIR/rulesets/test-mdc/rule.mdc"
+	echo "readme content" > "$REPO_DIR/rulesets/test-mdc/README.md"
+	
+	# Commit and initialize
+	cd "$REPO_DIR" && git add . && git commit --no-gpg-sign -m "test" >/dev/null 2>&1
+	cd "$TEST_DIR/app" && cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit >/dev/null 2>&1
+	
+	# Action: Add ruleset and list
+	cmd_add_ruleset "test-mdc" --commit >/dev/null 2>&1
+	output=$(cmd_list)
+	
+	# Expected: .mdc file visible, README.md excluded
+	echo "$output" | grep -A 5 "test-mdc" | grep -q "rule.mdc" || fail ".mdc file should appear in tree"
+	echo "$output" | grep -A 5 "test-mdc" | grep -q "README.md" && fail "README.md should NOT appear (not .mdc)"
+	# CURRENTLY FAILS: rule.mdc not shown (ignore pattern excludes all files)
+}
+```
 
-**Edge Cases**:
-- Empty `commands/` directory: Show as `├── commands` (no expansion)
-- `commands/` with only subdirs: Show subdirectory entries normally
-- No `commands/` directory: Normal behavior (no special handling)
-- Multiple subdirectories: All shown normally, properly sorted
+**Test 5: Combined Test - Ruleset with Commands, Subdirs, and .mdc Files**
+```bash
+test_complex_ruleset_display() {
+	# Setup: Create ruleset matching temp-test structure
+	mkdir -p "$REPO_DIR/rulesets/test-complex/commands/subs"
+	mkdir -p "$REPO_DIR/rulesets/test-complex/supporting"
+	echo "command" > "$REPO_DIR/rulesets/test-complex/commands/top.md"
+	echo "nested" > "$REPO_DIR/rulesets/test-complex/commands/subs/nested.md"
+	echo "rule" > "$REPO_DIR/rulesets/test-complex/test-complex.mdc"
+	echo "subrule" > "$REPO_DIR/rulesets/test-complex/supporting/subrule.mdc"
+	
+	# Commit and initialize
+	cd "$REPO_DIR" && git add . && git commit --no-gpg-sign -m "test" >/dev/null 2>&1
+	cd "$TEST_DIR/app" && cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit >/dev/null 2>&1
+	
+	# Action: Add ruleset and list
+	cmd_add_ruleset "test-complex" --commit >/dev/null 2>&1
+	output=$(cmd_list)
+	
+	# Expected: All components visible
+	echo "$output" | grep -A 10 "test-complex" | grep -q "commands" || fail "commands/ should appear"
+	echo "$output" | grep -A 10 "test-complex" | grep -q "test-complex.mdc" || fail "Root .mdc should appear"
+	echo "$output" | grep -A 10 "test-complex" | grep -q "supporting" || fail "supporting/ should appear"
+	echo "$output" | grep -A 10 "test-complex" | grep -q "subrule.mdc" || fail "Subdirectory .mdc should appear"
+	
+	# Verify commands copied
+	test -f "commands/top.md" || fail "Top command should be copied"
+	test -f "commands/subs/nested.md" || fail "Nested command should be copied"
+	# CURRENTLY FAILS: Multiple issues (commands not recursive, .mdc files not shown)
+}
+```
 
-### Phase 4: Implement Tests (TDD Step 3)
+### Implementation Order (TDD Workflow)
 
-#### 4.1 Implement Detection and Validation Tests
-**Location**: `tests/unit/test_ruleset_commands.test.sh`
-**Purpose**: Fill out test implementations for validation logic
+#### Phase 0: Write Regression Tests (TDD Step 1-3) ✓
+**Status**: Complete
+**Test File**: `tests/unit/test_ruleset_bug_fixes.test.sh`
+**Test Cases**:
+1. `test_commands_copied_recursively()` - Tests Bug 2
+2. `test_subdirectory_rules_visible_in_list()` - Tests Bug 1
+3. `test_list_shows_tree_for_all_rulesets()` - Tests Bug 3
+4. `test_mdc_files_visible_in_list()` - Tests Bug 4
+5. `test_complex_ruleset_display()` - Tests all bugs together
+
+**Expected Result**: All 5 tests should FAIL with current implementation
+**Verification**: Run tests to confirm they fail as expected
+
+#### Phase 1: Fix Bug 2 (Recursive Commands)
+**After Phase 0**: Tests 1 and 5 should still fail
 **Implementation**:
-- Implement all test functions from Phase 1.1
-- Each test should:
-  - Set up test environment (create ruleset with/without commands)
-  - Execute the command being tested
-  - Assert expected behavior
-- Run tests: `./tests/unit/test_ruleset_commands.test.sh`
-- **Expected**: All tests should FAIL (functionality not implemented yet)
+- Remove `-maxdepth 1` from find command in `copy_ruleset_commands()`
+- Preserve directory structure when copying (calculate relative paths)
+- Update copy logic to create target directory structure
 
-#### 4.2 Implement Command Copying Tests
-**Location**: `tests/unit/test_ruleset_commands.test.sh`
-**Purpose**: Fill out test implementations for command copying
+**Expected Result**: Tests 1 and 5 (command copying parts) should PASS
+**Verification**: Run `test_commands_copied_recursively()` and verify nested commands copied
+
+#### Phase 2: Fix Bug 4 (Show .mdc Files)
+**After Phase 1**: Tests 2, 3, 4, and parts of 5 should still fail
 **Implementation**:
-- Implement all test functions from Phase 2.1
-- Test symlink handling specifically
-- Run tests: `./tests/unit/test_ruleset_commands.test.sh`
-- **Expected**: All tests should FAIL (functionality not implemented yet)
+- Modify ignore pattern in `cmd_list()` to exclude only non-`.mdc` files
+- Change: `find . -name 'commands' -type d -prune -o -type f,l -printf '%f|'`
+- To: `find . -name 'commands' -type d -prune -o \( -type f -o -type l \) ! -name '*.mdc' -printf '%f|'`
 
-#### 4.3 Implement List Display Tests
-**Location**: `tests/unit/test_list_display.test.sh`
-**Purpose**: Fill out test implementations for list display
-**Implementation**:
-- Implement all test functions from Phase 3.1
-- Test both `tree` and fallback `find` paths
-- Test alignment and formatting
-- Run tests: `./tests/unit/test_list_display.test.sh`
-- **Expected**: All tests should FAIL (functionality not implemented yet)
+**Expected Result**: All tests should PASS (Bug 1 and Bug 3 auto-fixed)
+**Verification**: Run all 5 tests, all should pass
 
-#### 4.4 Create Integration Tests
-**Location**: `tests/integration/test_ruleset_commands.test.sh` (new file)
-**Purpose**: Create integration tests for full workflows
-**Implementation**:
-- Create file with proper header and shunit2 setup
-- Implement test cases:
-  - `test_full_workflow_local_then_commit()`
-  - `test_commands_persist_after_sync()`
-- Run tests: `./tests/integration/test_ruleset_commands.test.sh`
-- **Expected**: All tests should FAIL (functionality not implemented yet)
+#### Phase 3: Verify All Tests Pass
+**After Phase 2**: All regression tests should pass
+**Actions**:
+- Run full test suite: `make test`
+- Verify no regressions in existing tests
+- Update documentation if behavior changes significantly
 
-### Phase 5: Implement Code (TDD Step 4)
+## Dependencies and Challenges
 
-#### 5.1 Implement Detection and Validation
-**Location**: `ai-rizz` script
-**Purpose**: Implement code to make Phase 4.1 tests pass
-**Implementation**:
-- Implement `show_ruleset_commands_error()` function body
-- Add validation check in `cmd_add_ruleset()`:
-  - After `cars_mode=$(select_mode "${cars_mode}")`
-  - Check: `if [ -d "${REPO_DIR}/${cars_ruleset_path}/commands" ] && [ "${cars_mode}" = "local" ]; then`
-  - Call `show_ruleset_commands_error()` if condition true
-- Run tests: `./tests/unit/test_ruleset_commands.test.sh`
-- **Expected**: Detection/validation tests should PASS
+### Dependencies
+- Existing ruleset handling infrastructure
+- Tree command availability (with fallback)
 
-#### 5.2 Implement Command Copying
-**Location**: `ai-rizz` script
-**Purpose**: Implement code to make Phase 4.2 tests pass
-**Implementation**:
-- Implement `copy_ruleset_commands()` function body:
-  - Check if source exists: `${REPO_DIR}/${crc_ruleset_path}/commands`
-  - Create target directory: `mkdir -p "${crc_target_commands_dir}"`
-  - Copy files: `cp -L` to follow symlinks
-  - Handle errors gracefully
-- Integrate into `copy_entry_to_target()`:
-  - Calculate commands directory: `$(dirname "${TARGET_DIR}")/commands`
-  - Check if in commit mode: `case "${cett_target_directory}" in */"${SHARED_DIR}")`
-  - Call `copy_ruleset_commands()` if conditions met
-- Run tests: `./tests/unit/test_ruleset_commands.test.sh`
-- **Expected**: Command copying tests should PASS
+### Challenges
+- **Bug 1**: Need to understand if flattening is intentional or a bug
+- **Bug 4**: Ignore pattern logic needs careful testing to ensure it doesn't break existing behavior
+- **Backward Compatibility**: Ensure fixes don't break existing ruleset displays
 
-#### 5.3 Implement List Display Updates
-**Location**: `ai-rizz` script, `cmd_list()` function (lines 2519-2528)
-**Purpose**: Implement code to make Phase 4.3 tests pass
-**Implementation**:
-- **CRITICAL**: Extend existing code block, do NOT rewrite
-- **Tree path extension** (line 2524):
-  - Replace `tree -P "*.mdc" -L 1` with `tree -L 2 -I "pattern"`
-  - Build ignore pattern using find (as specified)
-  - **Keep all existing post-processing**: `tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'`
-  - Result: Shows directories + expands `commands/` with same formatting
-- **Fallback path extension** (line 2527):
-  - Extend existing find command to include directories
-  - Add special handling for `commands/` directory expansion
-  - **Keep existing formatting**: `sort | sed 's/^/    ├── /'`
-  - Extend to handle multiple items with proper `├──`/`└──` based on position
-- **Preserve backward compatibility**: Existing .mdc file display must continue to work
-- Run tests: `./tests/unit/test_list_display.test.sh`
-- **Expected**: List display tests should PASS, existing behavior preserved
+## Success Criteria
+- [ ] Commands in subdirectories are copied recursively (e.g., `commands/subs/eat.md` → `.cursor/commands/subs/eat.md`)
+- [ ] Rules in subdirectories are visible in list output (e.g., `supporting/piracy.mdc` appears in tree)
+- [ ] All rulesets show tree structure in list (not just those with commands)
+- [ ] All `.mdc` files in rulesets are visible in list output (root level and subdirectories)
+- [ ] Existing behavior preserved (no regressions)
+- [ ] All tests pass
 
-#### 5.4 Run Full Test Suite
-**Purpose**: Verify all tests pass and no regressions
-**Implementation**:
-- Run: `make test`
-- Verify all new tests pass
-- Verify existing tests still pass (no regressions)
-- Fix any failures before proceeding
+## Test Strategy
 
-#### 5.1 Error Message Content
-**Message should include**:
-- Clear explanation: "Rulesets containing a 'commands' subdirectory must be added in commit mode"
-- Reason: "Commands must be committed to the repository (per requirement)"
-- Fix options:
-  - If not initialized: "Run 'ai-rizz init <repo-url> --commit' first"
-  - If already initialized in local: "Run 'ai-rizz init <repo-url> --commit' to add commit mode"
-- Reference: Mention this is by design to ensure commands are version-controlled
+### New Test Cases Needed
+1. **Recursive command copying**:
+   - Create ruleset with `commands/subdir/file.md`
+   - Verify file is copied to `.cursor/commands/subdir/file.md`
+   
+2. **Subdirectory rules in list**:
+   - Create ruleset with `subdir/rule.mdc`
+   - Verify rule appears in list tree under `subdir/`
+   
+3. **Tree for all rulesets**:
+   - Verify rulesets without commands show tree
+   - Verify rulesets with only `.mdc` files show tree
+   
+4. **`.mdc` files in tree**:
+   - Verify all `.mdc` files appear in tree (root and subdirectories)
+   - Verify non-`.mdc` files are excluded (except in `commands/`)
 
-#### 5.2 Update Documentation
-**Files to update**:
-- `README.md`: Add section explaining commands subdirectory feature
-- Document the restriction (commands must be committed)
-- Add example workflow showing error and fix
-
-### Phase 6: Documentation
-
-#### 6.1 Update README.md
-**Purpose**: Document the new commands subdirectory feature
-**Implementation**:
-- Add section explaining commands subdirectory feature
-- Document the restriction (commands must be committed)
-- Add example workflow showing error and fix
-
-### Implementation Checklist (TDD Order)
-
-#### Phase 1: Stubbing (TDD Step 2)
-- [x] Stub test suite: `test_ruleset_commands.test.sh` with empty test functions
-- [x] Stub function: `show_ruleset_commands_error()` with empty body
-- [x] Stub validation logic in `cmd_add_ruleset()` (placeholder comment)
-- [x] Stub test cases for command copying
-- [x] Stub function: `copy_ruleset_commands()` with empty body
-- [x] Stub integration point in `copy_entry_to_target()` (placeholder comment)
-- [x] Stub test suite: `test_list_display.test.sh` with empty test functions
-- [x] Stub list display modifications in `cmd_list()` (placeholder comments)
-
-#### Phase 4: Implement Tests (TDD Step 3)
-- [x] Implement detection/validation tests (should fail)
-- [x] Implement command copying tests (should fail)
-- [x] Implement list display tests (should fail)
-- [x] Create and implement integration tests (should fail)
-- [x] Run all tests to verify they fail as expected
-
-#### Phase 5: Implement Code (TDD Step 4)
-- [x] Implement `show_ruleset_commands_error()` function body
-- [x] Implement validation check in `cmd_add_ruleset()`
-- [x] Run tests - detection/validation tests should pass
-- [x] Implement `copy_ruleset_commands()` function body
-- [x] Integrate command copying into `copy_entry_to_target()`
-- [x] Run tests - command copying tests should pass
-- [x] Implement list display updates in `cmd_list()`
-- [x] Run tests - list display tests should pass
-- [x] Run full test suite: `make test`
-- [x] Verify all tests pass, no regressions
-
-#### Phase 6: Documentation
-- [x] Update README.md with commands feature documentation
-- [x] Add example workflow
-- [x] Document error message and resolution
-
-### Dependencies and Challenges
-
-#### Dependencies
-- Existing ruleset handling infrastructure (already in place)
-- Sync mechanism (already handles rules, needs extension)
-- Error handling patterns (follow existing patterns)
-
-#### Challenges
-1. **Path Calculation**: Need to derive `.cursor/commands/` from `.cursor/rules` (TARGET_DIR)
-   - Solution: Use `dirname` to get base path, append `/commands`
-2. **Mode Detection**: Need to know if we're in commit mode when copying
-   - Solution: Check if target directory contains `SHARED_DIR` constant
-3. **Error Message Clarity**: Need helpful, actionable error messages
-   - Solution: Follow existing error function patterns with copy-pasteable fixes
-4. **Testing**: Need to test both error and success paths
-   - Solution: Create comprehensive test suite covering all scenarios
-
-### Creative Phase Required
-
-**Component**: Error handling approach for local mode restrictions
-
-**Decision Needed**: 
-- Should we error immediately when detecting commands in local mode?
-- OR should we allow it but warn and skip command copying?
-
-**Recommendation**: Error immediately (fail-fast approach)
-- Clearer user experience
-- Prevents partial state (rules added but commands missing)
-- Aligns with requirement that commands MUST be committed
-- Matches existing error patterns in codebase
-
-**Alternative Considered**: Warn and continue
-- Pros: More permissive, allows rules without commands
-- Cons: Creates inconsistent state, violates requirement
-
-**Decision**: **Error immediately** - This ensures commands are always committed and prevents confusing partial states.
-
-## Next Steps
-
-1. **Stubbing (TDD Step 2)**: Create empty test files and stub function interfaces
-2. **Implement Tests (TDD Step 3)**: Fill out test implementations, verify they fail
-3. **Implement Code (TDD Step 4)**: Write code to make tests pass, one test at a time
-4. **Documentation**: Update README after all tests pass
-
+### Existing Tests
+- Verify all existing tests still pass
+- Update list display tests if needed to reflect new behavior

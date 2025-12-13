@@ -1,11 +1,23 @@
 # Memory Bank: Tasks
 
 ## Current Task
-Fix 2 bugs in ruleset handling:
-1. Removing a ruleset with commands does not remove the commands from `.cursor/commands/`
-2. File rules in subdirectories of rulesets are flattened instead of preserving directory structure (symlinked rules should remain flat)
+*No active task - ready for next task*
 
-## Status
+## Completed Tasks
+
+### Task: Fix 2 Bugs in Ruleset Handling
+**Task ID**: ruleset-bug-fixes  
+**Complexity Level**: Level 2 (Simple Enhancement - Bug Fixes)  
+**Status**: COMPLETE ✓  
+**Archive**: `memory-bank/archive/archive-ruleset-bug-fixes.md`
+
+**Summary**: Fixed 4 bugs in ruleset handling:
+1. Commands not removed when ruleset is removed
+2. File rules in subdirectories flattened instead of preserving directory structure
+3. List display showing subdirectory contents (should only show top-level)
+4. Rules in subdirectories not detected as installed
+
+**Status**:
 - [x] Task definition
 - [x] Complexity determination
 - [x] Implementation plan
@@ -17,6 +29,7 @@ Fix 2 bugs in ruleset handling:
 - [x] Phase 4: Verify all tests pass
 - [x] Phase 5: Code Review and Cleanup (DRY, KISS, YAGNI violations, remove cruft)
 - [x] Reflection: Task reflection complete
+- [x] Archive: Task archived
 
 ## Creative Phase Decision
 

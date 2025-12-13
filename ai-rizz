@@ -2558,14 +2558,106 @@ cmd_list() {
 			esac
 			
 			# Use tree to display ruleset contents (show directories and expand commands/)
+			# For symlinked rules in subdirectories, show them at root level (as they're deployed flat)
+			# For file rules, show them with preserved structure (as they're deployed)
 			if [ -d "${cl_ruleset}" ]; then
+				# Pre-process: Find subdirectories that only contain symlinked .mdc files
+				# These should be hidden and their symlinks shown at root level
+				cl_symlinks_at_root=""
+				cl_dirs_to_hide=""
+				for cl_subdir in "${cl_ruleset}"/*/; do
+					if [ ! -d "${cl_subdir}" ] || [ "$(basename "${cl_subdir}")" = "commands" ]; then
+						continue
+					fi
+					cl_subdir_name=$(basename "${cl_subdir}")
+					# Check if this subdirectory only contains symlinked .mdc files
+					cl_dir_symlinks=$(find "${cl_subdir}" -maxdepth 1 -name "*.mdc" -type l 2>/dev/null)
+					cl_dir_files=$(find "${cl_subdir}" -maxdepth 1 -name "*.mdc" -type f 2>/dev/null)
+					cl_dir_other=$(find "${cl_subdir}" -mindepth 1 -maxdepth 1 ! -name "*.mdc" 2>/dev/null)
+					if [ -n "${cl_dir_symlinks}" ] && [ -z "${cl_dir_files}" ] && [ -z "${cl_dir_other}" ]; then
+						# Directory only contains symlinks - collect them and hide directory
+						cl_dirs_to_hide="${cl_dirs_to_hide} ${cl_subdir_name}"
+						for cl_symlink_file in ${cl_dir_symlinks}; do
+							cl_symlink_basename=$(basename "${cl_symlink_file}")
+							cl_symlinks_at_root="${cl_symlinks_at_root} ${cl_symlink_basename}"
+						done
+					fi
+				done
+				
 				# Check if tree command exists
 				if command -v tree >/dev/null 2>&1; then
 					# Build ignore pattern: exclude non-.mdc files/links but keep directories and .mdc files
 					# Pattern: prune commands/ directory (expanded separately with -L 2), exclude non-.mdc files
 					cl_ignore_pattern=$(cd "${cl_ruleset}" && find . -name 'commands' -type d -prune -o \( -type f -o -type l \) ! -name '*.mdc' -printf '%f|' | head -c -1)
-					# Use tree with ignore pattern to show directories, .mdc files, and expand commands/ to level 2
-					(cd "${cl_ruleset}" && tree -L 2 --noreport -I "${cl_ignore_pattern}") | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'
+					# Get tree output
+					cl_tree_output=$(cd "${cl_ruleset}" && tree -L 2 --noreport -I "${cl_ignore_pattern}" 2>/dev/null)
+					
+					# Filter out symlink-only directories from tree output
+					# Process line by line to track when we're inside a hidden directory
+					cl_temp_tree=$(mktemp)
+					echo "${cl_tree_output}" | tail -n +2 > "${cl_temp_tree}"
+					
+					cl_filtered_output=""
+					cl_in_hidden_dir=false
+					cl_hidden_dir_indent=""
+					while IFS= read -r cl_line; do
+						if [ -z "${cl_line}" ]; then
+							continue
+						fi
+						# Check if this line starts a hidden directory
+						cl_line_clean=$(echo "${cl_line}" | sed 's/^[│├└ ]*//' | sed 's/ -> .*$//')
+						cl_is_hidden_dir=false
+						for cl_hide_dir in ${cl_dirs_to_hide}; do
+							if [ "${cl_line_clean}" = "${cl_hide_dir}" ]; then
+								cl_is_hidden_dir=true
+								# Extract full indentation (tree chars + spaces) for directory line
+								cl_hidden_dir_indent=$(echo "${cl_line}" | sed 's/[^│├└ ].*$//')
+								break
+							fi
+						done
+						
+						if [ "${cl_is_hidden_dir}" = "true" ]; then
+							# Skip this directory line and mark that we're inside it
+							cl_in_hidden_dir=true
+							continue
+						fi
+						
+						# Check if we're still inside a hidden directory
+						# In tree output, child lines of a directory start with spaces
+						# Directory line: "└── dirname" or "├── dirname"  
+						# Child lines: "    └── filename" (4 spaces + tree char)
+						if [ "${cl_in_hidden_dir}" = "true" ]; then
+							# Check if line starts with 4+ spaces (indicates it's a child line)
+							# Pattern: starts with tree chars, then 4+ spaces
+							if echo "${cl_line}" | grep -qE '^[│├└ ]{0,3}    '; then
+								# This is a child line - skip it
+								continue
+							fi
+							# Not a child line - we've exited the hidden directory
+							cl_in_hidden_dir=false
+							cl_hidden_dir_indent=""
+						fi
+						
+						# Include this line in output
+						if [ -z "${cl_filtered_output}" ]; then
+							cl_filtered_output="${cl_line}"
+						else
+							cl_filtered_output="${cl_filtered_output}
+${cl_line}"
+						fi
+					done < "${cl_temp_tree}"
+					
+					rm -f "${cl_temp_tree}"
+					
+					# Output filtered tree
+					echo "${cl_filtered_output}" | sed 's/^/    /' | sed 's/ -> .*$//'
+					
+					# Add symlinks at root level if any were moved from subdirectories
+					if [ -n "${cl_symlinks_at_root}" ]; then
+						for cl_symlink in ${cl_symlinks_at_root}; do
+							printf "    ├── %s\n" "${cl_symlink}"
+						done
+					fi
 				else
 					# Fallback if tree is not available
 					# Show .mdc files and directories, with special handling for commands/
@@ -3040,6 +3132,12 @@ cmd_remove_ruleset() {
 		
 		if [ "$(is_mode_active commit)" = "true" ]; then
 			if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+				# Remove commands before removing from manifest (only in commit mode)
+				# Calculate commands directory: parent of TARGET_DIR + /commands
+				crr_target_base=$(get_target_directory)
+				crr_commands_dir="$(dirname "${crr_target_base}")/commands"
+				remove_ruleset_commands "${ruleset_path}" "${crr_commands_dir}"
+				
 				remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
 				echo "Removed ruleset: $ruleset_path"
 				removed=true
@@ -3143,13 +3241,14 @@ sync_manifest_to_directory() {
 	# Create target directory if needed
 	mkdir -p "${smtd_target_directory}"
 	
-	# Safety check: Only operate in our managed directories (local or shared)
-	case "${smtd_target_directory}" in
-		*/"${LOCAL_DIR}"|*/"${SHARED_DIR}")
-			# Clear existing .mdc files to ensure removed rules are deleted
-			# Only delete regular .mdc files, never directories or other files
-			find "${smtd_target_directory}" -maxdepth 1 -name "*.mdc" -type f -delete 2>/dev/null || true
-			;;
+		# Safety check: Only operate in our managed directories (local or shared)
+		case "${smtd_target_directory}" in
+			*/"${LOCAL_DIR}"|*/"${SHARED_DIR}")
+				# Clear existing .mdc files to ensure removed rules are deleted
+				# Only delete regular .mdc files, never directories or other files
+				# Remove -maxdepth 1 to handle nested .mdc files (structured rules)
+				find "${smtd_target_directory}" -name "*.mdc" -type f -delete 2>/dev/null || true
+				;;
 		*)
 			warn "Refusing to clear unrecognized target directory: ${smtd_target_directory}"
 			return 1
@@ -3289,6 +3388,82 @@ copy_ruleset_commands() {
 	return 0
 }
 
+# Remove commands from a ruleset when the ruleset is removed
+#
+# Removes all command files that were copied from the specified ruleset's
+# commands/ subdirectory. Preserves directory structure when removing nested
+# commands. Cleans up empty directories after file removal.
+#
+# Globals:
+#   REPO_DIR - Source repository directory
+#
+# Arguments:
+#   $1 - Ruleset path (e.g., "rulesets/test-ruleset")
+#   $2 - Target commands directory (e.g., "/path/to/commands")
+#
+# Outputs:
+#   Stderr: Warning messages for failures
+#
+# Returns:
+#   0 on success
+#   1 on failure (source doesn't exist, removal failed)
+#
+remove_ruleset_commands() {
+	rrc_ruleset_path="${1}"
+	rrc_target_commands_dir="${2}"
+	
+	rrc_source_commands_dir="${REPO_DIR}/${rrc_ruleset_path}/commands"
+	
+	# Check if source commands directory exists
+	if [ ! -d "${rrc_source_commands_dir}" ]; then
+		return 0  # No commands to remove, not an error
+	fi
+	
+	# Check if target commands directory exists
+	if [ ! -d "${rrc_target_commands_dir}" ]; then
+		return 0  # No commands directory, nothing to remove
+	fi
+	
+	# Get all command paths from the ruleset's commands directory
+	# Use temporary file to avoid subshell exit code issues (per POSIX style guide)
+	rrc_temp_file=$(mktemp)
+	find "${rrc_source_commands_dir}" -mindepth 1 \( -type f -o -type l \) > "${rrc_temp_file}" 2>/dev/null
+	rrc_find_status=$?
+	
+	if [ ${rrc_find_status} -eq 0 ]; then
+		while IFS= read -r rrc_source_file; do
+			if [ -n "${rrc_source_file}" ] && ([ -f "${rrc_source_file}" ] || [ -L "${rrc_source_file}" ]); then
+				# Calculate relative path from commands directory to match target structure
+				rrc_rel_path="${rrc_source_file#${rrc_source_commands_dir}/}"
+				rrc_target_file="${rrc_target_commands_dir}/${rrc_rel_path}"
+				
+				# Remove the target file if it exists
+				if [ -f "${rrc_target_file}" ] || [ -L "${rrc_target_file}" ]; then
+					if ! rm -f "${rrc_target_file}"; then
+						warn "Failed to remove command file: ${rrc_rel_path}"
+						# Continue with other files
+					fi
+					
+					# Clean up empty parent directories
+					rrc_target_dir=$(dirname "${rrc_target_file}")
+					while [ "${rrc_target_dir}" != "${rrc_target_commands_dir}" ] && [ -d "${rrc_target_dir}" ]; do
+						# Check if directory is empty (only . and .. entries)
+						if [ -z "$(find "${rrc_target_dir}" -mindepth 1 -maxdepth 1 2>/dev/null)" ]; then
+							rmdir "${rrc_target_dir}" 2>/dev/null || break
+							rrc_target_dir=$(dirname "${rrc_target_dir}")
+						else
+							break
+						fi
+					done
+				fi
+			fi
+		done < "${rrc_temp_file}"
+	fi
+	
+	rm -f "${rrc_temp_file}"
+	return 0
+}
+
 # Copy a single entry (rule or ruleset) to target directory
 #
 # Handles both individual rules (single file copy) and rulesets (copy all
@@ -3337,21 +3512,52 @@ copy_entry_to_target() {
 		cp "${cett_source_path}" "${cett_target_directory}/"
 	elif [ -d "${cett_source_path}" ]; then
 		# Directory (ruleset) - copy individual .mdc files from ruleset to target directory
-		# Handle symlinks correctly by following them and copying actual content
-		find "${cett_source_path}" -name "*.mdc" -type f -o -name "*.mdc" -type l | \
-				while IFS= read -r cett_rule_file; do
-			if [ -f "${cett_rule_file}" ] || [ -L "${cett_rule_file}" ]; then
-				cett_filename=$(basename "${cett_rule_file}")
-				
-				# Skip if file would conflict with commit mode (commit wins)
-				if [ "${cett_is_local_sync}" = "true" ] && file_exists_in_commit_mode "${cett_filename}"; then
-					continue  # Skip this file
+		# Handle symlinks and files differently:
+		# - Symlinks: Copy flat (all instances are the same rule)
+		# - Files: Preserve directory structure (URI is ruleset/path/to/rule.mdc)
+		# Use temporary file to avoid subshell exit code issues (per POSIX style guide)
+		cett_temp_file=$(mktemp)
+		find "${cett_source_path}" -name "*.mdc" \( -type f -o -type l \) > "${cett_temp_file}" 2>/dev/null
+		cett_find_status=$?
+		
+		if [ ${cett_find_status} -eq 0 ]; then
+			while IFS= read -r cett_rule_file; do
+				if [ -n "${cett_rule_file}" ] && ([ -f "${cett_rule_file}" ] || [ -L "${cett_rule_file}" ]); then
+					cett_filename=$(basename "${cett_rule_file}")
+					
+					# Skip if file would conflict with commit mode (commit wins)
+					if [ "${cett_is_local_sync}" = "true" ] && file_exists_in_commit_mode "${cett_filename}"; then
+						continue
+					fi
+					
+					# Detect if this is a symlink or a file
+					if [ -L "${cett_rule_file}" ]; then
+						# Symlink: Copy flat to target root (all instances are the same rule)
+						cp -L "${cett_rule_file}" "${cett_target_directory}/"
+					else
+						# File: Preserve directory structure (URI is ruleset/path/to/rule.mdc)
+						cett_rel_path="${cett_rule_file#${cett_source_path}/}"
+						cett_target_file="${cett_target_directory}/${cett_rel_path}"
+						
+						# Create target directory structure if needed
+						cett_target_dir=$(dirname "${cett_target_file}")
+						if [ ! -d "${cett_target_dir}" ]; then
+							if ! mkdir -p "${cett_target_dir}"; then
+								warn "Failed to create directory for: ${cett_rel_path}"
+								continue
+							fi
+						fi
+						
+						# Copy the file (preserving structure)
+						if ! cp "${cett_rule_file}" "${cett_target_file}"; then
+							warn "Failed to copy rule file: ${cett_rel_path}"
+						fi
+					fi
 				fi
-				
-				# Copy the file (following symlinks to get actual content)
-				cp -L "${cett_rule_file}" "${cett_target_directory}/"
-			fi
-		done
+			done < "${cett_temp_file}"
+		fi
+		
+		rm -f "${cett_temp_file}"
 		
 		# Copy commands/ subdirectory if exists and in commit mode
 		# Check if target is commit mode (contains SHARED_DIR)

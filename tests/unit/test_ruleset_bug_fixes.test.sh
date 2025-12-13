@@ -98,8 +98,10 @@ test_subdirectory_rules_visible_in_list() {
 	echo "$output" | grep -q "supporting" || fail "Supporting directory should appear in list"
 	
 	# Verify rules were copied (they should be, issue is only display)
+	# File rules in subdirectories preserve structure (per Bug 2 fix)
 	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rootrule.mdc" || fail "Root rule should be copied"
-	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/subrule.mdc" || fail "Subdirectory rule should be copied"
+	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/supporting/subrule.mdc" || fail "Subdirectory rule should be copied (preserving structure)"
+	test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/subrule.mdc" || fail "Subdirectory rule should NOT be flattened"
 }
 
 # ============================================================================

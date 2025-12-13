@@ -10,10 +10,12 @@ Fix 2 bugs in ruleset handling:
 - [x] Complexity determination
 - [x] Implementation plan
 - [x] Creative phase: Ruleset rule structure design decision
-- [ ] Phase 0: Regression tests written (should fail)
-- [ ] Phase 1: Fix Bug 1 (remove commands when ruleset removed)
-- [ ] Phase 2: Fix Bug 2 (preserve directory structure for file rules)
-- [ ] Phase 3: Verify all tests pass
+- [x] Phase 0: Regression tests written (should fail)
+- [x] Phase 1: Fix Bug 1 (remove commands when ruleset removed)
+- [x] Phase 2: Fix Bug 2 (preserve directory structure for file rules)
+- [ ] Phase 3: Fix List Display for Rulesets (simplify to show top-level only, commands/ special)
+- [ ] Phase 4: Verify all tests pass
+- [ ] Phase 5: Code Review and Cleanup (DRY, KISS, YAGNI violations, remove cruft)
 
 ## Creative Phase Decision
 
@@ -383,8 +385,94 @@ Fix 2 bugs in ruleset handling:
   - Re-copying from manifest will restore them with correct structure (using updated copy logic)
   - This should work correctly with the updated copy logic
 
-### Phase 3: Verify All Tests Pass
-**After Phase 1 and 2**: All regression tests should pass
+### Phase 3: Fix List Display for Rulesets
+**Location**: `cmd_list()` function (line ~2560)
+
+**Issue**: List display shows contents of subdirectories, but should only show top-level items (except commands/)
+
+**List Display Rules**:
+- **All top-level .mdc files**: Shown
+- **All top-level subdirectories**: Shown (directory name only, NO contents shown)
+- **"commands" subdirectory**: Special treatment - show one level:
+  - Top-level *.md files inside commands/ are shown
+  - Subdirs inside commands/ are shown (but NO content of subdirs in commands/)
+
+**Expected List Output Examples**:
+
+**Example 1: test-symlink ruleset**
+```
+Ruleset structure in source:
+  test-symlink/
+    ├── rule2.mdc (symlink at root)
+    └── supporting/
+        └── rule1.mdc (symlink in subdirectory)
+
+Expected list output:
+  ● test-symlink
+    ├── rule2.mdc          ← top-level .mdc file (shown)
+    └── supporting         ← top-level subdir (shown, but NO contents)
+
+NOT shown:
+  - rule1.mdc (it's in supporting/ subdirectory, subdir contents are NOT shown)
+```
+
+**Example 2: test-structure ruleset**
+```
+Ruleset structure in source:
+  test-structure/
+    ├── rootrule.mdc (file at root)
+    └── supporting/
+        └── subrule.mdc (file in subdirectory)
+
+Expected list output:
+  ● test-structure
+    ├── rootrule.mdc       ← top-level .mdc file (shown)
+    └── supporting         ← top-level subdir (shown, but NO contents)
+
+NOT shown:
+  - subrule.mdc (it's in supporting/ subdirectory, subdir contents are NOT shown)
+```
+
+**Example 3: test-complex ruleset**
+```
+Ruleset structure in source:
+  test-complex/
+    ├── rootrule.mdc (file at root)
+    ├── symlinked-rule.mdc (symlink at root)
+    ├── Core/
+    │   └── core-rule.mdc (file in subdirectory)
+    └── commands/
+        ├── top.md
+        └── subs/
+            └── nested.md
+
+Expected list output:
+  ● test-complex
+    ├── rootrule.mdc       ← top-level .mdc file (shown)
+    ├── symlinked-rule.mdc ← top-level .mdc file (shown)
+    ├── Core               ← top-level subdir (shown, but NO contents)
+    └── commands           ← special treatment: show one level
+        ├── top.md         ← top-level file in commands/ (shown)
+        └── subs           ← subdir in commands/ (shown, but NO contents)
+
+NOT shown:
+  - core-rule.mdc (it's in Core/ subdirectory, subdir contents are NOT shown)
+  - nested.md (it's in commands/subs/, subdir contents in commands/ are NOT shown)
+```
+
+**Implementation**:
+- Simplify `cmd_list()` tree display logic
+- Use `tree -L 1` for top-level items (or equivalent with find)
+- For `commands/` subdirectory: Use `tree -L 2` but only for commands/ path
+- Filter out all subdirectory contents except commands/ one level
+- Remove complex filtering logic for symlink-only directories (not needed)
+
+**POSIX Style Requirements**:
+- Use temporary files instead of subshells when processing tree output
+- Keep logic simple and maintainable
+
+### Phase 4: Verify All Tests Pass
+**After Phase 1, 2, and 3**: All regression tests should pass
 **Actions**:
 - Run full test suite: `make test`
 - Verify no regressions in existing tests
@@ -395,9 +483,53 @@ Fix 2 bugs in ruleset handling:
 - ✅ Commands removed when ruleset removed
 - ✅ File rules in subdirectories preserve structure
 - ✅ Symlinked rules in subdirectories copied flat
+- ✅ List display shows correct structure (top-level only, commands/ special)
 - ✅ Large rule trees (like isolation_rules) work correctly
 - ✅ Conflict detection still works (uses basename)
 - ✅ Removal logic handles structured rules correctly (via sync cleanup)
+
+### Phase 5: Code Review and Cleanup
+**Purpose**: Review all code touched by previous phases for DRY, KISS, YAGNI violations and remove cruft from abortive implementation attempts
+
+**Review Areas**:
+1. **`cmd_list()` function**:
+   - Remove complex filtering logic for symlink-only directories
+   - Simplify to show top-level items only (except commands/)
+   - Remove any unused variables or temporary files from previous attempts
+   - Ensure logic is straightforward and maintainable
+
+2. **`copy_entry_to_target()` function**:
+   - Verify symlink vs file detection is clean and simple
+   - Check for any leftover code from previous flattening attempts
+   - Ensure temporary file handling is correct (POSIX-compliant)
+
+3. **`remove_ruleset_commands()` function**:
+   - Verify it follows same patterns as `copy_ruleset_commands()`
+   - Check for code duplication that could be extracted
+   - Ensure error handling is consistent
+
+4. **`cmd_remove_ruleset()` function**:
+   - Verify integration with `remove_ruleset_commands()` is clean
+   - Check for any redundant logic
+
+5. **Test files**:
+   - Verify test expectations match actual behavior
+   - Remove any commented-out or unused test code
+   - Ensure tests are clear and maintainable
+
+**Cleanup Actions**:
+- Remove unused variables
+- Remove commented-out code
+- Simplify complex logic where possible
+- Extract common patterns into helper functions if repeated
+- Ensure consistent error handling patterns
+- Verify all temporary files are properly cleaned up
+- Check for any leftover debug code or verbose logging
+
+**Verification**:
+- Run full test suite to ensure cleanup didn't break anything
+- Review code changes for clarity and maintainability
+- Document any design decisions made during cleanup
 
 ## Dependencies and Challenges
 
@@ -417,14 +549,19 @@ Fix 2 bugs in ruleset handling:
   - **Solution**: `sync_manifest_to_directory()` already clears all `.mdc` files recursively, then re-copies from manifest. With updated copy logic, structured rules will be restored correctly.
 
 ## Success Criteria
-- [ ] Commands are removed from `.cursor/commands/` when their ruleset is removed
-- [ ] File rules in subdirectories preserve directory structure (e.g., `Core/memory-bank-paths.mdc` → `.cursor/rules/shared/Core/memory-bank-paths.mdc`)
-- [ ] Symlinked rules in subdirectories are copied flat (all instances are the same rule)
-- [ ] Root-level file rules are copied flat
+- [x] Commands are removed from `.cursor/commands/` when their ruleset is removed
+- [x] File rules in subdirectories preserve directory structure (e.g., `Core/memory-bank-paths.mdc` → `.cursor/rules/shared/Core/memory-bank-paths.mdc`)
+- [x] Symlinked rules in subdirectories are copied flat (all instances are the same rule)
+- [x] Root-level file rules are copied flat
+- [ ] List display shows correct structure:
+  - [ ] Top-level .mdc files are shown
+  - [ ] Top-level subdirectories are shown (but NO contents)
+  - [ ] commands/ subdirectory shows one level (top-level files and subdirs, but not subdir contents)
 - [ ] Large rule trees (55+ rules) work correctly with preserved structure
-- [ ] Commands removed when ruleset removed (even if multiple rulesets have same path - error condition)
+- [x] Commands removed when ruleset removed (even if multiple rulesets have same path - error condition)
 - [ ] Existing behavior preserved (no regressions)
 - [ ] All tests pass
+- [ ] Code reviewed and cleaned up (no DRY/KISS/YAGNI violations, no cruft from previous attempts)
 
 ## Test Strategy
 

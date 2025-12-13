@@ -7,8 +7,10 @@ Add targeted and limited support for `commands` subdirectory in rulesets to enab
 - [x] Task definition
 - [x] Complexity determination
 - [x] Implementation plan
-- [ ] Execution
-- [ ] Documentation
+- [x] Phase 1: Stubbing (TDD Step 2) - Complete
+- [x] Phase 4: Implement Tests (TDD Step 3) - Complete (all tests fail as expected)
+- [x] Phase 5: Implement Code (TDD Step 4) - Complete
+- [x] Phase 6: Documentation - Complete
 
 ## Requirements
 
@@ -385,38 +387,38 @@ This should:
 ### Implementation Checklist (TDD Order)
 
 #### Phase 1: Stubbing (TDD Step 2)
-- [ ] Stub test suite: `test_ruleset_commands.test.sh` with empty test functions
-- [ ] Stub function: `show_ruleset_commands_error()` with empty body
-- [ ] Stub validation logic in `cmd_add_ruleset()` (placeholder comment)
-- [ ] Stub test cases for command copying
-- [ ] Stub function: `copy_ruleset_commands()` with empty body
-- [ ] Stub integration point in `copy_entry_to_target()` (placeholder comment)
-- [ ] Stub test suite: `test_list_display.test.sh` with empty test functions
-- [ ] Stub list display modifications in `cmd_list()` (placeholder comments)
+- [x] Stub test suite: `test_ruleset_commands.test.sh` with empty test functions
+- [x] Stub function: `show_ruleset_commands_error()` with empty body
+- [x] Stub validation logic in `cmd_add_ruleset()` (placeholder comment)
+- [x] Stub test cases for command copying
+- [x] Stub function: `copy_ruleset_commands()` with empty body
+- [x] Stub integration point in `copy_entry_to_target()` (placeholder comment)
+- [x] Stub test suite: `test_list_display.test.sh` with empty test functions
+- [x] Stub list display modifications in `cmd_list()` (placeholder comments)
 
 #### Phase 4: Implement Tests (TDD Step 3)
-- [ ] Implement detection/validation tests (should fail)
-- [ ] Implement command copying tests (should fail)
-- [ ] Implement list display tests (should fail)
-- [ ] Create and implement integration tests (should fail)
-- [ ] Run all tests to verify they fail as expected
+- [x] Implement detection/validation tests (should fail)
+- [x] Implement command copying tests (should fail)
+- [x] Implement list display tests (should fail)
+- [x] Create and implement integration tests (should fail)
+- [x] Run all tests to verify they fail as expected
 
 #### Phase 5: Implement Code (TDD Step 4)
-- [ ] Implement `show_ruleset_commands_error()` function body
-- [ ] Implement validation check in `cmd_add_ruleset()`
-- [ ] Run tests - detection/validation tests should pass
-- [ ] Implement `copy_ruleset_commands()` function body
-- [ ] Integrate command copying into `copy_entry_to_target()`
-- [ ] Run tests - command copying tests should pass
-- [ ] Implement list display updates in `cmd_list()`
-- [ ] Run tests - list display tests should pass
-- [ ] Run full test suite: `make test`
-- [ ] Verify all tests pass, no regressions
+- [x] Implement `show_ruleset_commands_error()` function body
+- [x] Implement validation check in `cmd_add_ruleset()`
+- [x] Run tests - detection/validation tests should pass
+- [x] Implement `copy_ruleset_commands()` function body
+- [x] Integrate command copying into `copy_entry_to_target()`
+- [x] Run tests - command copying tests should pass
+- [x] Implement list display updates in `cmd_list()`
+- [x] Run tests - list display tests should pass
+- [x] Run full test suite: `make test`
+- [x] Verify all tests pass, no regressions
 
 #### Phase 6: Documentation
-- [ ] Update README.md with commands feature documentation
-- [ ] Add example workflow
-- [ ] Document error message and resolution
+- [x] Update README.md with commands feature documentation
+- [x] Add example workflow
+- [x] Document error message and resolution
 
 ### Dependencies and Challenges
 

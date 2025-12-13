@@ -341,6 +341,47 @@ EOF
   exit "${1:-1}"
 }
 
+# Show error when trying to add ruleset with commands in local mode
+#
+# Displays a user-friendly error message when attempting to add a ruleset
+# containing a `commands/` subdirectory in local mode. Rulesets with commands
+# must be committed to ensure commands are version-controlled.
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Ruleset name that was attempted (required)
+#   $2 - Exit code (optional, defaults to 1)
+#
+# Outputs:
+#   Stderr: Formatted error message with resolution steps
+#
+# Returns:
+#   Returns with specified exit code (caller should exit)
+#
+show_ruleset_commands_error() {
+	srce_ruleset_name="${1}"
+	srce_exit_code="${2:-1}"
+	
+	cat >&2 << EOF
+Error: Ruleset '${srce_ruleset_name}' contains a 'commands' subdirectory and must be added in commit mode.
+
+Rulesets with commands must be committed to the repository to ensure commands are version-controlled.
+
+To fix this:
+  1. If you haven't initialized commit mode yet:
+     ai-rizz init <repository-url> --commit
+  
+  2. If you already have local mode initialized:
+     ai-rizz init <repository-url> --commit
+  
+Then add the ruleset:
+  ai-rizz add ruleset ${srce_ruleset_name} --commit
+EOF
+	return "${srce_exit_code}"
+}
+
 # Progressive Manifest Utilities  
 # ==============================
 
@@ -2516,15 +2557,49 @@ cmd_list() {
 					;;
 			esac
 			
-			# Use tree to display ruleset contents (filter to .mdc files only)
+			# Use tree to display ruleset contents (show directories and expand commands/)
 			if [ -d "${cl_ruleset}" ]; then
 				# Check if tree command exists
 				if command -v tree >/dev/null 2>&1; then
-					# Use tree with pattern matching to show only .mdc files and symlinks
-					(cd "${cl_ruleset}" && tree -P "*.mdc" -L 1 --noreport) | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'
+					# Build ignore pattern: exclude all files/links but keep directories
+					# Pattern excludes files/links but keeps directories visible
+					cl_ignore_pattern=$(cd "${cl_ruleset}" && find . -name 'commands' -type d -prune -o -type f,l -printf '%f|' | head -c -1)
+					# Use tree with ignore pattern to show directories and expand commands/ to level 2
+					(cd "${cl_ruleset}" && tree -L 2 --noreport -I "${cl_ignore_pattern}") | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'
 				else
 					# Fallback if tree is not available
-					find "${cl_ruleset}" -maxdepth 1 \( -name "*.mdc" -type f \) -o \( -name "*.mdc" -type l \) -exec basename {} \; | sort | sed 's/^/    ├── /'
+					# Show .mdc files and directories, with special handling for commands/
+					cl_items=$(find "${cl_ruleset}" -maxdepth 1 \( -name "*.mdc" -type f \) -o \( -name "*.mdc" -type l \) -o \( -type d ! -name "." ! -path "${cl_ruleset}" \) | sort)
+					cl_item_count=$(echo "${cl_items}" | grep -c . || echo "0")
+					cl_current=0
+					echo "${cl_items}" | while IFS= read -r cl_item; do
+						if [ -n "${cl_item}" ]; then
+							cl_current=$(expr ${cl_current} + 1)
+							cl_basename=$(basename "${cl_item}")
+							if [ "${cl_current}" -eq "${cl_item_count}" ]; then
+								printf "    └── %s\n" "${cl_basename}"
+							else
+								printf "    ├── %s\n" "${cl_basename}"
+							fi
+							# If this is the commands/ directory, expand its contents
+							if [ "${cl_basename}" = "commands" ] && [ -d "${cl_item}" ]; then
+								cl_cmd_items=$(find "${cl_item}" -maxdepth 1 \( -type f -o -type l \) ! -path "${cl_item}" | sort)
+								cl_cmd_count=$(echo "${cl_cmd_items}" | grep -c . || echo "0")
+								cl_cmd_current=0
+								echo "${cl_cmd_items}" | while IFS= read -r cl_cmd_item; do
+									if [ -n "${cl_cmd_item}" ]; then
+										cl_cmd_current=$(expr ${cl_cmd_current} + 1)
+										cl_cmd_basename=$(basename "${cl_cmd_item}")
+										if [ "${cl_cmd_current}" -eq "${cl_cmd_count}" ]; then
+											printf "    │   └── %s\n" "${cl_cmd_basename}"
+										else
+											printf "    │   ├── %s\n" "${cl_cmd_basename}"
+										fi
+									fi
+								done
+							fi
+						fi
+					done
 				fi
 			fi
 		done
@@ -2784,6 +2859,12 @@ cmd_add_ruleset() {
 		# Check if ruleset exists in source repo using helper function
 		if ! check_repository_item "${cars_ruleset_path}" "Ruleset" "dir"; then
 			continue
+		fi
+		
+		# Check if ruleset has commands/ subdirectory and reject local mode
+		if [ -d "${REPO_DIR}/${cars_ruleset_path}/commands" ] && [ "${cars_mode}" = "local" ]; then
+			show_ruleset_commands_error "${cars_ruleset}"
+			return 1
 		fi
 		
 		# Handle conflict resolution migration using helper function
@@ -3134,6 +3215,67 @@ file_exists_in_commit_mode() {
 	return 1  # Not found in commit mode
 }
 
+# Copy command files from ruleset to target commands directory
+#
+# Copies all files from a ruleset's `commands/` subdirectory to the target
+# `.cursor/commands/` directory. Follows symlinks to copy actual source content,
+# not the symlink itself. Creates target directory if it doesn't exist.
+#
+# Globals:
+#   REPO_DIR - Repository directory
+#
+# Arguments:
+#   $1 - Ruleset path in source repo (e.g., `rulesets/memory-bank`) (required)
+#   $2 - Target commands directory (e.g., `.cursor/commands`) (required)
+#
+# Outputs:
+#   Stderr: Warning messages on failure
+#
+# Returns:
+#   0 on success
+#   1 on failure (source doesn't exist, copy failed)
+#
+copy_ruleset_commands() {
+	crc_ruleset_path="${1}"
+	crc_target_commands_dir="${2}"
+	
+	crc_source_commands_dir="${REPO_DIR}/${crc_ruleset_path}/commands"
+	
+	# Check if source commands directory exists
+	if [ ! -d "${crc_source_commands_dir}" ]; then
+		return 0  # No commands to copy, not an error
+	fi
+	
+	# Create target directory if it doesn't exist
+	mkdir -p "${crc_target_commands_dir}" || {
+		warn "Failed to create commands directory: ${crc_target_commands_dir}"
+		return 1
+	}
+	
+	# Copy all files from commands directory, following symlinks
+	# Use find to get all files (not directories) and copy them
+	# Use temporary file to avoid subshell exit code issues (per POSIX style guide)
+	crc_temp_file=$(mktemp)
+	find "${crc_source_commands_dir}" -mindepth 1 -maxdepth 1 \( -type f -o -type l \) > "${crc_temp_file}" 2>/dev/null
+	crc_find_status=$?
+	
+	if [ ${crc_find_status} -eq 0 ]; then
+		while IFS= read -r crc_source_file; do
+			if [ -n "${crc_source_file}" ] && ([ -f "${crc_source_file}" ] || [ -L "${crc_source_file}" ]); then
+				crc_filename=$(basename "${crc_source_file}")
+				# Use cp -L to follow symlinks and copy actual source content
+				if ! cp -L "${crc_source_file}" "${crc_target_commands_dir}/"; then
+					warn "Failed to copy command file: ${crc_filename}"
+					# Continue with other files
+				fi
+			fi
+		done < "${crc_temp_file}"
+	fi
+	
+	rm -f "${crc_temp_file}"
+	return 0
+}
+
 # Copy a single entry (rule or ruleset) to target directory
 #
 # Handles both individual rules (single file copy) and rulesets (copy all
@@ -3197,6 +3339,18 @@ copy_entry_to_target() {
 				cp -L "${cett_rule_file}" "${cett_target_directory}/"
 			fi
 		done
+		
+		# Copy commands/ subdirectory if exists and in commit mode
+		# Check if target is commit mode (contains SHARED_DIR)
+		case "${cett_target_directory}" in
+			*/"${SHARED_DIR}")
+				# In commit mode, copy commands to commands/ directory
+				# Calculate commands directory: parent of TARGET_DIR + /commands
+				cett_target_base=$(get_target_directory)
+				cett_commands_dir="$(dirname "${cett_target_base}")/commands"
+				copy_ruleset_commands "${cett_entry}" "${cett_commands_dir}"
+				;;
+		esac
 	else
 		warn "Entry not found in repository: ${cett_entry}"
 		return 1

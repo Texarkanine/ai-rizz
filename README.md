@@ -22,6 +22,7 @@ Check out my rules in [texarkanine/.cursor-rules](https://github.com/texarkanine
   - [Commands](#commands)
 - [Advanced Usage](#advanced-usage)
   - [Rule and Ruleset Constraints](#rule-and-ruleset-constraints)
+  - [Rulesets with Commands](#rulesets-with-commands)
   - [Repository Integrity](#repository-integrity)
   - [Environment Variable Fallbacks](#environment-variable-fallbacks)
 - [Developer Guide](#developer-guide)
@@ -261,7 +262,17 @@ ai-rizz list
 ○ available-rule.mdc     # Available but not installed
 ◐ personal-rule.mdc      # Installed locally (git-ignored)
 ● team-rule.mdc          # Installed and committed (git-tracked)
+
+Available rulesets:
+○ shell
+  ├── commands
+  │   ├── setup.sh
+  │   └── cleanup.sh
+  ├── bash-style.mdc
+  └── posix-style.mdc
 ```
+
+Note: Rulesets with a `commands/` subdirectory will show the directory expanded in the list output. Commands themselves are copied to `.cursor/commands/` and don't appear separately in the list.
 
 #### Synchronizing
 
@@ -429,6 +440,72 @@ ai-rizz add rule shell-tdd.mdc --commit     # Re-add others to commit mode
 ai-rizz add ruleset python --commit         # Moves to commit mode
 git add ai-rizz.skbd .cursor/rules/shared/   # Stage for commit
 git commit -m "Add team Python ruleset"    # Share with team
+```
+
+### Rulesets with Commands
+
+Rulesets can include a special `commands/` subdirectory that contains command files. These commands are automatically copied to `.cursor/commands/` when the ruleset is added in commit mode.
+
+#### Key Features
+
+- **Commands must be committed**: Rulesets containing a `commands/` subdirectory can only be added in commit mode. Attempting to add them in local mode will result in an error.
+- **Automatic copying**: When a ruleset with commands is added in commit mode, all files from `rulesets/<name>/commands/*` are copied to `.cursor/commands/`.
+- **Symlink support**: Symlinks in the `commands/` directory are followed, copying the actual source content rather than the symlink itself.
+- **Not listed separately**: Commands are local to the ruleset and don't appear in `ai-rizz list` output (similar to ruleset-local rules).
+
+#### Example Workflow
+
+```bash
+# Attempting to add a ruleset with commands in local mode
+ai-rizz init https://github.com/example/rules.git --local
+ai-rizz add ruleset memory-bank
+# Error: Ruleset 'memory-bank' contains a 'commands' subdirectory 
+# and must be added in commit mode.
+
+# Correct approach: use commit mode
+ai-rizz init https://github.com/example/rules.git --commit
+ai-rizz add ruleset memory-bank --commit
+# Success! Commands from rulesets/memory-bank/commands/* 
+# are now in .cursor/commands/
+```
+
+#### Source Repository Structure
+
+For a ruleset with commands, your source repository would have this structure:
+
+```
+rulesets/
+└── memory-bank/
+    ├── commands/
+    │   ├── van.md
+    │   ├── plan.md
+    │   └── build.md
+    ├── rule1.mdc
+    └── rule2.mdc
+```
+
+When added in commit mode:
+- Rules (`rule1.mdc`, `rule2.mdc`) are copied to `.cursor/rules/shared/`
+- Commands (`van.md`, `plan.md`, `build.md`) are copied to `.cursor/commands/`
+
+#### Error Message and Resolution
+
+If you attempt to add a ruleset with commands in local mode, you'll see:
+
+```
+Error: Ruleset 'memory-bank' contains a 'commands' subdirectory and must be added in commit mode.
+
+Rulesets with commands must be committed to the repository to ensure commands are version-controlled.
+
+To fix this:
+  1. If you haven't initialized commit mode yet:
+     ai-rizz init <repository-url> --commit
+  
+  2. If you already have local mode initialized:
+     ai-rizz init <repository-url> --commit
+  
+Then add the ruleset:
+  ai-rizz add ruleset memory-bank --commit
 ```
 
 ### Repository Integrity

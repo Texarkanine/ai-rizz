@@ -3,16 +3,41 @@
 ## Current Task
 Fix 2 bugs in ruleset handling:
 1. Removing a ruleset with commands does not remove the commands from `.cursor/commands/`
-2. Rules in subdirectories of rulesets are flattened instead of preserving directory structure
+2. File rules in subdirectories of rulesets are flattened instead of preserving directory structure (symlinked rules should remain flat)
 
 ## Status
 - [x] Task definition
-- [ ] Complexity determination
-- [ ] Implementation plan
+- [x] Complexity determination
+- [x] Implementation plan
+- [x] Creative phase: Ruleset rule structure design decision
 - [ ] Phase 0: Regression tests written (should fail)
 - [ ] Phase 1: Fix Bug 1 (remove commands when ruleset removed)
-- [ ] Phase 2: Fix Bug 2 (preserve directory structure for rules)
+- [ ] Phase 2: Fix Bug 2 (preserve directory structure for file rules)
 - [ ] Phase 3: Verify all tests pass
+
+## Creative Phase Decision
+
+**Design Decision**: Ruleset Rule Structure Handling
+**Document**: `memory-bank/creative/creative-ruleset-rule-structure.mdc`
+
+**Decision**: **Finish Support for File Rules in Rulesets (Preserve Structure)** (Option 1) ⭐
+
+**Rationale** (UPDATED based on user requirements):
+1. **User DOES need it**: User needs to ship large rule trees (55+ rules) in rulesets like `.cursor/rules/isolation_rules`
+2. **Solves the actual problem**: Rules stay bundled with ruleset, don't clutter `ai-rizz list`
+3. **Mathematically correct**: File rules have URI `ruleset/path/to/rule.mdc`, so structure should be preserved
+4. **No breaking changes**: Symlinks still work correctly (copied flat)
+5. **Completes partially-implemented feature**: Code is already partially there
+
+**Implementation**:
+- Detect symlink vs file in `copy_entry_to_target()`
+- If symlink: Copy flat (current behavior, correct)
+- If file: Preserve directory structure (calculate relative path, create target dirs)
+- Update conflict detection to handle both flat and structured paths
+- Update removal logic to handle structured rules
+- Update `sync_manifest_to_directory()` to clear nested `.mdc` files recursively
+
+**Alternative Considered**: Option 3 (directory structure in `rules/` with symlinks and hidden subdirs) - viable but requires changing `ai-rizz list` behavior and restructuring `rules/` directory. Option 1 is cleaner for the use case.
 
 ## Requirements
 
@@ -28,17 +53,22 @@ Fix 2 bugs in ruleset handling:
 - **Impact**: Orphaned command files remain in `.cursor/commands/` after ruleset removal
 - **Expected Behavior**: When a ruleset with commands is removed, all commands from that ruleset should be removed from `.cursor/commands/`
 
-**Bug 2: Rules in subdirectories are flattened**
-- **Issue**: Rules in subdirectories of rulesets (e.g., `supporting/cursor-conversation-transcript.mdc`) are copied flattened to `.cursor/rules/shared/cursor-conversation-transcript.mdc` instead of preserving the directory structure
+**Bug 2: Rules in subdirectories are flattened (Design Decision Required)**
+- **Issue**: Rules in subdirectories of rulesets (e.g., `Core/memory-bank-paths.mdc`) are copied flattened to `.cursor/rules/shared/memory-bank-paths.mdc` instead of preserving the directory structure
 - **Root Cause Analysis**:
   - In `copy_entry_to_target()`, when copying a ruleset, it uses `find` to find all `.mdc` files recursively
   - The copy command `cp -L "${cett_rule_file}" "${cett_target_directory}/"` flattens everything to the target root
-  - Directory structure is not preserved (unlike commands which we fixed to preserve structure)
+  - **Key Insight**: Symlinked rules SHOULD be flat (correct - all instances are the same rule). File rules in subdirectories SHOULD preserve structure (their URI is `ruleset/path/to/rule.mdc`)
+- **User Requirement**: User needs to ship large rule trees (55+ rules) in rulesets like `.cursor/rules/isolation_rules` with multiple levels (Core/, Level1/, Level2/, etc.)
+- **Design Decision**: After creative phase analysis, decision is to **FINISH SUPPORT for file rules in subdirectories** (preserve structure)
 - **Impact**: 
-  - Rules from subdirectories don't show up correctly in the list (they're flattened)
-  - Directory structure within rulesets is lost
-  - Rules that should be in `supporting/` subdirectory are flattened to root level
-- **Expected Behavior**: Rules should preserve their directory structure within the ruleset (e.g., `supporting/cursor-conversation-transcript.mdc` → `.cursor/rules/shared/supporting/cursor-conversation-transcript.mdc`)
+  - Rulesets with file rules in subdirectories will preserve directory structure
+  - Large rule trees can be shipped as part of ruleset bundles
+  - Rules stay bundled with ruleset (don't clutter `ai-rizz list`)
+- **Expected Behavior**: 
+  - Symlinked rules: Copied flat (correct - all instances are the same)
+  - File rules at root: Copied flat (acceptable)
+  - File rules in subdirectories: Preserve directory structure (e.g., `Core/memory-bank-paths.mdc` → `.cursor/rules/shared/Core/memory-bank-paths.mdc`)
 
 ## Complexity Level
 **Level 2: Simple Enhancement** (Bug Fixes)
@@ -108,10 +138,10 @@ Fix 2 bugs in ruleset handling:
    }
    ```
 
-2. **Test 2: Rules preserve directory structure**
+2. **Test 2: File rules in subdirectories preserve structure**
    ```bash
-   test_rules_preserve_directory_structure() {
-       # Setup: Create ruleset with rules in subdirectory
+   test_file_rules_in_subdirectories_preserve_structure() {
+       # Setup: Create ruleset with file rule in subdirectory (should preserve structure)
        mkdir -p "$REPO_DIR/rulesets/test-structure/supporting"
        echo "subdir rule" > "$REPO_DIR/rulesets/test-structure/supporting/subrule.mdc"
        echo "root rule" > "$REPO_DIR/rulesets/test-structure/rootrule.mdc"
@@ -120,19 +150,42 @@ Fix 2 bugs in ruleset handling:
        cd "$REPO_DIR" && git add . && git commit --no-gpg-sign -m "test" >/dev/null 2>&1
        cd "$TEST_DIR/app" && cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
        
-       # Action: Add ruleset
+       # Action: Add ruleset (should succeed)
        cmd_add_ruleset "test-structure" --commit
        assertTrue "Should add ruleset successfully" $?
        
-       # Expected: Rules should preserve directory structure
+       # Expected: File rules preserve directory structure
        test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rootrule.mdc" || fail "Root rule should be copied"
-       test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/supporting/subrule.mdc" || fail "Subdirectory rule should preserve structure"
-       test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/subrule.mdc" || fail "Subdirectory rule should NOT be flattened"
+       test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/supporting/subrule.mdc" || fail "Subdirectory file rule should preserve structure"
+       test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/subrule.mdc" || fail "Subdirectory file rule should NOT be flattened"
        # CURRENTLY FAILS: Rules are flattened to root level
    }
    ```
 
-3. **Test 3: Commands removed even if multiple rulesets have same path (error condition)**
+3. **Test 2b: Symlinked rules in subdirectories are copied flat**
+   ```bash
+   test_symlinked_rules_in_subdirectories_copied_flat() {
+       # Setup: Create ruleset with symlinked rule in subdirectory (should be copied flat)
+       mkdir -p "$REPO_DIR/rulesets/test-symlink/supporting"
+       ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-symlink/supporting/rule1.mdc"
+       ln -sf "$REPO_DIR/rules/rule2.mdc" "$REPO_DIR/rulesets/test-symlink/rule2.mdc"
+       
+       # Commit and initialize
+       cd "$REPO_DIR" && git add . && git commit --no-gpg-sign -m "test" >/dev/null 2>&1
+       cd "$TEST_DIR/app" && cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
+       
+       # Action: Add ruleset (should succeed)
+       cmd_add_ruleset "test-symlink" --commit
+       assertTrue "Should add ruleset successfully" $?
+       
+       # Expected: Symlinked rules copied flat (all instances are the same rule)
+       test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rule1.mdc" || fail "rule1.mdc should be copied (flat)"
+       test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rule2.mdc" || fail "rule2.mdc should be copied (flat)"
+       test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/supporting/rule1.mdc" || fail "Symlinked rules should NOT preserve structure"
+   }
+   ```
+
+4. **Test 3: Commands removed even if multiple rulesets have same path (error condition)**
    ```bash
    test_commands_removed_even_with_conflicts() {
        # Setup: Create two rulesets with same command path (error condition, but we handle it)
@@ -172,16 +225,17 @@ Fix 2 bugs in ruleset handling:
    }
    ```
 
-4. **Test 4: Combined - ruleset with commands and subdirectory rules**
+5. **Test 4: Combined - ruleset with commands, file rules, and symlinked rules**
    ```bash
    test_complex_ruleset_structure_preserved() {
-       # Setup: Ruleset with commands and rules in subdirectories
+       # Setup: Ruleset with commands, file rules in subdirs, and symlinked rules
        mkdir -p "$REPO_DIR/rulesets/test-complex/commands/subs"
-       mkdir -p "$REPO_DIR/rulesets/test-complex/supporting"
+       mkdir -p "$REPO_DIR/rulesets/test-complex/Core"
        echo "command" > "$REPO_DIR/rulesets/test-complex/commands/top.md"
        echo "nested" > "$REPO_DIR/rulesets/test-complex/commands/subs/nested.md"
-       echo "subrule" > "$REPO_DIR/rulesets/test-complex/supporting/subrule.mdc"
+       echo "file rule" > "$REPO_DIR/rulesets/test-complex/Core/core-rule.mdc"
        echo "rootrule" > "$REPO_DIR/rulesets/test-complex/rootrule.mdc"
+       ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-complex/symlinked-rule.mdc"
        
        # Commit and initialize
        cd "$REPO_DIR" && git add . && git commit --no-gpg-sign -m "test" >/dev/null 2>&1
@@ -191,11 +245,13 @@ Fix 2 bugs in ruleset handling:
        cmd_add_ruleset "test-complex" --commit
        assertTrue "Should add ruleset successfully" $?
        
-       # Expected: Both structures preserved
+       # Expected: Commands preserved, file rules preserve structure, symlinked rules flat
        test -f "commands/top.md" || fail "Top command should be copied"
        test -f "commands/subs/nested.md" || fail "Nested command should be copied"
-       test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rootrule.mdc" || fail "Root rule should be copied"
-       test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/supporting/subrule.mdc" || fail "Subdirectory rule should preserve structure"
+       test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rootrule.mdc" || fail "Root file rule should be copied"
+       test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/Core/core-rule.mdc" || fail "Subdirectory file rule should preserve structure"
+       test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/symlinked-rule.mdc" || fail "Symlinked rule should be copied (flat)"
+       test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/Core/symlinked-rule.mdc" || fail "Symlinked rule should NOT preserve structure"
        
        # Remove ruleset
        cmd_remove_ruleset "test-complex"
@@ -203,7 +259,8 @@ Fix 2 bugs in ruleset handling:
        # Expected: Commands removed, rules removed
        test ! -f "commands/top.md" || fail "Commands should be removed"
        test ! -f "commands/subs/nested.md" || fail "Nested commands should be removed"
-       # CURRENTLY FAILS: Multiple issues
+       test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rootrule.mdc" || fail "Rules should be removed"
+       test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/Core/core-rule.mdc" || fail "Structured rules should be removed"
    }
    ```
 
@@ -282,10 +339,12 @@ Fix 2 bugs in ruleset handling:
   2. For each command path, remove it from `.cursor/commands/` (preserving nested structure)
   3. Clean up empty directories after removing files
 
-### Phase 2: Fix Bug 2 - Preserve Directory Structure for Rules
+### Phase 2: Fix Bug 2 - Preserve Directory Structure for File Rules
 **Location**: `copy_entry_to_target()` function (line ~3338)
 
-**Issue**: Rules in subdirectories are flattened to target root
+**Issue**: File rules in subdirectories are flattened, but they should preserve structure (per design decision)
+
+**Design Decision**: Finish support for file rules in subdirectories - preserve structure (see Creative Phase decision)
 
 **POSIX Style Requirements** (per `.cursor/rules/shared/shell-posix-style.mdc`):
 - Use temporary files instead of subshells when variable scope matters
@@ -294,72 +353,51 @@ Fix 2 bugs in ruleset handling:
 - Avoid subshells that could lose exit codes
 - Use function-specific variable prefixes (already established pattern: `cett_` for `copy_entry_to_target`)
 
-**Fix**: Similar to how we fixed command copying, preserve directory structure
-
 **Implementation** (TDD Step 4 - Write Code):
 - **After Phase 0 tests are written and verified to fail**, implement fixes:
-- **Current code** (line 3341-3354) - uses subshell with pipe:
-  ```bash
-  find "${cett_source_path}" -name "*.mdc" -type f -o -name "*.mdc" -type l | \
-      while IFS= read -r cett_rule_file; do
-      # ... subshell loses exit codes ...
-  done
-  ```
+- **Update `copy_entry_to_target()`** to detect symlink vs file and preserve structure for files:
+  - Replace subshell pipe with temporary file (POSIX-compliant)
+  - Use `find` to get all `.mdc` files (both `-type f` and `-type l`)
+  - For each rule file:
+    - Detect if symlink: `[ -L "${cett_rule_file}" ]`
+    - If symlink: Copy flat to target root (all instances are the same rule)
+    - If file: Preserve directory structure:
+      - Calculate relative path: `cett_rel_path="${cett_rule_file#${cett_source_path}/}"`
+      - Create target file path: `cett_target_file="${cett_target_directory}/${cett_rel_path}"`
+      - Create target directory structure: `mkdir -p "$(dirname "${cett_target_file}")"`
+      - Copy file preserving structure
+  - See Creative Phase document (`memory-bank/creative/creative-ruleset-rule-structure.mdc`) for detailed implementation code
 
-- **New code**: Use temporary file (POSIX-compliant) and preserve structure:
-  ```bash
-  # Use temporary file to avoid subshell exit code issues (per POSIX style guide)
-  cett_temp_file=$(mktemp)
-  find "${cett_source_path}" -name "*.mdc" \( -type f -o -type l \) > "${cett_temp_file}" 2>/dev/null
-  cett_find_status=$?
-  
-  if [ ${cett_find_status} -eq 0 ]; then
-      while IFS= read -r cett_rule_file; do
-          if [ -n "${cett_rule_file}" ] && ([ -f "${cett_rule_file}" ] || [ -L "${cett_rule_file}" ]); then
-              # Calculate relative path from ruleset root to preserve structure
-              cett_rel_path="${cett_rule_file#${cett_source_path}/}"
-              cett_target_file="${cett_target_directory}/${cett_rel_path}"
-              
-              # Create target directory structure if needed
-              cett_target_dir=$(dirname "${cett_target_file}")
-              if [ ! -d "${cett_target_dir}" ]; then
-                  if ! mkdir -p "${cett_target_dir}"; then
-                      warn "Failed to create directory for: ${cett_rel_path}"
-                      continue
-                  fi
-              fi
-              
-              # Skip if file would conflict with commit mode (commit wins)
-              cett_filename=$(basename "${cett_rule_file}")
-              if [ "${cett_is_local_sync}" = "true" ] && file_exists_in_commit_mode "${cett_filename}"; then
-                  continue  # Skip this file
-              fi
-              
-              # Copy the file (following symlinks to get actual content)
-              if ! cp -L "${cett_rule_file}" "${cett_target_file}"; then
-                  warn "Failed to copy rule file: ${cett_rel_path}"
-              fi
-          fi
-      done < "${cett_temp_file}"
-  fi
-  
-  rm -f "${cett_temp_file}"
-  ```
+- **Update `sync_manifest_to_directory()`** to clear nested `.mdc` files:
+  - **Current** (line 3151): `find "${smtd_target_directory}" -maxdepth 1 -name "*.mdc" -type f -delete`
+  - **New**: `find "${smtd_target_directory}" -name "*.mdc" -type f -delete` (remove `-maxdepth 1`)
+  - This ensures structured rules in subdirectories are properly cleaned up during sync
+  - The sync process clears all `.mdc` files, then re-copies from manifest, so structured rules will be restored correctly
 
-**Note**: Conflict detection uses basename, which might need adjustment for subdirectories. For now, keep existing conflict logic (it checks by filename, which should still work).
-
-**Additional Consideration**: The `sync_manifest_to_directory()` function clears `.mdc` files with `find "${smtd_target_directory}" -maxdepth 1 -name "*.mdc"` which only clears top-level files. This needs to be updated to clear all `.mdc` files recursively to handle subdirectories.
-
-**Update `sync_manifest_to_directory()`**:
-- **Current** (line 3151): `find "${smtd_target_directory}" -maxdepth 1 -name "*.mdc" -type f -delete`
-- **New**: `find "${smtd_target_directory}" -name "*.mdc" -type f -delete` (remove `-maxdepth 1`)
+**Additional Considerations**:
+- **Conflict Detection**: Current conflict detection uses basename only (`file_exists_in_commit_mode()`). This should still work because:
+  - For symlinks: Copied flat, conflict detection by basename works
+  - For file rules: Even if structured, conflict detection checks by basename (which is correct - two rules with same basename conflict regardless of path)
+- **Removal Logic**: The existing `sync_manifest_to_directory()` clears all `.mdc` files and then re-copies from manifest. With structured rules:
+  - Clearing recursively (removing `-maxdepth 1`) will remove structured rules
+  - Re-copying from manifest will restore them with correct structure (using updated copy logic)
+  - This should work correctly with the updated copy logic
 
 ### Phase 3: Verify All Tests Pass
 **After Phase 1 and 2**: All regression tests should pass
 **Actions**:
 - Run full test suite: `make test`
 - Verify no regressions in existing tests
+- Verify large rule trees (55+ rules) work correctly
 - Update documentation if behavior changes significantly
+
+**Key Verification Points**:
+- ✅ Commands removed when ruleset removed
+- ✅ File rules in subdirectories preserve structure
+- ✅ Symlinked rules in subdirectories copied flat
+- ✅ Large rule trees (like isolation_rules) work correctly
+- ✅ Conflict detection still works (uses basename)
+- ✅ Removal logic handles structured rules correctly (via sync cleanup)
 
 ## Dependencies and Challenges
 
@@ -370,16 +408,20 @@ Fix 2 bugs in ruleset handling:
 
 ### Challenges
 - **Bug 1**: Need to determine which commands belong to which ruleset when multiple rulesets might have same command paths
-  - **Solution**: Check all remaining rulesets before removing a command
-- **Bug 2**: Conflict detection uses basename - need to verify it still works with subdirectories
-  - **Solution**: Keep existing conflict logic (checks by filename, should work)
-- **Sync cleanup**: Need to update `sync_manifest_to_directory()` to clear nested `.mdc` files
-  - **Solution**: Remove `-maxdepth 1` from find command
+  - **Solution**: If command is in ruleset being removed, delete it (error condition if conflicts)
+- **Bug 2**: Need to detect symlink vs file and handle differently
+  - **Solution**: Use `[ -L "${file}" ]` to detect symlinks, `[ -f "${file}" ]` for files
+  - Symlinks: Copy flat (all instances are the same rule)
+  - Files: Preserve directory structure (URI is `ruleset/path/to/rule.mdc`)
+- **Structured Rule Removal**: Need to ensure structured rules are properly removed
+  - **Solution**: `sync_manifest_to_directory()` already clears all `.mdc` files recursively, then re-copies from manifest. With updated copy logic, structured rules will be restored correctly.
 
 ## Success Criteria
 - [ ] Commands are removed from `.cursor/commands/` when their ruleset is removed
-- [ ] Rules in subdirectories preserve directory structure (e.g., `supporting/cursor-conversation-transcript.mdc` → `.cursor/rules/shared/supporting/cursor-conversation-transcript.mdc`)
-- [ ] Rules from subdirectories appear correctly in list output
+- [ ] File rules in subdirectories preserve directory structure (e.g., `Core/memory-bank-paths.mdc` → `.cursor/rules/shared/Core/memory-bank-paths.mdc`)
+- [ ] Symlinked rules in subdirectories are copied flat (all instances are the same rule)
+- [ ] Root-level file rules are copied flat
+- [ ] Large rule trees (55+ rules) work correctly with preserved structure
 - [ ] Commands removed when ruleset removed (even if multiple rulesets have same path - error condition)
 - [ ] Existing behavior preserved (no regressions)
 - [ ] All tests pass
@@ -392,21 +434,33 @@ Fix 2 bugs in ruleset handling:
    - Add ruleset, verify commands copied
    - Remove ruleset, verify commands removed
    
-2. **Rules preserve directory structure**:
-   - Create ruleset with rules in subdirectory
+2. **File rules preserve directory structure**:
+   - Create ruleset with file rules in subdirectory (e.g., `Core/memory-bank-paths.mdc`)
    - Add ruleset, verify rules in correct subdirectory structure
-   - Verify rules appear in list correctly
+   - Verify rules appear in list tree correctly
+   - Remove ruleset, verify structured rules are removed
    
-3. **Commands removed even with conflicting paths** (error condition):
+3. **Symlinked rules copied flat**:
+   - Create ruleset with symlinked rules in subdirectory
+   - Add ruleset, verify symlinked rules copied flat (not structured)
+   - Verify symlinked rules don't preserve structure
+   
+4. **Commands removed even with conflicting paths** (error condition):
    - Create two rulesets with same command path (error condition)
    - Add both, verify last one wins
    - Remove first, verify command removed (belongs to removed ruleset)
    - Note: This tests error condition handling - rulesets shouldn't have overlapping paths
 
-4. **Complex ruleset with commands and subdirectory rules**:
-   - Create ruleset with both commands and rules in subdirectories
-   - Add ruleset, verify both structures preserved
-   - Remove ruleset, verify commands removed and rules removed
+5. **Complex ruleset with commands, file rules, and symlinked rules**:
+   - Create ruleset with commands, file rules in subdirs, and symlinked rules
+   - Add ruleset, verify:
+     - Commands preserve structure
+     - File rules preserve structure
+     - Symlinked rules copied flat
+   - Remove ruleset, verify:
+     - Commands removed
+     - Structured file rules removed
+     - Flat symlinked rules removed
 
 ### Existing Tests
 - Verify all existing tests still pass

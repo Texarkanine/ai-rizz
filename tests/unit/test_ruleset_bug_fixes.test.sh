@@ -68,9 +68,9 @@ test_commands_copied_recursively() {
 # BUG 1: SUBDIRECTORY RULES VISIBLE IN LIST
 # ============================================================================
 
-# Test that rules in subdirectories are visible in list output
-# Expected: Rules in subdirectories appear in tree display
-# Currently: FAILS - subdirectory rules not shown (ignore pattern excludes .mdc files)
+# Test that rules in subdirectories are NOT visible in list output (subdir contents hidden)
+# Expected: Top-level rules visible, subdirs shown but NOT their contents
+# Per Phase 3: List display shows top-level only, subdir contents are NOT shown
 test_subdirectory_rules_visible_in_list() {
 	# Setup: Create ruleset with rules in subdirectory
 	mkdir -p "$REPO_DIR/rulesets/test-subdir/supporting"
@@ -92,10 +92,13 @@ test_subdirectory_rules_visible_in_list() {
 	
 	output=$(cmd_list)
 	
-	# Expected: Both rules visible in list tree
-	echo "$output" | grep -q "rootrule.mdc" || fail "Root rule should appear in list"
-	echo "$output" | grep -q "subrule.mdc" || fail "Subdirectory rule should appear in list"
-	echo "$output" | grep -q "supporting" || fail "Supporting directory should appear in list"
+	# Expected: Top-level rule visible, subdir shown but NOT its contents
+	echo "$output" | grep -q "rootrule.mdc" || fail "Root rule should appear in list (top-level)"
+	echo "$output" | grep -q "supporting" || fail "Supporting directory should appear in list (top-level subdir)"
+	# Subdirectory contents should NOT appear (per Phase 3 requirements)
+	if echo "$output" | grep -A 10 "test-subdir" | grep -A 5 "supporting" | grep -q "subrule.mdc"; then
+		fail "Subdirectory rule should NOT appear in list (subdir contents are not shown)"
+	fi
 	
 	# Verify rules were copied (they should be, issue is only display)
 	# File rules in subdirectories preserve structure (per Bug 2 fix)
@@ -207,11 +210,14 @@ test_complex_ruleset_display() {
 	
 	output=$(cmd_list)
 	
-	# Expected: All components visible in list
+	# Expected: Top-level components visible, subdirs shown but NOT their contents
 	echo "$output" | grep -A 10 "test-complex" | grep -q "commands" || fail "commands/ should appear"
 	echo "$output" | grep -A 10 "test-complex" | grep -q "test-complex.mdc" || fail "Root .mdc should appear"
-	echo "$output" | grep -A 10 "test-complex" | grep -q "supporting" || fail "supporting/ should appear"
-	echo "$output" | grep -A 10 "test-complex" | grep -q "subrule.mdc" || fail "Subdirectory .mdc should appear"
+	echo "$output" | grep -A 10 "test-complex" | grep -q "supporting" || fail "supporting/ should appear (top-level subdir)"
+	# Subdirectory contents should NOT appear (per Phase 3 requirements)
+	if echo "$output" | grep -A 15 "test-complex" | grep -A 5 "supporting" | grep -q "subrule.mdc"; then
+		fail "Subdirectory .mdc should NOT appear in list (subdir contents are not shown)"
+	fi
 	
 	# Verify commands copied recursively
 	test -f "commands/top.md" || fail "Top command should be copied"

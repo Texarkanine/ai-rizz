@@ -2466,6 +2466,7 @@ cmd_list() {
 		check_rulesets_for_item() {
 			cl_check_manifest_file="${1}"
 			cl_check_item_basename=$(basename "${cl_is_installed_item}")
+			cl_check_item_path="${REPO_DIR}/${cl_is_installed_item}"
 			cl_check_entries=""
 			
 			cl_check_entries=$(read_manifest_entries "${cl_check_manifest_file}" 2>/dev/null) || return 1
@@ -2473,12 +2474,52 @@ cmd_list() {
 			# Use a for loop instead of while to avoid subshell issues
 			for cl_check_entry in ${cl_check_entries}; do
 				if [ -n "${cl_check_entry}" ] && echo "${cl_check_entry}" | grep -q "^${RULESETS_PATH}/"; then
-					# Check if this ruleset contains the item
+					# Check if this ruleset contains the item (search recursively)
 					cl_check_ruleset_dir="${REPO_DIR}/${cl_check_entry}"
-					# TODO: Items in subdirs get installed but not reported as installed.
-					if [ -d "${cl_check_ruleset_dir}" ] && [ -f "${cl_check_ruleset_dir}/${cl_check_item_basename}" ]; then
-						return 0  # Found in ruleset
+					if [ ! -d "${cl_check_ruleset_dir}" ]; then
+						continue
 					fi
+					
+					# Search recursively for .mdc files matching the basename
+					# Use temporary file to avoid subshell exit code issues (per POSIX style guide)
+					cl_check_temp_file=$(mktemp)
+					find "${cl_check_ruleset_dir}" -name "${cl_check_item_basename}" \( -type f -o -type l \) > "${cl_check_temp_file}" 2>/dev/null
+					
+					# Check each match
+					while IFS= read -r cl_check_match; do
+						if [ -z "${cl_check_match}" ]; then
+							continue
+						fi
+						
+						# If it's a symlink, check if it points to the rule file
+						if [ -L "${cl_check_match}" ]; then
+							# Resolve symlink to absolute path and check if it points to the rule file
+							# Use readlink -f to resolve relative symlinks to absolute paths
+							cl_check_target=$(readlink -f "${cl_check_match}" 2>/dev/null)
+							if [ -z "${cl_check_target}" ]; then
+								# Fallback if readlink -f not available (shouldn't happen on modern systems)
+								cl_check_target=$(readlink "${cl_check_match}" 2>/dev/null)
+								# If relative, resolve relative to symlink's directory
+								if [ -n "${cl_check_target}" ] && [ "${cl_check_target#/}" = "${cl_check_target}" ]; then
+									cl_check_symlink_dir=$(dirname "${cl_check_match}")
+									cl_check_target=$(cd "${cl_check_symlink_dir}" && readlink -f "${cl_check_target}" 2>/dev/null || echo "${cl_check_symlink_dir}/${cl_check_target}")
+								fi
+							fi
+							# Compare resolved absolute paths
+							if [ -n "${cl_check_target}" ] && [ "${cl_check_target}" = "${cl_check_item_path}" ]; then
+								rm -f "${cl_check_temp_file}"
+								return 0  # Found in ruleset (symlink points to rule)
+							fi
+						else
+							# Regular file in ruleset - this is a file rule, not a symlink to a rule
+							# File rules in rulesets are different from rules in the rules directory
+							# Only symlinks to rules should be considered as "installed" rules
+							# So we skip regular files (they're file rules, not the rule itself)
+							continue
+						fi
+					done < "${cl_check_temp_file}"
+					
+					rm -f "${cl_check_temp_file}"
 				fi
 			done
 			return 1  # Not found in any ruleset
@@ -2557,142 +2598,67 @@ cmd_list() {
 					;;
 			esac
 			
-			# Use tree to display ruleset contents (show directories and expand commands/)
-			# For symlinked rules in subdirectories, show them at root level (as they're deployed flat)
-			# For file rules, show them with preserved structure (as they're deployed)
+			# Display ruleset contents (simplified: top-level only, commands/ special)
+			# List display rules:
+			# - All top-level .mdc files are shown
+			# - All top-level subdirs are shown (but NO contents)
+			# - "commands" subdir gets special treatment (one level shown)
 			if [ -d "${cl_ruleset}" ]; then
-				# Pre-process: Find subdirectories that only contain symlinked .mdc files
-				# These should be hidden and their symlinks shown at root level
-				cl_symlinks_at_root=""
-				cl_dirs_to_hide=""
-				for cl_subdir in "${cl_ruleset}"/*/; do
-					if [ ! -d "${cl_subdir}" ] || [ "$(basename "${cl_subdir}")" = "commands" ]; then
+				# Get top-level items: .mdc files and directories
+				cl_items=$(find "${cl_ruleset}" -maxdepth 1 \( -name "*.mdc" -type f \) -o \( -name "*.mdc" -type l \) -o \( -type d ! -name "." ! -path "${cl_ruleset}" \) | sort)
+				cl_item_count=$(echo "${cl_items}" | grep -c . || echo "0")
+				cl_current=0
+				cl_temp_items=$(mktemp)
+				echo "${cl_items}" > "${cl_temp_items}"
+				while IFS= read -r cl_item; do
+					if [ -z "${cl_item}" ]; then
 						continue
 					fi
-					cl_subdir_name=$(basename "${cl_subdir}")
-					# Check if this subdirectory only contains symlinked .mdc files
-					cl_dir_symlinks=$(find "${cl_subdir}" -maxdepth 1 -name "*.mdc" -type l 2>/dev/null)
-					cl_dir_files=$(find "${cl_subdir}" -maxdepth 1 -name "*.mdc" -type f 2>/dev/null)
-					cl_dir_other=$(find "${cl_subdir}" -mindepth 1 -maxdepth 1 ! -name "*.mdc" 2>/dev/null)
-					if [ -n "${cl_dir_symlinks}" ] && [ -z "${cl_dir_files}" ] && [ -z "${cl_dir_other}" ]; then
-						# Directory only contains symlinks - collect them and hide directory
-						cl_dirs_to_hide="${cl_dirs_to_hide} ${cl_subdir_name}"
-						for cl_symlink_file in ${cl_dir_symlinks}; do
-							cl_symlink_basename=$(basename "${cl_symlink_file}")
-							cl_symlinks_at_root="${cl_symlinks_at_root} ${cl_symlink_basename}"
-						done
+					cl_current=$(expr ${cl_current} + 1)
+					cl_basename=$(basename "${cl_item}")
+					
+					# Determine tree character based on position
+					if [ "${cl_current}" -eq "${cl_item_count}" ]; then
+						cl_tree_char="└──"
+					else
+						cl_tree_char="├──"
 					fi
-				done
-				
-				# Check if tree command exists
-				if command -v tree >/dev/null 2>&1; then
-					# Build ignore pattern: exclude non-.mdc files/links but keep directories and .mdc files
-					# Pattern: prune commands/ directory (expanded separately with -L 2), exclude non-.mdc files
-					cl_ignore_pattern=$(cd "${cl_ruleset}" && find . -name 'commands' -type d -prune -o \( -type f -o -type l \) ! -name '*.mdc' -printf '%f|' | head -c -1)
-					# Get tree output
-					cl_tree_output=$(cd "${cl_ruleset}" && tree -L 2 --noreport -I "${cl_ignore_pattern}" 2>/dev/null)
 					
-					# Filter out symlink-only directories from tree output
-					# Process line by line to track when we're inside a hidden directory
-					cl_temp_tree=$(mktemp)
-					echo "${cl_tree_output}" | tail -n +2 > "${cl_temp_tree}"
-					
-					cl_filtered_output=""
-					cl_in_hidden_dir=false
-					cl_hidden_dir_indent=""
-					while IFS= read -r cl_line; do
-						if [ -z "${cl_line}" ]; then
-							continue
-						fi
-						# Check if this line starts a hidden directory
-						cl_line_clean=$(echo "${cl_line}" | sed 's/^[│├└ ]*//' | sed 's/ -> .*$//')
-						cl_is_hidden_dir=false
-						for cl_hide_dir in ${cl_dirs_to_hide}; do
-							if [ "${cl_line_clean}" = "${cl_hide_dir}" ]; then
-								cl_is_hidden_dir=true
-								# Extract full indentation (tree chars + spaces) for directory line
-								cl_hidden_dir_indent=$(echo "${cl_line}" | sed 's/[^│├└ ].*$//')
-								break
-							fi
-						done
+					# Check if this is the commands/ directory (special treatment)
+					if [ "${cl_basename}" = "commands" ] && [ -d "${cl_item}" ]; then
+						# Show commands/ directory
+						printf "    %s %s\n" "${cl_tree_char}" "${cl_basename}"
 						
-						if [ "${cl_is_hidden_dir}" = "true" ]; then
-							# Skip this directory line and mark that we're inside it
-							cl_in_hidden_dir=true
-							continue
-						fi
-						
-						# Check if we're still inside a hidden directory
-						# In tree output, child lines of a directory start with spaces
-						# Directory line: "└── dirname" or "├── dirname"  
-						# Child lines: "    └── filename" (4 spaces + tree char)
-						if [ "${cl_in_hidden_dir}" = "true" ]; then
-							# Check if line starts with 4+ spaces (indicates it's a child line)
-							# Pattern: starts with tree chars, then 4+ spaces
-							if echo "${cl_line}" | grep -qE '^[│├└ ]{0,3}    '; then
-								# This is a child line - skip it
+						# Show one level of commands/ contents (files and subdirs, but not subdir contents)
+						cl_cmd_items=$(find "${cl_item}" -maxdepth 1 \( -type f -o -type l -o -type d \) ! -path "${cl_item}" | sort)
+						cl_cmd_count=$(echo "${cl_cmd_items}" | grep -c . || echo "0")
+						cl_cmd_current=0
+						cl_temp_cmd_items=$(mktemp)
+						echo "${cl_cmd_items}" > "${cl_temp_cmd_items}"
+						while IFS= read -r cl_cmd_item; do
+							if [ -z "${cl_cmd_item}" ]; then
 								continue
 							fi
-							# Not a child line - we've exited the hidden directory
-							cl_in_hidden_dir=false
-							cl_hidden_dir_indent=""
-						fi
-						
-						# Include this line in output
-						if [ -z "${cl_filtered_output}" ]; then
-							cl_filtered_output="${cl_line}"
-						else
-							cl_filtered_output="${cl_filtered_output}
-${cl_line}"
-						fi
-					done < "${cl_temp_tree}"
-					
-					rm -f "${cl_temp_tree}"
-					
-					# Output filtered tree
-					echo "${cl_filtered_output}" | sed 's/^/    /' | sed 's/ -> .*$//'
-					
-					# Add symlinks at root level if any were moved from subdirectories
-					if [ -n "${cl_symlinks_at_root}" ]; then
-						for cl_symlink in ${cl_symlinks_at_root}; do
-							printf "    ├── %s\n" "${cl_symlink}"
-						done
-					fi
-				else
-					# Fallback if tree is not available
-					# Show .mdc files and directories, with special handling for commands/
-					cl_items=$(find "${cl_ruleset}" -maxdepth 1 \( -name "*.mdc" -type f \) -o \( -name "*.mdc" -type l \) -o \( -type d ! -name "." ! -path "${cl_ruleset}" \) | sort)
-					cl_item_count=$(echo "${cl_items}" | grep -c . || echo "0")
-					cl_current=0
-					echo "${cl_items}" | while IFS= read -r cl_item; do
-						if [ -n "${cl_item}" ]; then
-							cl_current=$(expr ${cl_current} + 1)
-							cl_basename=$(basename "${cl_item}")
-							if [ "${cl_current}" -eq "${cl_item_count}" ]; then
-								printf "    └── %s\n" "${cl_basename}"
+							cl_cmd_current=$(expr ${cl_cmd_current} + 1)
+							cl_cmd_basename=$(basename "${cl_cmd_item}")
+							
+							# Determine tree character for command item
+							if [ "${cl_cmd_current}" -eq "${cl_cmd_count}" ]; then
+								cl_cmd_tree_char="└──"
 							else
-								printf "    ├── %s\n" "${cl_basename}"
+								cl_cmd_tree_char="├──"
 							fi
-							# If this is the commands/ directory, expand its contents
-							if [ "${cl_basename}" = "commands" ] && [ -d "${cl_item}" ]; then
-								cl_cmd_items=$(find "${cl_item}" -maxdepth 1 \( -type f -o -type l \) ! -path "${cl_item}" | sort)
-								cl_cmd_count=$(echo "${cl_cmd_items}" | grep -c . || echo "0")
-								cl_cmd_current=0
-								echo "${cl_cmd_items}" | while IFS= read -r cl_cmd_item; do
-									if [ -n "${cl_cmd_item}" ]; then
-										cl_cmd_current=$(expr ${cl_cmd_current} + 1)
-										cl_cmd_basename=$(basename "${cl_cmd_item}")
-										if [ "${cl_cmd_current}" -eq "${cl_cmd_count}" ]; then
-											printf "    │   └── %s\n" "${cl_cmd_basename}"
-										else
-											printf "    │   ├── %s\n" "${cl_cmd_basename}"
-										fi
-									fi
-								done
-							fi
-						fi
-					done
-				fi
+							
+							# Show command item (file, symlink, or subdir - but not subdir contents)
+							printf "    │   %s %s\n" "${cl_cmd_tree_char}" "${cl_cmd_basename}"
+						done < "${cl_temp_cmd_items}"
+						rm -f "${cl_temp_cmd_items}"
+					else
+						# Regular item: .mdc file or subdirectory (show name only, no contents)
+						printf "    %s %s\n" "${cl_tree_char}" "${cl_basename}"
+					fi
+				done < "${cl_temp_items}"
+				rm -f "${cl_temp_items}"
 			fi
 		done
 	fi

@@ -202,6 +202,80 @@ test_complex_ruleset_structure_preserved() {
 	test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/Core/core-rule.mdc" || fail "Structured rules should be removed"
 }
 
+# Test list display shows correct structure (top-level only, commands/ special)
+# Expected: List shows top-level .mdc files, top-level subdirs (no contents), commands/ one level
+test_list_display_shows_correct_structure() {
+	# Setup: Create ruleset matching the example from tasks.md
+	mkdir -p "$REPO_DIR/rulesets/test-list-display/commands/subs"
+	mkdir -p "$REPO_DIR/rulesets/test-list-display/Core"
+	echo "rootrule" > "$REPO_DIR/rulesets/test-list-display/rootrule.mdc"
+	echo "symlinked-rule" > "$REPO_DIR/rulesets/test-list-display/symlinked-rule.mdc"
+	echo "file rule" > "$REPO_DIR/rulesets/test-list-display/Core/core-rule.mdc"
+	echo "command" > "$REPO_DIR/rulesets/test-list-display/commands/top.md"
+	echo "nested" > "$REPO_DIR/rulesets/test-list-display/commands/subs/nested.md"
+	
+	# Commit and initialize
+	cd "$REPO_DIR" && git add . && git commit --no-gpg-sign -m "test" >/dev/null 2>&1
+	cd "$TEST_DIR/app" && cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
+	
+	# Action: Add ruleset and list
+	cmd_add_ruleset "test-list-display" --commit
+	assertTrue "Should add ruleset successfully" $?
+	
+	output=$(cmd_list)
+	
+	# Expected: Top-level .mdc files are shown
+	echo "$output" | grep -A 15 "test-list-display" | grep -q "rootrule.mdc" || fail "rootrule.mdc should appear in list (top-level)"
+	echo "$output" | grep -A 15 "test-list-display" | grep -q "symlinked-rule.mdc" || fail "symlinked-rule.mdc should appear in list (top-level)"
+	
+	# Expected: Top-level subdirs are shown (but NO contents)
+	echo "$output" | grep -A 15 "test-list-display" | grep -q "Core" || fail "Core/ directory should appear in list"
+	# Core/ subdir contents should NOT appear
+	if echo "$output" | grep -A 20 "test-list-display" | grep -A 5 "Core" | grep -q "core-rule.mdc"; then
+		fail "core-rule.mdc should NOT appear under Core/ in list (subdir contents are not shown)"
+	fi
+	
+	# Expected: commands/ subdir gets special treatment (one level shown)
+	echo "$output" | grep -A 15 "test-list-display" | grep -q "commands" || fail "commands/ directory should appear in list"
+	# Top-level files in commands/ should appear
+	echo "$output" | grep -A 20 "test-list-display" | grep -A 10 "commands" | grep -q "top.md" || fail "top.md should appear in commands/ expansion"
+	# Subdirs in commands/ should appear
+	echo "$output" | grep -A 20 "test-list-display" | grep -A 10 "commands" | grep -q "subs" || fail "subs/ subdir should appear in commands/ expansion"
+	# But subdir contents in commands/ should NOT appear
+	if echo "$output" | grep -A 25 "test-list-display" | grep -A 15 "commands" | grep -A 5 "subs" | grep -q "nested.md"; then
+		fail "nested.md should NOT appear under commands/subs/ in list (subdir contents in commands/ are not shown)"
+	fi
+}
+
+# Test that rules in subdirectories of rulesets are detected as installed
+# Expected: Rule in subdirectory of installed ruleset should show as installed
+# Bug: check_rulesets_for_item() only checks top-level, not subdirectories
+test_rule_in_subdirectory_shows_as_installed() {
+	# Setup: Create ruleset with symlinked rule in subdirectory
+	mkdir -p "$REPO_DIR/rulesets/test-subdir-installed/supporting"
+	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-subdir-installed/supporting/rule1.mdc"
+	
+	# Commit and initialize
+	cd "$REPO_DIR" && git add . && git commit --no-gpg-sign -m "test" >/dev/null 2>&1
+	cd "$TEST_DIR/app" && cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
+	
+	# Action: Add ruleset (should succeed)
+	cmd_add_ruleset "test-subdir-installed" --commit
+	assertTrue "Should add ruleset successfully" $?
+	
+	# Verify rule was copied (symlink copied flat)
+	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rule1.mdc" || fail "rule1.mdc should be copied (flat)"
+	
+	# Expected: Rule should show as installed in list (even though it's in a subdirectory)
+	output=$(cmd_list)
+	# rule1.mdc should show as installed (committed glyph ●)
+	echo "$output" | grep -q "●.*rule1.mdc" || fail "rule1.mdc should show as installed (it's in installed ruleset, even in subdirectory)"
+	# Should NOT show as uninstalled
+	if echo "$output" | grep -q "○.*rule1.mdc"; then
+		fail "rule1.mdc should NOT show as uninstalled (it's in installed ruleset)"
+	fi
+}
+
 # Load shunit2
 # shellcheck disable=SC1091
 . "$(dirname "$0")/../../shunit2"

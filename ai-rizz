@@ -2434,6 +2434,7 @@ cmd_list() {
 				if [ -n "${cl_check_entry}" ] && echo "${cl_check_entry}" | grep -q "^${RULESETS_PATH}/"; then
 					# Check if this ruleset contains the item
 					cl_check_ruleset_dir="${REPO_DIR}/${cl_check_entry}"
+					# TODO: Items in subdirs get installed but not reported as installed.
 					if [ -d "${cl_check_ruleset_dir}" ] && [ -f "${cl_check_ruleset_dir}/${cl_check_item_basename}" ]; then
 						return 0  # Found in ruleset
 					fi

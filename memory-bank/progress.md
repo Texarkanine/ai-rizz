@@ -1,10 +1,10 @@
 # Memory Bank: Progress
 
 ## Implementation Status
-BUILD Mode - All Phases Complete ✓
+REFLECT Mode - Reflection Complete ✓
 
 ## Current Phase
-BUILD Mode - All Bug Fixes and List Display Fix Complete
+REFLECT Mode - Task Reflection Documented
 
 ## Task: Fix 2 Bugs in Ruleset Handling
 
@@ -83,8 +83,20 @@ BUILD Mode - All Bug Fixes and List Display Fix Complete
 1. ✓ **Bug 1**: Commands now removed when ruleset is removed
 2. ✓ **Bug 2**: File rules in subdirectories now preserve directory structure
 3. ✓ **Bug 3**: List display simplified to show top-level only (commands/ special)
-4. ✓ Symlinked rules correctly copied flat (preserved existing behavior)
-5. ✓ Large rule trees (55+ rules) now work correctly with preserved structure
+4. ✓ **Bug 4**: Rules in subdirectories of rulesets now correctly detected as installed (symlink resolution)
+5. ✓ Symlinked rules correctly copied flat (preserved existing behavior)
+6. ✓ Large rule trees (55+ rules) now work correctly with preserved structure
+
+### Additional Bug Fix (Post-Implementation)
+**Bug 4: Rules in subdirectories not detected as installed**
+- **Issue**: Rules in subdirectories of installed rulesets (especially symlinks) showed as uninstalled (`○`) in list output
+- **Root Cause**: `check_rulesets_for_item()` only checked top-level of ruleset directories, not subdirectories, and didn't properly handle symlinks
+- **Fix**: Updated `check_rulesets_for_item()` to:
+  - Search recursively through ruleset directories
+  - Resolve symlinks and check if they point to the rule file
+  - Handle both absolute and relative symlinks correctly
+- **Test**: Added `test_rule_in_subdirectory_shows_as_installed()` (TDD approach)
+- **Status**: ✓ Complete - All tests pass (14/15, one pre-existing failure)
 
 ## Code Changes Summary
 - `remove_ruleset_commands()`: New function to remove commands when ruleset removed
@@ -92,6 +104,7 @@ BUILD Mode - All Bug Fixes and List Display Fix Complete
 - `copy_entry_to_target()`: Updated to detect symlink vs file and preserve structure for files
 - `sync_manifest_to_directory()`: Updated to clear nested `.mdc` files recursively
 - `cmd_list()`: Simplified to show top-level items only (except commands/ special treatment)
-- `test_ruleset_removal_and_structure.test.sh`: New test suite with 6 test cases
+- `check_rulesets_for_item()`: Updated to search recursively and handle symlinks correctly
+- `test_ruleset_removal_and_structure.test.sh`: New test suite with 7 test cases (added subdirectory detection test)
 - `test_ruleset_bug_fixes.test.sh`: Updated to match new list display behavior
 

@@ -132,14 +132,14 @@ Fix 2 bugs in ruleset handling:
    }
    ```
 
-3. **Test 3: Multiple rulesets with same command paths**
+3. **Test 3: Commands removed even if multiple rulesets have same path (error condition)**
    ```bash
-   test_multiple_rulesets_same_command_paths() {
-       # Setup: Create two rulesets with same command path
+   test_commands_removed_even_with_conflicts() {
+       # Setup: Create two rulesets with same command path (error condition, but we handle it)
        mkdir -p "$REPO_DIR/rulesets/test-cmd1/commands"
        mkdir -p "$REPO_DIR/rulesets/test-cmd2/commands"
-       echo "cmd1" > "$REPO_DIR/rulesets/test-cmd1/commands/shared.md"
-       echo "cmd2" > "$REPO_DIR/rulesets/test-cmd2/commands/shared.md"
+       echo "cmd1 content" > "$REPO_DIR/rulesets/test-cmd1/commands/shared.md"
+       echo "cmd2 content" > "$REPO_DIR/rulesets/test-cmd2/commands/shared.md"
        ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-cmd1/rule1.mdc"
        ln -sf "$REPO_DIR/rules/rule2.mdc" "$REPO_DIR/rulesets/test-cmd2/rule2.mdc"
        
@@ -147,25 +147,28 @@ Fix 2 bugs in ruleset handling:
        cd "$REPO_DIR" && git add . && git commit --no-gpg-sign -m "test" >/dev/null 2>&1
        cd "$TEST_DIR/app" && cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
        
-       # Action: Add both rulesets
+       # Action: Add both rulesets (last one wins for the file)
        cmd_add_ruleset "test-cmd1" --commit
        cmd_add_ruleset "test-cmd2" --commit
        
-       # Verify both commands exist (last one wins, or both should exist if we track separately)
+       # Verify command exists (last one wins)
        test -f "commands/shared.md" || fail "shared.md should exist"
+       assertEquals "Content should be from last ruleset" "cmd2 content" "$(cat commands/shared.md)"
        
        # Remove first ruleset
        cmd_remove_ruleset "test-cmd1"
        
-       # Expected: Command should still exist (belongs to test-cmd2)
-       test -f "commands/shared.md" || fail "shared.md should still exist (belongs to test-cmd2)"
+       # Expected: Command removed (belongs to ruleset being removed, even though another ruleset has same path)
+       # Note: This is an error condition - rulesets shouldn't have overlapping command paths
+       # But we handle it by removing the command when its ruleset is removed
+       test ! -f "commands/shared.md" || fail "shared.md should be removed (belongs to test-cmd1)"
        
        # Remove second ruleset
        cmd_remove_ruleset "test-cmd2"
        
-       # Expected: Command should now be removed
-       test ! -f "commands/shared.md" || fail "shared.md should be removed when last ruleset removed"
-       # CURRENTLY FAILS: Commands not removed, or removed incorrectly
+       # Expected: Command should still be removed (was already removed)
+       test ! -f "commands/shared.md" || fail "shared.md should be removed"
+       # CURRENTLY FAILS: Commands not removed
    }
    ```
 
@@ -252,41 +255,32 @@ Fix 2 bugs in ruleset handling:
 - Call it in `cmd_remove_ruleset()` before `sync_all_modes()`
 - Function should:
   - Check if ruleset has `commands/` subdirectory
-  - If in commit mode, get all command paths for this ruleset
-  - For each command path, check if any other ruleset in manifest has the same command
-  - If no other ruleset has it, remove the command
-  - Handle nested commands (e.g., `commands/subs/eat.md`)
-  - Preserve directory structure when removing (remove files, then empty directories)
+  - If in commit mode, get all command paths from the ruleset's `commands/` directory
+  - For each command path, remove it from `.cursor/commands/` (preserving nested structure)
+  - Handle nested commands (e.g., `commands/subs/eat.md` → remove `.cursor/commands/subs/eat.md`)
+  - Clean up empty directories after removing files
+  - Note: No need to check other rulesets - if command is in ruleset being removed, delete it
 
-**Challenge**: How to identify which commands belong to a specific ruleset?
-- **Solution**: Commands are copied preserving relative path from `commands/` directory
+**Approach**: 
+- Commands are copied preserving relative path from `commands/` directory
 - For ruleset `rulesets/temp-test`, commands are in `rulesets/temp-test/commands/`
-- We can track by matching the source structure, OR
-- Simpler: When removing, check if command file exists in source ruleset's commands directory
-- Actually simpler: Just remove all files/directories that match the ruleset's commands structure
+- When copying: `commands/subs/eat.md` → `.cursor/commands/subs/eat.md`
+- When removing: Get all command paths from the ruleset's `commands/` directory and remove them
 
-**Better Solution**: 
-- When copying commands, we preserve structure: `commands/subs/eat.md` → `.cursor/commands/subs/eat.md`
-- When removing, we need to remove files that match the source structure
-- But multiple rulesets could have same command paths...
-- **Best approach**: Track which commands came from which ruleset by storing a mapping, OR
-- **Simpler**: During removal, check source ruleset's commands directory and remove matching paths
-- If two rulesets have `commands/subs/eat.md`, removing one would remove it for both (problem!)
+**Note on Multiple Rulesets with Same Command Paths**:
+- This is an ERROR condition caused by not preserving ruleset-level directory structure in `.cursor/commands/`
+- **Current behavior**: If two rulesets have `commands/shared.md`, the last one added overwrites the first
+- **Future enhancement**: Add pre-flight check in `copy_ruleset_commands()` to warn/error when installing a ruleset that would conflict with existing commands
+- **For now**: Document that ruleset repos should not have overlapping command paths (out-of-band guidance)
+- **Removal decision**: If a command is in a ruleset being removed, delete that file (no need to check other rulesets)
+  - This is safe because: (1) it's an error condition anyway, (2) the command belongs to the ruleset being removed
 
-**Revised Approach**: 
-- Need to track which commands belong to which ruleset
-- Could use a manifest entry for commands, OR
-- Store mapping in a separate file, OR
-- **Simplest**: When removing ruleset, only remove commands if no other ruleset has the same command path
-- Check all remaining rulesets to see if they have the same command path
-
-**Final Decision**: 
+**Implementation**: 
 - Create helper `get_ruleset_commands_paths()` that returns all command paths for a ruleset
 - Create helper `remove_ruleset_commands()` that:
-  1. Gets all command paths for the ruleset being removed
-  2. For each command path, check if any other ruleset in the manifest has the same command
-  3. If no other ruleset has it, remove the command
-  4. If another ruleset has it, keep it (it belongs to another ruleset)
+  1. Gets all command paths for the ruleset being removed (from source ruleset's `commands/` directory)
+  2. For each command path, remove it from `.cursor/commands/` (preserving nested structure)
+  3. Clean up empty directories after removing files
 
 ### Phase 2: Fix Bug 2 - Preserve Directory Structure for Rules
 **Location**: `copy_entry_to_target()` function (line ~3338)
@@ -386,7 +380,7 @@ Fix 2 bugs in ruleset handling:
 - [ ] Commands are removed from `.cursor/commands/` when their ruleset is removed
 - [ ] Rules in subdirectories preserve directory structure (e.g., `supporting/cursor-conversation-transcript.mdc` → `.cursor/rules/shared/supporting/cursor-conversation-transcript.mdc`)
 - [ ] Rules from subdirectories appear correctly in list output
-- [ ] Multiple rulesets with same command paths handled correctly (only remove if no other ruleset has it)
+- [ ] Commands removed when ruleset removed (even if multiple rulesets have same path - error condition)
 - [ ] Existing behavior preserved (no regressions)
 - [ ] All tests pass
 
@@ -403,11 +397,11 @@ Fix 2 bugs in ruleset handling:
    - Add ruleset, verify rules in correct subdirectory structure
    - Verify rules appear in list correctly
    
-3. **Multiple rulesets with same command paths**:
-   - Create two rulesets with same command path
-   - Add both, verify both commands exist
-   - Remove one, verify command still exists (belongs to other ruleset)
-   - Remove other, verify command removed
+3. **Commands removed even with conflicting paths** (error condition):
+   - Create two rulesets with same command path (error condition)
+   - Add both, verify last one wins
+   - Remove first, verify command removed (belongs to removed ruleset)
+   - Note: This tests error condition handling - rulesets shouldn't have overlapping paths
 
 4. **Complex ruleset with commands and subdirectory rules**:
    - Create ruleset with both commands and rules in subdirectories

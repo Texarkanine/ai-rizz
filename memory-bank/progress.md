@@ -109,9 +109,39 @@ ARCHIVE Mode - Task Documentation Complete
 - `test_ruleset_bug_fixes.test.sh`: Updated to match new list display behavior
 
 ## Archive Reference
-- **Archive Document**: `memory-bank/archive/20251213archive-ruleset-bug-fixes.md`
+- **Archive Document**: `memory-bank/archive/bug-fixes/20251213-ruleset-bug-fixes.md`
 - **Task Status**: COMPLETE ✓
-- **Archived Date**: 2024
+- **Archived Date**: 2025-12-13
+
+---
+
+## Task: Archive Location Standardization
+
+### Implementation Status
+ARCHIVE Mode - Task Archived ✓
+
+### Current Phase
+ARCHIVE Mode - Task Documentation Complete
+
+### Implementation Summary
+**Status**: Complete
+**Implementation**:
+- Standardized archive location format to `memory-bank/archive/<kind>/<YYYYMMDD>-<task-id>.md`
+- Updated 8+ documentation files with consistent format
+- Defined archive kind categories (bug-fixes, enhancements, features, systems, documentation)
+- Updated file verification to create correct directory structure
+- Moved existing archives to correct locations
+
+**Key Features**:
+- Date-first naming for natural sorting
+- Kind-based organization (5 categories)
+- Consistent format across all documentation
+- Proper directory structure creation
+
+### Archive Reference
+- **Archive Document**: `memory-bank/archive/documentation/20251213-archive-location-standardization.md`
+- **Task Status**: COMPLETE ✓
+- **Archived Date**: 2025-12-13
 
 ---
 
@@ -139,7 +169,7 @@ ARCHIVE Mode - Task Documentation Complete
 - Consistent documentation across all complexity levels
 
 ### Archive Reference
-- **Archive Document**: `memory-bank/archive/20251213-archive-clear-docs.md`
+- **Archive Document**: `memory-bank/archive/documentation/20251213-archive-clear-docs.md`
 - **Task Status**: COMPLETE ✓
 - **Archived Date**: 2025-12-13
 

@@ -5,11 +5,25 @@
 
 ## Completed Tasks
 
+### Task: Archive Location Standardization
+**Task ID**: archive-location-standardization  
+**Complexity Level**: Level 2 (Simple Enhancement - Documentation)  
+**Status**: COMPLETE ✓  
+**Archive**: `memory-bank/archive/documentation/20251213-archive-location-standardization.md`
+
+**Summary**: Standardized archive document locations across all documentation to use the format `memory-bank/archive/<kind>/<YYYYMMDD>-<task-id>.md`. Resolved conflicting instructions across 8+ files, defined archive kind categories, and moved existing archives to correct locations.
+
+**Status**:
+- [x] Task definition (retroactive)
+- [x] Implementation: Documentation updates across 8+ files, archive relocation
+- [x] Reflection: Task reflection complete
+- [x] Archive: Task archived
+
 ### Task: Add `/archive clear` Command Documentation
 **Task ID**: archive-clear-docs  
 **Complexity Level**: Level 2 (Simple Enhancement - Documentation)  
 **Status**: COMPLETE ✓  
-**Archive**: `memory-bank/archive/20251213-archive-clear-docs.md`
+**Archive**: `memory-bank/archive/documentation/20251213-archive-clear-docs.md`
 
 **Summary**: Added comprehensive documentation for the `/archive clear` command across all relevant files. The command removes task-specific and local-machine files from the Memory Bank while preserving repository knowledge and past task archives. Integrated automatic git commit functionality to make the operation revertable.
 
@@ -23,7 +37,7 @@
 **Task ID**: ruleset-bug-fixes  
 **Complexity Level**: Level 2 (Simple Enhancement - Bug Fixes)  
 **Status**: COMPLETE ✓  
-**Archive**: `memory-bank/archive/archive-ruleset-bug-fixes.md`
+**Archive**: `memory-bank/archive/bug-fixes/20251213-ruleset-bug-fixes.md`
 
 **Summary**: Fixed 4 bugs in ruleset handling:
 1. Commands not removed when ruleset is removed

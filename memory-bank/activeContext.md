@@ -4,10 +4,10 @@
 Ready for next task - use `/van` command to start
 
 ## Status
-Previous task archived: **Add `/archive clear` Command Documentation**
-- **Task ID**: archive-clear-docs
+Previous task archived: **Archive Location Standardization**
+- **Task ID**: archive-location-standardization
 - **Status**: COMPLETE ✓
-- **Archive**: `memory-bank/archive/20251213-archive-clear-docs.md`
+- **Archive**: `memory-bank/archive/documentation/20251213-archive-location-standardization.md`
 
 ## Next Steps
 Use `/van` command to initialize the next task.

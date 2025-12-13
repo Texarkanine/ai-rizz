@@ -269,4 +269,110 @@ When archiving is complete, notify user with:
 
 → Memory Bank is ready for the next task
 → To start a new task, use VAN MODE
+```
+
+## 🧹 `/archive clear` - Memory Bank Cleanup Process
+
+The `/archive clear` command removes all task-specific and local-machine files, preserving only repository knowledge and past task archives.
+
+```mermaid
+graph TD
+    StartClear["START /archive clear"] --> VerifyArchived{"All Tasks<br>Archived?"}
+    
+    VerifyArchived -->|"No"| ErrorArchive["ERROR:<br>Archive all tasks first"]
+    VerifyArchived -->|"Yes"| CheckArchive["Verify archive/<br>directory exists"]
+    
+    CheckArchive --> ClearCreative["Clear<br>creative/ directory"]
+    ClearCreative --> ClearReflection["Clear<br>reflection/ directory"]
+    ClearReflection --> ClearTasks["Clear<br>tasks.md"]
+    ClearTasks --> ClearProgress["Clear<br>progress.md"]
+    ClearProgress --> ClearActive["Clear<br>activeContext.md"]
+    
+    ClearActive --> VerifyPreserve{"Verify Repository<br>Files Preserved?"}
+    VerifyPreserve -->|"No"| ErrorPreserve["ERROR:<br>Stop - Repository files missing"]
+    VerifyPreserve -->|"Yes"| VerifyArchive{"Verify Archive<br>Documents Preserved?"}
+    
+    VerifyArchive -->|"No"| ErrorArchiveDocs["ERROR:<br>Stop - Archive documents missing"]
+    VerifyArchive -->|"Yes"| VerifyStructure{"Memory Bank<br>Structure Intact?"}
+    
+    VerifyStructure -->|"No"| ErrorStructure["ERROR:<br>Fix Memory Bank structure"]
+    VerifyStructure -->|"Yes"| GitCommit["Git Commit<br>Changes (Revertable)"]
+    GitCommit --> CompleteClear["Memory Bank<br>Cleared Successfully"]
+    
+    style StartClear fill:#90a4ae,stroke:#607d8b
+    style CompleteClear fill:#b0bec5,stroke:#90a4ae
+    style GitCommit fill:#81c784,stroke:#4caf50,color:#fff
+    style ErrorArchive fill:#ef5350,stroke:#c62828,color:#fff
+    style ErrorPreserve fill:#ef5350,stroke:#c62828,color:#fff
+    style ErrorArchiveDocs fill:#ef5350,stroke:#c62828,color:#fff
+    style ErrorStructure fill:#ef5350,stroke:#c62828,color:#fff
+```
+
+## 📋 `/archive clear` - Files Cleared vs Preserved
+
+```mermaid
+graph TD
+    subgraph "Files CLEARED (Task-Specific)"
+        ClearCreative["creative/<br>directory"]
+        ClearReflection["reflection/<br>directory"]
+        ClearTasks["tasks.md"]
+        ClearProgress["progress.md"]
+        ClearActive["activeContext.md"]
+    end
+    
+    subgraph "Files PRESERVED (Repository-Specific)"
+        KeepProject["projectbrief.md"]
+        KeepProduct["productContext.md"]
+        KeepSystem["systemPatterns.md"]
+        KeepTech["techContext.md"]
+        KeepStyle["style-guide.md"]
+        KeepArchive["archive/<br>directory"]
+    end
+    
+    ClearCreative & ClearReflection & ClearTasks & ClearProgress & ClearActive --> Cleared["CLEARED"]
+    KeepProject & KeepProduct & KeepSystem & KeepTech & KeepStyle & KeepArchive --> Preserved["PRESERVED"]
+    
+    style Cleared fill:#ef5350,stroke:#c62828,color:#fff
+    style Preserved fill:#66bb6a,stroke:#388e3c,color:#fff
+```
+
+## 📋 `/archive clear` VERIFICATION CHECKLIST
+
+```
+✓ CLEAR VERIFICATION
+- All tasks archived before clearing? [YES/NO]
+- creative/ directory cleared? [YES/NO]
+- reflection/ directory cleared? [YES/NO]
+- tasks.md cleared (reset to initial state)? [YES/NO]
+- progress.md cleared (reset to initial state)? [YES/NO]
+- activeContext.md cleared (reset to initial state)? [YES/NO]
+- projectbrief.md preserved? [YES/NO]
+- productContext.md preserved? [YES/NO]
+- systemPatterns.md preserved? [YES/NO]
+- techContext.md preserved? [YES/NO]
+- style-guide.md preserved? [YES/NO]
+- archive/ directory preserved? [YES/NO]
+- Memory Bank structure intact? [YES/NO]
+
+→ If all YES: Memory Bank cleared successfully - Ready for fresh start
+→ If any NO: Review and fix before proceeding
+
+✓ GIT COMMIT VERIFICATION
+- Changes committed to git? [YES/NO]
+- Commit message descriptive? [YES/NO]
+- Changes revertable? [YES/NO]
+
+→ All changes are committed and revertable via git revert
+```
+
+## 🔄 `/archive clear` - Git Commit
+
+After clearing task-specific files, `/archive clear` automatically commits all changes to git, making the operation revertable:
+
+```
+✓ Git Commit
+- All cleared files staged
+- Changes committed with message: "chore: clear task-specific memory bank files"
+- Operation is revertable via: git revert HEAD
+- Repository knowledge and archives preserved
 ``` 

@@ -76,3 +76,13 @@ graph TD
   * **Traceability:** Easy navigation from the archive summary to detailed planning, design, and reflection documents.
   * **Maintainability Focus:** Information that would help a future developer understand, maintain, or build upon this specific feature.
   * **Not a Full System Archive:** Unlike Level 4, this is not about archiving the entire application state, but rather the lifecycle of one significant feature.
+
+## 🧹 `/archive clear` - Memory Bank Cleanup
+
+After completing archiving for all tasks, use `/archive clear` to remove task-specific files from the Memory Bank:
+
+- **Clears:** `creative/`, `reflection/`, `tasks.md`, `progress.md`, `activeContext.md`
+- **Preserves:** Repository knowledge files (`projectbrief.md`, `productContext.md`, `systemPatterns.md`, `techContext.md`, `style-guide.md`) and all archive documents
+- **Git Commit:** All changes are automatically committed, making the operation revertable via `git revert HEAD`
+
+This prepares the Memory Bank for fresh tasks while preserving repository knowledge and past task archives.

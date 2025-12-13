@@ -118,7 +118,74 @@ Load: .cursor/rules/isolation_rules/Level4/archive-comprehensive.mdc
 
 Type `/archive` to archive the completed task after reflection is done.
 
+## `/archive clear` - Clean Memory Bank
+
+The `/archive clear` command removes all local-machine and task-specific files from the memory bank, leaving only repository-specific information and past task archives.
+
+### What Gets Cleared
+
+**Directories:**
+- `memory-bank/creative/` - All creative phase documents (task-specific)
+- `memory-bank/reflection/` - All reflection documents (task-specific)
+
+**Files:**
+- `memory-bank/tasks.md` - Task tracking (ephemeral, task-specific)
+- `memory-bank/progress.md` - Implementation status (task-specific)
+- `memory-bank/activeContext.md` - Current focus (task-specific)
+
+### What Gets Preserved
+
+**Repository-Specific Files (Kept):**
+- `memory-bank/projectbrief.md` - Project foundation
+- `memory-bank/productContext.md` - Product context
+- `memory-bank/systemPatterns.md` - System patterns
+- `memory-bank/techContext.md` - Tech context
+- `memory-bank/style-guide.md` - Style guide
+- `memory-bank/archive/` - All archive documents (past tasks)
+
+### Workflow
+
+1. **Verify All Tasks Archived**
+   - Ensure all completed tasks have been archived
+   - Check that `memory-bank/archive/` contains all expected archive documents
+
+2. **Clear Task-Specific Files**
+   - Remove all files in `memory-bank/creative/` directory
+   - Remove all files in `memory-bank/reflection/` directory
+   - Clear content from `memory-bank/tasks.md` (reset to initial state)
+   - Clear content from `memory-bank/progress.md` (reset to initial state)
+   - Clear content from `memory-bank/activeContext.md` (reset to initial state)
+
+3. **Preserve Repository Knowledge**
+   - Keep all repository-specific context files
+   - Keep all archive documents
+   - Ensure Memory Bank structure remains intact
+
+4. **Git Commit**
+   - Stage all cleared files
+   - Commit changes with message: `chore: clear task-specific memory bank files`
+   - This makes the operation revertable via `git revert HEAD`
+
+5. **Verification**
+   - Verify only task-specific files were removed
+   - Verify repository-specific files remain
+   - Verify archive documents remain
+   - Verify Memory Bank structure is intact
+   - Verify git commit was successful
+
+### When to Use
+
+Use `/archive clear` when:
+- Preparing the repository for sharing or handoff
+- Starting fresh after completing multiple tasks
+- Removing local-machine specific information
+- Ensuring only repository knowledge remains in Memory Bank
+
+**Note:** All changes are automatically committed to git, making this operation revertable if needed.
+
 ## Next Steps
 
 After archiving complete, use `/van` command to start the next task.
+
+After clearing, the Memory Bank will be ready for new tasks with only repository-specific knowledge preserved.
 

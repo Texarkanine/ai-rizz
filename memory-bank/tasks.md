@@ -5,6 +5,20 @@
 
 ## Completed Tasks
 
+### Task: Add `/archive clear` Command Documentation
+**Task ID**: archive-clear-docs  
+**Complexity Level**: Level 2 (Simple Enhancement - Documentation)  
+**Status**: COMPLETE ✓  
+**Archive**: `memory-bank/archive/20251213-archive-clear-docs.md`
+
+**Summary**: Added comprehensive documentation for the `/archive clear` command across all relevant files. The command removes task-specific and local-machine files from the Memory Bank while preserving repository knowledge and past task archives. Integrated automatic git commit functionality to make the operation revertable.
+
+**Status**:
+- [x] Task definition (retroactive)
+- [x] Implementation: Documentation updates across 5 files
+- [x] Reflection: Task reflection complete
+- [x] Archive: Task archived
+
 ### Task: Fix 2 Bugs in Ruleset Handling
 **Task ID**: ruleset-bug-fixes  
 **Complexity Level**: Level 2 (Simple Enhancement - Bug Fixes)  

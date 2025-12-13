@@ -6,12 +6,19 @@ This command creates comprehensive archive documentation and updates the Memory 
 
 Reads from:
 - `memory-bank/tasks.md` - Complete task details and checklists
-- `memory-bank/reflection/reflection-[task_id].md` - Reflection document
+- `memory-bank/reflection/reflection-<task-id>.md` - Reflection document
 - `memory-bank/progress.md` - Implementation status
 - `memory-bank/creative/creative-*.md` - Creative phase documents (Level 3-4)
 
 Creates:
-- `memory-bank/archive/archive-[task_id].md` - Archive document
+- `memory-bank/archive/<kind>/<YYYYMMDD>-<task-id>.md` - Archive document
+
+**Archive Kind Categories:**
+- `bug-fixes/` - Bug fixes and quick fixes (Level 1-2)
+- `enhancements/` - Simple enhancements and improvements (Level 2)
+- `features/` - New features and functionality (Level 3)
+- `systems/` - Complex system changes and architecture (Level 4)
+- `documentation/` - Documentation updates and improvements
 
 Updates:
 - `memory-bank/tasks.md` - Mark task as COMPLETE
@@ -57,7 +64,7 @@ Load: .cursor/rules/isolation_rules/Level4/archive-comprehensive.mdc
 ## Workflow
 
 1. **Verify Reflection Complete**
-   - Check that `memory-bank/reflection/reflection-[task_id].md` exists
+   - Check that `memory-bank/reflection/reflection-<task-id>.md` exists
    - Verify reflection is complete
    - If not complete, return to `/reflect` command
 
@@ -108,7 +115,7 @@ Load: .cursor/rules/isolation_rules/Level4/archive-comprehensive.mdc
    ```
 
 4. **Update Memory Bank**
-   - Create `memory-bank/archive/archive-[task_id].md`
+   - Create `memory-bank/archive/<kind>/<YYYYMMDD>-<task-id>.md` (where `<kind>` is one of: bug-fixes, enhancements, features, systems, documentation)
    - Mark task as COMPLETE in `memory-bank/tasks.md`
    - Update `memory-bank/progress.md` with archive reference
    - Reset `memory-bank/activeContext.md` for next task

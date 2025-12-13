@@ -64,16 +64,24 @@ YYYY-MM-DD
 
 ## 📋 ARCHIVE LOCATION
 
-Store archives in an organized structure:
+**CRITICAL:** Store archives in `memory-bank/archive/<kind>/<YYYYMMDD>-<task-id>.md` format.
+
+For Level 2 enhancements, use the `enhancements/` kind:
 
 ```
-docs/
+memory-bank/
 └── archive/
     └── enhancements/
-        └── YYYY-MM/
-            ├── feature-name-1.md
-            └── feature-name-2.md
+        ├── YYYYMMDD-task-id-1.md
+        └── YYYYMMDD-task-id-2.md
 ```
+
+**Archive Kind Categories:**
+- `bug-fixes/` - Bug fixes and quick fixes (Level 1-2)
+- `enhancements/` - Simple enhancements and improvements (Level 2)
+- `features/` - New features and functionality (Level 3)
+- `systems/` - Complex system changes and architecture (Level 4)
+- `documentation/` - Documentation updates and improvements
 
 ## 📋 ARCHIVING PROCESS
 
@@ -106,19 +114,19 @@ When creating cross-references:
 1. **In tasks.md**:
    ```markdown
    ## Completed Enhancements
-   - [X] [Feature Name] (YYYY-MM-DD) - [Archive Link](../docs/archive/enhancements/YYYY-MM/feature-name.md)
+   - [X] [Feature Name] (YYYY-MM-DD) - [Archive Link](../memory-bank/archive/enhancements/YYYYMMDD-task-id.md)
    ```
 
 2. **In progress.md**:
    ```markdown
    ## Completed Milestones
-   - [Feature Name] enhancement completed on YYYY-MM-DD. See [archive entry](../docs/archive/enhancements/YYYY-MM/feature-name.md).
+   - [Feature Name] enhancement completed on YYYY-MM-DD. See [archive entry](../memory-bank/archive/enhancements/YYYYMMDD-task-id.md).
    ```
 
 3. **In activeContext.md**:
    ```markdown
    ## Recently Completed
-   - [Feature Name] enhancement is now complete. Archive: [link](../docs/archive/enhancements/YYYY-MM/feature-name.md)
+   - [Feature Name] enhancement is now complete. Archive: [link](../memory-bank/archive/enhancements/YYYYMMDD-task-id.md)
    
    ## Current Focus
    - Moving to [Next Task Name]

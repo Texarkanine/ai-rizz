@@ -113,3 +113,33 @@ ARCHIVE Mode - Task Documentation Complete
 - **Task Status**: COMPLETE ✓
 - **Archived Date**: 2024
 
+---
+
+## Task: Add `/archive clear` Command Documentation
+
+### Implementation Status
+ARCHIVE Mode - Task Archived ✓
+
+### Current Phase
+ARCHIVE Mode - Task Documentation Complete
+
+### Implementation Summary
+**Status**: Complete
+**Implementation**:
+- Updated `.cursor/commands/archive.md` with `/archive clear` command section
+- Updated `.cursor/rules/isolation_rules/visual-maps/archive-mode-map.mdc` with workflow diagrams
+- Updated Level 2, 3, and 4 archive rules files with consistent documentation
+- Added automatic git commit integration to make operation revertable
+- Removed warning section (replaced with git commit)
+
+**Key Features**:
+- Clear file classification (what gets cleared vs preserved)
+- Complete workflow documentation with verification checklists
+- Git commit integration for reversibility
+- Consistent documentation across all complexity levels
+
+### Archive Reference
+- **Archive Document**: `memory-bank/archive/20251213-archive-clear-docs.md`
+- **Task Status**: COMPLETE ✓
+- **Archived Date**: 2025-12-13
+

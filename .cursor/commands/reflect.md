@@ -10,7 +10,7 @@ Reads from:
 - `memory-bank/creative/creative-*.md` - Design decisions (Level 3-4)
 
 Creates:
-- `memory-bank/reflection/reflection-[task_id].md` - Reflection document
+- `memory-bank/reflection/reflection-<task-id>.md` - Reflection document
 
 Updates:
 - `memory-bank/tasks.md` - Reflection status
@@ -84,7 +84,7 @@ Load: .cursor/rules/isolation_rules/Level4/reflection-comprehensive.mdc
    - Document technical improvements
 
 4. **Create Reflection Document**
-   - Create `memory-bank/reflection/reflection-[task_id].md`
+   - Create `memory-bank/reflection/reflection-<task-id>.md`
    - Structure: Summary, What Went Well, Challenges, Lessons Learned, Process Improvements, Technical Improvements, Next Steps
 
 5. **Update Memory Bank**

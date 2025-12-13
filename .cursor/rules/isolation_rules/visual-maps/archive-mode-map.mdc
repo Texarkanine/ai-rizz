@@ -50,7 +50,7 @@ graph TD
     L34System --> L34Complete["Mark Task<br>Complete"]
     
     %% Completion
-    L1Complete & L2Complete & L34Complete --> CreateArchive["Create Archive<br>Document in<br>docs/archive/"]
+    L1Complete & L2Complete & L34Complete --> CreateArchive["Create Archive<br>Document in<br>memory-bank/archive/<kind>/"]
     CreateArchive --> UpdateActive["Update<br>activeContext.md"]
     UpdateActive --> Reset["Reset for<br>Next Task"]
 ```
@@ -200,24 +200,50 @@ graph TD
 
 Archive documents should be organized following this pattern:
 
+**CRITICAL:** All archive documents must be created in `memory-bank/archive/<kind>/<YYYYMMDD>-<task-id>.md` format.
+
 ```mermaid
 graph TD
     subgraph "Archive Structure"
-        Root["docs/archive/"]
-        Tasks["tasks/"]
+        Root["memory-bank/archive/"]
+        BugFixes["bug-fixes/"]
+        Enhancements["enhancements/"]
         Features["features/"]
         Systems["systems/"]
+        Documentation["documentation/"]
         
-        Root --> Tasks
+        Root --> BugFixes
+        Root --> Enhancements
         Root --> Features
         Root --> Systems
+        Root --> Documentation
         
-        Tasks --> Bug["bug-fix-name-YYYYMMDD.md"]
-        Tasks --> Enhancement["enhancement-name-YYYYMMDD.md"]
-        Features --> Feature["feature-name-YYYYMMDD.md"]
-        Systems --> System["system-name-YYYYMMDD.md"]
+        BugFixes --> Bug["YYYYMMDD-task-id.md"]
+        Enhancements --> Enhancement["YYYYMMDD-task-id.md"]
+        Features --> Feature["YYYYMMDD-task-id.md"]
+        Systems --> System["YYYYMMDD-task-id.md"]
+        Documentation --> Doc["YYYYMMDD-task-id.md"]
     end
 ```
+
+### Archive Kind Categories
+
+- **bug-fixes/**: Bug fixes and quick fixes (Level 1-2)
+- **enhancements/**: Simple enhancements and improvements (Level 2)
+- **features/**: New features and functionality (Level 3)
+- **systems/**: Complex system changes and architecture (Level 4)
+- **documentation/**: Documentation updates and improvements
+
+### Naming Format
+
+Format: `memory-bank/archive/<kind>/<YYYYMMDD>-<task-id>.md`
+
+Examples:
+- `memory-bank/archive/bug-fixes/20251213-ruleset-bug-fixes.md`
+- `memory-bank/archive/enhancements/20251213-archive-clear-docs.md`
+- `memory-bank/archive/features/20251215-user-authentication.md`
+- `memory-bank/archive/systems/20251220-api-redesign.md`
+- `memory-bank/archive/documentation/20251213-archive-clear-docs.md`
 
 ## 📊 TASKS.MD FINAL UPDATE
 
@@ -262,7 +288,7 @@ When archiving is complete, notify user with:
 ```
 ## TASK ARCHIVED
 
-✅ Archive document created in docs/archive/
+✅ Archive document created in memory-bank/archive/<kind>/
 ✅ All task documentation preserved
 ✅ Memory Bank updated with references
 ✅ Task marked as COMPLETED

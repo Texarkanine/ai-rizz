@@ -2561,10 +2561,10 @@ cmd_list() {
 			if [ -d "${cl_ruleset}" ]; then
 				# Check if tree command exists
 				if command -v tree >/dev/null 2>&1; then
-					# Build ignore pattern: exclude all files/links but keep directories
-					# Pattern excludes files/links but keeps directories visible
-					cl_ignore_pattern=$(cd "${cl_ruleset}" && find . -name 'commands' -type d -prune -o -type f,l -printf '%f|' | head -c -1)
-					# Use tree with ignore pattern to show directories and expand commands/ to level 2
+					# Build ignore pattern: exclude non-.mdc files/links but keep directories and .mdc files
+					# Pattern: prune commands/ directory (expanded separately with -L 2), exclude non-.mdc files
+					cl_ignore_pattern=$(cd "${cl_ruleset}" && find . -name 'commands' -type d -prune -o \( -type f -o -type l \) ! -name '*.mdc' -printf '%f|' | head -c -1)
+					# Use tree with ignore pattern to show directories, .mdc files, and expand commands/ to level 2
 					(cd "${cl_ruleset}" && tree -L 2 --noreport -I "${cl_ignore_pattern}") | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'
 				else
 					# Fallback if tree is not available
@@ -3252,20 +3252,33 @@ copy_ruleset_commands() {
 		return 1
 	}
 	
-	# Copy all files from commands directory, following symlinks
-	# Use find to get all files (not directories) and copy them
+	# Copy all files from commands directory recursively, following symlinks
+	# Use find to get all files (not directories) at any depth and copy them
+	# Preserve directory structure when copying
 	# Use temporary file to avoid subshell exit code issues (per POSIX style guide)
 	crc_temp_file=$(mktemp)
-	find "${crc_source_commands_dir}" -mindepth 1 -maxdepth 1 \( -type f -o -type l \) > "${crc_temp_file}" 2>/dev/null
+	find "${crc_source_commands_dir}" -mindepth 1 \( -type f -o -type l \) > "${crc_temp_file}" 2>/dev/null
 	crc_find_status=$?
 	
 	if [ ${crc_find_status} -eq 0 ]; then
 		while IFS= read -r crc_source_file; do
 			if [ -n "${crc_source_file}" ] && ([ -f "${crc_source_file}" ] || [ -L "${crc_source_file}" ]); then
-				crc_filename=$(basename "${crc_source_file}")
+				# Calculate relative path from commands directory to preserve structure
+				crc_rel_path="${crc_source_file#${crc_source_commands_dir}/}"
+				crc_target_file="${crc_target_commands_dir}/${crc_rel_path}"
+				
+				# Create target directory structure if needed
+				crc_target_dir=$(dirname "${crc_target_file}")
+				if [ ! -d "${crc_target_dir}" ]; then
+					if ! mkdir -p "${crc_target_dir}"; then
+						warn "Failed to create directory for: ${crc_rel_path}"
+						continue
+					fi
+				fi
+				
 				# Use cp -L to follow symlinks and copy actual source content
-				if ! cp -L "${crc_source_file}" "${crc_target_commands_dir}/"; then
-					warn "Failed to copy command file: ${crc_filename}"
+				if ! cp -L "${crc_source_file}" "${crc_target_file}"; then
+					warn "Failed to copy command file: ${crc_rel_path}"
 					# Continue with other files
 				fi
 			fi

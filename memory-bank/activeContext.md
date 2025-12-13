@@ -1,34 +1,27 @@
 # Memory Bank: Active Context
 
 ## Current Focus
-PLAN Mode - Implementation Plan Complete, Regression Tests Written
+PLAN Mode - New Task: Fix Ruleset Removal and Directory Structure Bugs
 
 ## Status
-Implementation plan created and regression tests written for 4 bug fixes:
-1. **Bug 2**: Recursive command copying (isolated fix)
-2. **Bug 4**: Show .mdc files in list (core fix - enables Bug 1 & 3)
-3. **Bug 3**: Tree for all rulesets (auto-fixed by Bug 4)
-4. **Bug 1**: Subdirectory rules display (auto-fixed by Bug 4)
+Implementation plan created for 2 new bug fixes:
+1. **Bug 1**: Commands not removed when ruleset is removed
+2. **Bug 2**: Rules in subdirectories are flattened instead of preserving directory structure
 
-**Phase 0 Complete**: 
-- Created `test_ruleset_bug_fixes.test.sh` with 5 regression tests
-- All tests FAIL as expected (10 failures total)
-- Tests verified to fail before fixes are implemented
-- Ready for Phase 1: Fix Bug 2 (recursive commands)
+**Task Complexity**: Level 2 (Simple Enhancement - Bug Fixes)
 
-**Key Insight**: Bug 4 (ignore pattern excluding .mdc files) is the root cause of Bugs 1 and 3. Fixing it will resolve all three.
+**Key Insights**:
+- Bug 1 requires tracking which commands belong to which ruleset to handle multiple rulesets with same command paths
+- Bug 2 requires preserving directory structure similar to how commands were fixed (calculate relative paths)
+- Both bugs require updates to sync/cleanup logic
 
 ## Latest Changes
-- Implementation plan restructured to follow TDD workflow (per `.cursor/rules/local/always-tdd.mdc`):
-  - Phase 1-3: Preparation (Stubbing) - Create empty test files and stub function interfaces
-  - Phase 4: Implement Tests - Fill out test implementations (should fail)
-  - Phase 5: Implement Code - Write code to make tests pass
-  - Phase 6: Documentation
-- Simplified: Removed `ruleset_has_commands()` helper, use inline `[ -d ]` check (KISS)
-- Emphasized symlink handling: `cp -L` to copy actual source, not symlink
-- Added list display enhancements with detailed specification
-- Components: 2 new functions, 3 modified functions
-- Test strategy: 6 unit tests, 2 integration tests, list display tests
-- Creative phase decision: Error immediately (fail-fast approach)
+- New task defined: Fix ruleset removal and directory structure preservation
+- Implementation plan created following Level 2 workflow
+- Plan includes TDD approach: write failing tests first, then implement fixes
+- Components to modify:
+  - `cmd_remove_ruleset()` - Add command removal logic
+  - `copy_entry_to_target()` - Preserve directory structure for rules
+  - `sync_manifest_to_directory()` - Update cleanup to handle nested files
 - Ready for BUILD mode implementation (following TDD workflow)
 

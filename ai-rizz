@@ -26,8 +26,8 @@ SHARED_DIR="shared"
 LOCAL_DIR="local" 
 CONFIG_DIR="$HOME/.config/ai-rizz"
 DEFAULT_TARGET_DIR=".cursor/rules"
-DEFAULT_RULES_PATH="rules"                          # Added for default rules path
-DEFAULT_RULESETS_PATH="rulesets"                    # Added for default rulesets path
+DEFAULT_RULES_PATH="rules"
+DEFAULT_RULESETS_PATH="rulesets"
 
 # Source repository information (set during initialization)
 SOURCE_REPO=""      # Source repository URL

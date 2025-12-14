@@ -57,5 +57,6 @@ After `ensure_initialized_and_valid` and before `select_mode`:
 
 ## Reflection Status: ✅ Complete
 
-Reflection documents:
-- `memory-bank/reflection/reflection-20251213-mode-shortcircuit.md`
+## Archive Status: ✅ Complete
+
+**Archive**: `memory-bank/archive/enhancements/20251213-mode-shortcircuit.md`

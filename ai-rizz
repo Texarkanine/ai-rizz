@@ -344,8 +344,7 @@ EOF
 # Show error when trying to add ruleset with commands in local mode
 #
 # Displays a user-friendly error message when attempting to add a ruleset
-# containing a `commands/` subdirectory in local mode. Rulesets with commands
-# must be committed to ensure commands are version-controlled.
+# containing a `commands/` subdirectory in local mode.
 #
 # Globals:
 #   None
@@ -365,18 +364,9 @@ show_ruleset_commands_error() {
 	srce_exit_code="${2:-1}"
 	
 	cat >&2 << EOF
-Error: Ruleset '${srce_ruleset_name}' contains a 'commands' subdirectory and must be added in commit mode.
+Error: Ruleset '${srce_ruleset_name}' contains a 'commands' directory and must be added in 'commit' mode.
 
-Rulesets with commands must be committed to the repository to ensure commands are version-controlled.
-
-To fix this:
-  1. If you haven't initialized commit mode yet:
-     ai-rizz init <repository-url> --commit
-  
-  2. If you already have local mode initialized:
-     ai-rizz init <repository-url> --commit
-  
-Then add the ruleset:
+Try:
   ai-rizz add ruleset ${srce_ruleset_name} --commit
 EOF
 	return "${srce_exit_code}"

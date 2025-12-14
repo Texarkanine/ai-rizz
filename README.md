@@ -442,17 +442,22 @@ git add ai-rizz.skbd .cursor/rules/shared/   # Stage for commit
 git commit -m "Add team Python ruleset"    # Share with team
 ```
 
+### Ruleset-Local Rules
+
+Rulesets may contain `.mdc` *files* in addition to symlinks to rules in the `rules/` directory.
+
+Such "ruleset-local rules" will
+
+1. be installed alongside symlinked rules normally
+2. show up in `ai-rizz list` output as part of the ruleset
+3. **not** show up in `ai-rizz` "rules" list
+4. **not** be able to be installed or removed individually
+
 ### Rulesets with Commands
 
-Rulesets can include a special `commands/` subdirectory that contains command files. These commands are automatically copied to `.cursor/commands/` when the ruleset is added in commit mode.
+Rulesets can include a special `commands/` subdirectory that contains [Cursor Command](https://cursor.com/docs/agent/chat/commands) files. These commands are automatically copied to `.cursor/commands/` when the ruleset is added in commit mode.
 
-#### Key Features
-
-- **Commands must be committed**: Rulesets containing a `commands/` subdirectory can only be added in commit mode. Attempting to add them in local mode will result in an error.
-- **Automatic copying**: When a ruleset with commands is added in commit mode, all files from `rulesets/<name>/commands/*` are copied to `.cursor/commands/`.
-- **Symlink support**: Symlinks in the `commands/` directory are followed, copying the actual source content rather than the symlink itself.
-- **Not listed separately**: Commands are local to the ruleset and don't appear in `ai-rizz list` output (similar to ruleset-local rules).
-
+**Commands must be committed**: Rulesets containing a `commands/` subdirectory can only be added in commit mode. Attempting to add them in local mode will result in an error.
 #### Example Workflow
 
 ```bash

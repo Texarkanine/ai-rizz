@@ -26,8 +26,8 @@ SHARED_DIR="shared"
 LOCAL_DIR="local" 
 CONFIG_DIR="$HOME/.config/ai-rizz"
 DEFAULT_TARGET_DIR=".cursor/rules"
-DEFAULT_RULES_PATH="rules"                          # Added for default rules path
-DEFAULT_RULESETS_PATH="rulesets"                    # Added for default rulesets path
+DEFAULT_RULES_PATH="rules"
+DEFAULT_RULESETS_PATH="rulesets"
 
 # Source repository information (set during initialization)
 SOURCE_REPO=""      # Source repository URL
@@ -108,6 +108,99 @@ error() {
 #
 warn() {
   printf '%b' "Warning: ${1}\n" >&2
+}
+
+# Resolve symlink to absolute path (portable readlink -f)
+#
+# POSIX-compliant implementation based on readlinkf_posix from
+# https://github.com/ko1nksm/readlinkf
+#
+# This function provides cross-platform symlink resolution using only
+# POSIX-specified commands (cd -P, ls -dl). It resolves symlinks to their
+# absolute target paths, handling both absolute and relative symlinks,
+# nested symlink chains, and circular references.
+#
+# The upstream implementation is extensively tested across 9+ shells and
+# 5+ platforms (macOS, FreeBSD, Cygwin, etc.). We trust the upstream
+# tests and do not duplicate them here.
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Path to resolve (symlink, file, or directory)
+#
+# Outputs:
+#   Stdout: Absolute resolved path, or empty string if resolution fails
+#
+# Returns:
+#   0 on success
+#   1 if path doesn't exist or resolution fails
+#
+_readlink_f() {
+	_rlf_path="${1}"
+	
+	# Return empty if no path provided
+	if [ -z "${_rlf_path}" ]; then
+		echo ""
+		return 1
+	fi
+	
+	# Implementation based on readlinkf_posix from
+	# https://github.com/ko1nksm/readlinkf
+	# Uses only POSIX-specified commands: cd -P, ls -dl
+	_rlf_max_symlinks=40
+	_rlf_cdpath=''
+	
+	_rlf_target="${_rlf_path}"
+	# Trim trailing slashes
+	[ -e "${_rlf_target%/}" ] || _rlf_target="${_rlf_path%"${_rlf_path##*[!/]}"}"
+	# Add trailing slash for directories
+	[ -d "${_rlf_target:-/}" ] && _rlf_target="${_rlf_target}/"
+	
+	# Save original directory
+	_rlf_orig_pwd=$(pwd)
+	
+	# Change to current directory (cd -P resolves symlinks)
+	if ! cd -P . 2>/dev/null; then
+		echo ""
+		return 1
+	fi
+	
+	# Resolve symlinks iteratively
+	while [ "${_rlf_max_symlinks}" -ge 0 ] && _rlf_max_symlinks=$(expr ${_rlf_max_symlinks} - 1); do
+		# Navigate to directory containing target
+		if [ ! "${_rlf_target}" = "${_rlf_target%/*}" ]; then
+			case "${_rlf_target}" in
+				/*)
+					cd -P "${_rlf_target%/*}/" 2>/dev/null || break
+					;;
+				*)
+					cd -P "./${_rlf_target%/*}" 2>/dev/null || break
+					;;
+			esac
+			_rlf_target="${_rlf_target##*/}"
+		fi
+		
+		# If not a symlink, we're done
+		if [ ! -L "${_rlf_target}" ]; then
+			_rlf_result="${PWD%/}${_rlf_target:+/}${_rlf_target}"
+			cd "${_rlf_orig_pwd}" 2>/dev/null
+			printf '%s\n' "${_rlf_result:-/}"
+			return 0
+		fi
+		
+		# Read symlink target from ls -dl output
+		# ls -dl format: "%s %u %s %s %u %s %s -> %s\n"
+		# See: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/ls.html
+		_rlf_link=$(ls -dl -- "${_rlf_target}" 2>/dev/null) || break
+		_rlf_target="${_rlf_link#*" ${_rlf_target} -> "}"
+	done
+	
+	# Resolution failed, restore directory and return empty
+	cd "${_rlf_orig_pwd}" 2>/dev/null
+	echo ""
+	return 1
 }
 
 # Show command usage error with example and exit
@@ -339,6 +432,37 @@ Or initialize git in the current directory:
   ai-rizz init <repository-url>
 EOF
   exit "${1:-1}"
+}
+
+# Show error when trying to add ruleset with commands in local mode
+#
+# Displays a user-friendly error message when attempting to add a ruleset
+# containing a `commands/` subdirectory in local mode.
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Ruleset name that was attempted (required)
+#   $2 - Exit code (optional, defaults to 1)
+#
+# Outputs:
+#   Stderr: Formatted error message with resolution steps
+#
+# Returns:
+#   Returns with specified exit code (caller should exit)
+#
+show_ruleset_commands_error() {
+	srce_ruleset_name="${1}"
+	srce_exit_code="${2:-1}"
+	
+	cat >&2 << EOF
+Error: Ruleset '${srce_ruleset_name}' contains a 'commands' directory and must be added in commit mode.
+
+Try:
+  ai-rizz add ruleset ${srce_ruleset_name} --commit
+EOF
+	return "${srce_exit_code}"
 }
 
 # Progressive Manifest Utilities  
@@ -2377,9 +2501,8 @@ cmd_deinit() {
 # List available rules and rulesets (multi-mode aware)
 #
 # Shows rules and rulesets with glyphs indicating installation status.
-# Handles dual-mode conflict resolution (commit overrides local), expands
-# rulesets to show contents, and uses tree command when available for
-# better formatting. Syncs repository before listing.
+# Handles dual-mode conflict resolution (commit overrides local) & expands
+# rulesets to show contents. Syncs repository before listing.
 #
 # Globals:
 #   SOURCE_REPO - Source repository URL
@@ -2425,6 +2548,7 @@ cmd_list() {
 		check_rulesets_for_item() {
 			cl_check_manifest_file="${1}"
 			cl_check_item_basename=$(basename "${cl_is_installed_item}")
+			cl_check_item_path="${REPO_DIR}/${cl_is_installed_item}"
 			cl_check_entries=""
 			
 			cl_check_entries=$(read_manifest_entries "${cl_check_manifest_file}" 2>/dev/null) || return 1
@@ -2432,11 +2556,42 @@ cmd_list() {
 			# Use a for loop instead of while to avoid subshell issues
 			for cl_check_entry in ${cl_check_entries}; do
 				if [ -n "${cl_check_entry}" ] && echo "${cl_check_entry}" | grep -q "^${RULESETS_PATH}/"; then
-					# Check if this ruleset contains the item
+					# Check if this ruleset contains the item (search recursively)
 					cl_check_ruleset_dir="${REPO_DIR}/${cl_check_entry}"
-					if [ -d "${cl_check_ruleset_dir}" ] && [ -f "${cl_check_ruleset_dir}/${cl_check_item_basename}" ]; then
-						return 0  # Found in ruleset
+					if [ ! -d "${cl_check_ruleset_dir}" ]; then
+						continue
 					fi
+					
+					# Search recursively for .mdc files matching the basename
+					# Use temporary file to avoid subshell exit code issues (per POSIX style guide)
+					cl_check_temp_file=$(mktemp)
+					find "${cl_check_ruleset_dir}" -name "${cl_check_item_basename}" \( -type f -o -type l \) > "${cl_check_temp_file}" 2>/dev/null
+					
+					# Check each match
+					while IFS= read -r cl_check_match; do
+						if [ -z "${cl_check_match}" ]; then
+							continue
+						fi
+						
+						# If it's a symlink, check if it points to the rule file
+						if [ -L "${cl_check_match}" ]; then
+							# Resolve symlink to absolute path and check if it points to the rule file
+							cl_check_target=$(_readlink_f "${cl_check_match}")
+							# Compare resolved absolute paths
+							if [ -n "${cl_check_target}" ] && [ "${cl_check_target}" = "${cl_check_item_path}" ]; then
+								rm -f "${cl_check_temp_file}"
+								return 0  # Found in ruleset (symlink points to rule)
+							fi
+						else
+							# Regular file in ruleset - this is a file rule, not a symlink to a rule
+							# File rules in rulesets are different from rules in the rules directory
+							# Only symlinks to rules should be considered as "installed" rules
+							# So we skip regular files (they're file rules, not the rule itself)
+							continue
+						fi
+					done < "${cl_check_temp_file}"
+					
+					rm -f "${cl_check_temp_file}"
 				fi
 			done
 			return 1  # Not found in any ruleset
@@ -2515,16 +2670,67 @@ cmd_list() {
 					;;
 			esac
 			
-			# Use tree to display ruleset contents (filter to .mdc files only)
+			# Display ruleset contents (simplified: top-level only, commands/ special)
+			# List display rules:
+			# - All top-level .mdc files are shown
+			# - All top-level subdirs are shown (but NO contents)
+			# - "commands" subdir gets special treatment (one level shown)
 			if [ -d "${cl_ruleset}" ]; then
-				# Check if tree command exists
-				if command -v tree >/dev/null 2>&1; then
-					# Use tree with pattern matching to show only .mdc files and symlinks
-					(cd "${cl_ruleset}" && tree -P "*.mdc" -L 1 --noreport) | tail -n +2 | sed 's/^/    /' | sed 's/ -> .*$//'
-				else
-					# Fallback if tree is not available
-					find "${cl_ruleset}" -maxdepth 1 \( -name "*.mdc" -type f \) -o \( -name "*.mdc" -type l \) -exec basename {} \; | sort | sed 's/^/    ├── /'
-				fi
+				# Get top-level items: .mdc files and directories
+				cl_items=$(find "${cl_ruleset}" -maxdepth 1 \( -name "*.mdc" -type f \) -o \( -name "*.mdc" -type l \) -o \( -type d ! -name "." ! -path "${cl_ruleset}" \) | sort)
+				cl_item_count=$(echo "${cl_items}" | grep -c . || echo "0")
+				cl_current=0
+				cl_temp_items=$(mktemp)
+				echo "${cl_items}" > "${cl_temp_items}"
+				while IFS= read -r cl_item; do
+					if [ -z "${cl_item}" ]; then
+						continue
+					fi
+					cl_current=$(expr ${cl_current} + 1)
+					cl_basename=$(basename "${cl_item}")
+					
+					# Determine tree character based on position
+					if [ "${cl_current}" -eq "${cl_item_count}" ]; then
+						cl_tree_char="└──"
+					else
+						cl_tree_char="├──"
+					fi
+					
+					# Check if this is the commands/ directory (special treatment)
+					if [ "${cl_basename}" = "commands" ] && [ -d "${cl_item}" ]; then
+						# Show commands/ directory
+						printf "    %s %s\n" "${cl_tree_char}" "${cl_basename}"
+						
+						# Show one level of commands/ contents (files and subdirs, but not subdir contents)
+						cl_cmd_items=$(find "${cl_item}" -maxdepth 1 \( -type f -o -type l -o -type d \) ! -path "${cl_item}" | sort)
+						cl_cmd_count=$(echo "${cl_cmd_items}" | grep -c . || echo "0")
+						cl_cmd_current=0
+						cl_temp_cmd_items=$(mktemp)
+						echo "${cl_cmd_items}" > "${cl_temp_cmd_items}"
+						while IFS= read -r cl_cmd_item; do
+							if [ -z "${cl_cmd_item}" ]; then
+								continue
+							fi
+							cl_cmd_current=$(expr ${cl_cmd_current} + 1)
+							cl_cmd_basename=$(basename "${cl_cmd_item}")
+							
+							# Determine tree character for command item
+							if [ "${cl_cmd_current}" -eq "${cl_cmd_count}" ]; then
+								cl_cmd_tree_char="└──"
+							else
+								cl_cmd_tree_char="├──"
+							fi
+							
+							# Show command item (file, symlink, or subdir - but not subdir contents)
+							printf "    │   %s %s\n" "${cl_cmd_tree_char}" "${cl_cmd_basename}"
+						done < "${cl_temp_cmd_items}"
+						rm -f "${cl_temp_cmd_items}"
+					else
+						# Regular item: .mdc file or subdirectory (show name only, no contents)
+						printf "    %s %s\n" "${cl_tree_char}" "${cl_basename}"
+					fi
+				done < "${cl_temp_items}"
+				rm -f "${cl_temp_items}"
 			fi
 		done
 	fi
@@ -2763,8 +2969,37 @@ cmd_add_ruleset() {
 		esac
 	done
 	
+	# Track original mode before any overrides
+	cars_original_mode="${cars_mode}"
+	
 	# Check if any mode is initialized and validate manifest integrity
 	ensure_initialized_and_valid
+
+	# Short-circuit: If adding a single ruleset with commands/, auto-use commit mode
+	# This improves UX since rulesets with commands can ONLY be added in commit mode
+	if [ -n "${cars_rulesets}" ]; then
+		# Count rulesets by counting spaces + 1
+		cars_ruleset_count=0
+		for _cars_count_ruleset in ${cars_rulesets}; do
+			cars_ruleset_count=$(expr ${cars_ruleset_count} + 1)
+		done
+		
+		# If exactly one ruleset, check if it has commands/
+		if [ ${cars_ruleset_count} -eq 1 ]; then
+			cars_single_ruleset="${cars_rulesets}"
+			cars_single_ruleset_path="${RULESETS_PATH}/${cars_single_ruleset}"
+			
+			# Check if ruleset exists and has commands/ subdirectory
+			if [ -d "${REPO_DIR}/${cars_single_ruleset_path}" ] && [ -d "${REPO_DIR}/${cars_single_ruleset_path}/commands" ]; then
+				# Ruleset has commands/ - must use commit mode
+				if [ "${cars_original_mode}" = "local" ]; then
+					# User explicitly provided --local, warn them
+					warn "Ruleset '${cars_single_ruleset}' contains a 'commands' directory. Switching to commit mode."
+				fi
+				cars_mode="commit"
+			fi
+		fi
+	fi
 
 	# Smart mode selection using helper function
 	cars_mode=$(select_mode "${cars_mode}")
@@ -2783,6 +3018,12 @@ cmd_add_ruleset() {
 		# Check if ruleset exists in source repo using helper function
 		if ! check_repository_item "${cars_ruleset_path}" "Ruleset" "dir"; then
 			continue
+		fi
+		
+		# Check if ruleset has commands/ subdirectory and reject local mode
+		if [ -d "${REPO_DIR}/${cars_ruleset_path}/commands" ] && [ "${cars_mode}" = "local" ]; then
+			show_ruleset_commands_error "${cars_ruleset}"
+			return 1
 		fi
 		
 		# Handle conflict resolution migration using helper function
@@ -2958,6 +3199,12 @@ cmd_remove_ruleset() {
 		
 		if [ "$(is_mode_active commit)" = "true" ]; then
 			if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+				# Remove commands before removing from manifest (only in commit mode)
+				# Calculate commands directory: parent of TARGET_DIR + /commands
+				crr_target_base=$(get_target_directory)
+				crr_commands_dir="$(dirname "${crr_target_base}")/commands"
+				remove_ruleset_commands "${ruleset_path}" "${crr_commands_dir}"
+				
 				remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
 				echo "Removed ruleset: $ruleset_path"
 				removed=true
@@ -3061,13 +3308,14 @@ sync_manifest_to_directory() {
 	# Create target directory if needed
 	mkdir -p "${smtd_target_directory}"
 	
-	# Safety check: Only operate in our managed directories (local or shared)
-	case "${smtd_target_directory}" in
-		*/"${LOCAL_DIR}"|*/"${SHARED_DIR}")
-			# Clear existing .mdc files to ensure removed rules are deleted
-			# Only delete regular .mdc files, never directories or other files
-			find "${smtd_target_directory}" -maxdepth 1 -name "*.mdc" -type f -delete 2>/dev/null || true
-			;;
+		# Safety check: Only operate in our managed directories (local or shared)
+		case "${smtd_target_directory}" in
+			*/"${LOCAL_DIR}"|*/"${SHARED_DIR}")
+				# Clear existing .mdc files to ensure removed rules are deleted
+				# Only delete regular .mdc files, never directories or other files
+				# Even if symlinks were used in a ruleset, we only EVER get regular files in the rules dir
+				find "${smtd_target_directory}" -name "*.mdc" -type f -delete 2>/dev/null || true
+				;;
 		*)
 			warn "Refusing to clear unrecognized target directory: ${smtd_target_directory}"
 			return 1
@@ -3133,6 +3381,176 @@ file_exists_in_commit_mode() {
 	return 1  # Not found in commit mode
 }
 
+# Copy command files from ruleset to target commands directory
+#
+# Copies all files from a ruleset's `commands/` subdirectory to the target
+# `.cursor/commands/` directory. Follows symlinks to copy actual source content,
+# not the symlink itself. Creates target directory if it doesn't exist.
+#
+# Globals:
+#   REPO_DIR - Repository directory
+#
+# Arguments:
+#   $1 - Ruleset path in source repo (e.g., `rulesets/memory-bank`) (required)
+#   $2 - Target commands directory (e.g., `.cursor/commands`) (required)
+#
+# Outputs:
+#   Stderr: Warning messages on failure
+#
+# Returns:
+#   0 on success
+#   1 on failure (source doesn't exist, copy failed)
+#
+copy_ruleset_commands() {
+	crc_ruleset_path="${1}"
+	crc_target_commands_dir="${2}"
+	
+	crc_source_commands_dir="${REPO_DIR}/${crc_ruleset_path}/commands"
+	
+	# Check if source commands directory exists
+	if [ ! -d "${crc_source_commands_dir}" ]; then
+		return 0  # No commands to copy, not an error
+	fi
+	
+	# Create target directory if it doesn't exist
+	mkdir -p "${crc_target_commands_dir}" || {
+		warn "Failed to create commands directory: ${crc_target_commands_dir}"
+		return 1
+	}
+	
+	# Copy all files from commands directory recursively, following symlinks
+	# Use find to get all files (not directories) at any depth and copy them
+	# Preserve directory structure when copying
+	# Use temporary file to avoid subshell exit code issues (per POSIX style guide)
+	crc_temp_file=$(mktemp)
+	find "${crc_source_commands_dir}" -mindepth 1 \( -type f -o -type l \) > "${crc_temp_file}" 2>/dev/null
+	crc_find_status=$?
+	
+	if [ ${crc_find_status} -eq 0 ]; then
+		while IFS= read -r crc_source_file; do
+			if [ -n "${crc_source_file}" ] && ([ -f "${crc_source_file}" ] || [ -L "${crc_source_file}" ]); then
+				# Calculate relative path from commands directory to preserve structure
+				crc_rel_path="${crc_source_file#${crc_source_commands_dir}/}"
+				crc_target_file="${crc_target_commands_dir}/${crc_rel_path}"
+				
+				# Create target directory structure if needed
+				crc_target_dir=$(dirname "${crc_target_file}")
+				if [ ! -d "${crc_target_dir}" ]; then
+					if ! mkdir -p "${crc_target_dir}"; then
+						warn "Failed to create directory for: ${crc_rel_path}"
+						continue
+					fi
+				fi
+				
+				# Security: Validate symlink targets before copying
+				if [ -L "${crc_source_file}" ]; then
+					crc_resolved_target=$(_readlink_f "${crc_source_file}")
+					if [ -z "${crc_resolved_target}" ]; then
+						warn "Failed to resolve symlink: ${crc_rel_path}"
+						continue
+					fi
+					# Check if resolved target is within REPO_DIR
+					case "${crc_resolved_target}" in
+						"${REPO_DIR}"/*)
+							# Symlink points within repository, safe to copy
+							;;
+						*)
+							# Symlink points outside repository, skip for security
+							warn "Skipping symlink pointing outside repository: ${crc_rel_path} -> ${crc_resolved_target}"
+							continue
+							;;
+					esac
+				fi
+				
+				# Use cp -L to follow symlinks and copy actual source content
+				if ! cp -L "${crc_source_file}" "${crc_target_file}"; then
+					warn "Failed to copy command file: ${crc_rel_path}"
+					# Continue with other files
+				fi
+			fi
+		done < "${crc_temp_file}"
+	fi
+	
+	rm -f "${crc_temp_file}"
+	return 0
+}
+
+# Remove commands from a ruleset when the ruleset is removed
+#
+# Removes all command files that were copied from the specified ruleset's
+# commands/ subdirectory. Preserves directory structure when removing nested
+# commands. Cleans up empty directories after file removal.
+#
+# Globals:
+#   REPO_DIR - Source repository directory
+#
+# Arguments:
+#   $1 - Ruleset path (e.g., "rulesets/test-ruleset")
+#   $2 - Target commands directory (e.g., "/path/to/commands")
+#
+# Outputs:
+#   Stderr: Warning messages for failures
+#
+# Returns:
+#   0 on success
+#   1 on failure (source doesn't exist, removal failed)
+#
+remove_ruleset_commands() {
+	rrc_ruleset_path="${1}"
+	rrc_target_commands_dir="${2}"
+	
+	rrc_source_commands_dir="${REPO_DIR}/${rrc_ruleset_path}/commands"
+	
+	# Check if source commands directory exists
+	if [ ! -d "${rrc_source_commands_dir}" ]; then
+		return 0  # No commands to remove, not an error
+	fi
+	
+	# Check if target commands directory exists
+	if [ ! -d "${rrc_target_commands_dir}" ]; then
+		return 0  # No commands directory, nothing to remove
+	fi
+	
+	# Get all command paths from the ruleset's commands directory
+	# Use temporary file to avoid subshell exit code issues (per POSIX style guide)
+	rrc_temp_file=$(mktemp)
+	find "${rrc_source_commands_dir}" -mindepth 1 \( -type f -o -type l \) > "${rrc_temp_file}" 2>/dev/null
+	rrc_find_status=$?
+	
+	if [ ${rrc_find_status} -eq 0 ]; then
+		while IFS= read -r rrc_source_file; do
+			if [ -n "${rrc_source_file}" ] && ([ -f "${rrc_source_file}" ] || [ -L "${rrc_source_file}" ]); then
+				# Calculate relative path from commands directory to match target structure
+				rrc_rel_path="${rrc_source_file#${rrc_source_commands_dir}/}"
+				rrc_target_file="${rrc_target_commands_dir}/${rrc_rel_path}"
+				
+				# Remove the target file if it exists
+				if [ -f "${rrc_target_file}" ] || [ -L "${rrc_target_file}" ]; then
+					if ! rm -f "${rrc_target_file}"; then
+						warn "Failed to remove command file: ${rrc_rel_path}"
+						# Continue with other files
+					fi
+					
+					# Clean up empty parent directories
+					rrc_target_dir=$(dirname "${rrc_target_file}")
+					while [ "${rrc_target_dir}" != "${rrc_target_commands_dir}" ] && [ -d "${rrc_target_dir}" ]; do
+						# Check if directory is empty (only . and .. entries)
+						if [ -z "$(find "${rrc_target_dir}" -mindepth 1 -maxdepth 1 2>/dev/null)" ]; then
+							rmdir "${rrc_target_dir}" 2>/dev/null || break
+							rrc_target_dir=$(dirname "${rrc_target_dir}")
+						else
+							break
+						fi
+					done
+				fi
+			fi
+		done < "${rrc_temp_file}"
+	fi
+	
+	rm -f "${rrc_temp_file}"
+	return 0
+}
+
 # Copy a single entry (rule or ruleset) to target directory
 #
 # Handles both individual rules (single file copy) and rulesets (copy all
@@ -3181,21 +3599,83 @@ copy_entry_to_target() {
 		cp "${cett_source_path}" "${cett_target_directory}/"
 	elif [ -d "${cett_source_path}" ]; then
 		# Directory (ruleset) - copy individual .mdc files from ruleset to target directory
-		# Handle symlinks correctly by following them and copying actual content
-		find "${cett_source_path}" -name "*.mdc" -type f -o -name "*.mdc" -type l | \
-				while IFS= read -r cett_rule_file; do
-			if [ -f "${cett_rule_file}" ] || [ -L "${cett_rule_file}" ]; then
-				cett_filename=$(basename "${cett_rule_file}")
-				
-				# Skip if file would conflict with commit mode (commit wins)
-				if [ "${cett_is_local_sync}" = "true" ] && file_exists_in_commit_mode "${cett_filename}"; then
-					continue  # Skip this file
+		# Handle symlinks and files differently:
+		# - Symlinks: Copy flat (all instances are the same rule)
+		# - Files: Preserve directory structure (URI is ruleset/path/to/rule.mdc)
+		# Use temporary file to avoid subshell exit code issues (per POSIX style guide)
+		cett_temp_file=$(mktemp)
+		find "${cett_source_path}" -name "*.mdc" \( -type f -o -type l \) > "${cett_temp_file}" 2>/dev/null
+		cett_find_status=$?
+		
+		if [ ${cett_find_status} -eq 0 ]; then
+			while IFS= read -r cett_rule_file; do
+				if [ -n "${cett_rule_file}" ] && ([ -f "${cett_rule_file}" ] || [ -L "${cett_rule_file}" ]); then
+					cett_filename=$(basename "${cett_rule_file}")
+					
+					# Skip if file would conflict with commit mode (commit wins)
+					if [ "${cett_is_local_sync}" = "true" ] && file_exists_in_commit_mode "${cett_filename}"; then
+						continue
+					fi
+					
+					# Detect if this is a symlink or a file
+					if [ -L "${cett_rule_file}" ]; then
+						# Security: Validate symlink target before copying
+						cett_resolved_target=$(_readlink_f "${cett_rule_file}")
+						if [ -z "${cett_resolved_target}" ]; then
+							warn "Failed to resolve symlink: ${cett_rule_file}"
+							continue
+						fi
+						# Check if resolved target is within REPO_DIR
+						case "${cett_resolved_target}" in
+							"${REPO_DIR}"/*)
+								# Symlink points within repository, safe to copy
+								# Symlink: Copy flat to target root (all instances are the same rule)
+								if ! cp -L "${cett_rule_file}" "${cett_target_directory}/"; then
+									warn "Failed to copy symlink: ${cett_filename}"
+								fi
+								;;
+							*)
+								# Symlink points outside repository, skip for security
+								warn "Skipping symlink pointing outside repository: ${cett_filename} -> ${cett_resolved_target}"
+								continue
+								;;
+						esac
+					else
+						# File: Preserve directory structure (URI is ruleset/path/to/rule.mdc)
+						cett_rel_path="${cett_rule_file#${cett_source_path}/}"
+						cett_target_file="${cett_target_directory}/${cett_rel_path}"
+						
+						# Create target directory structure if needed
+						cett_target_dir=$(dirname "${cett_target_file}")
+						if [ ! -d "${cett_target_dir}" ]; then
+							if ! mkdir -p "${cett_target_dir}"; then
+								warn "Failed to create directory for: ${cett_rel_path}"
+								continue
+							fi
+						fi
+						
+						# Copy the file (preserving structure)
+						if ! cp "${cett_rule_file}" "${cett_target_file}"; then
+							warn "Failed to copy rule file: ${cett_rel_path}"
+						fi
+					fi
 				fi
-				
-				# Copy the file (following symlinks to get actual content)
-				cp -L "${cett_rule_file}" "${cett_target_directory}/"
-			fi
-		done
+			done < "${cett_temp_file}"
+		fi
+		
+		rm -f "${cett_temp_file}"
+		
+		# Copy commands/ subdirectory if exists and in commit mode
+		# Check if target is commit mode (contains SHARED_DIR)
+		case "${cett_target_directory}" in
+			*/"${SHARED_DIR}")
+				# In commit mode, copy commands to commands/ directory
+				# Calculate commands directory: parent of TARGET_DIR + /commands
+				cett_target_base=$(get_target_directory)
+				cett_commands_dir="$(dirname "${cett_target_base}")/commands"
+				copy_ruleset_commands "${cett_entry}" "${cett_commands_dir}"
+				;;
+		esac
 	else
 		warn "Entry not found in repository: ${cett_entry}"
 		return 1

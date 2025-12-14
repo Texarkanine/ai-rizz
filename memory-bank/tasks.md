@@ -195,11 +195,11 @@ Fix five CodeRabbit-identified issues in the ai-rizz codebase:
 ## Implementation Checklist
 
 ### Phase 1: Security Fixes (CRITICAL)
-- [ ] Fix `copy_ruleset_commands()` symlink validation
-- [ ] Fix `copy_entry_to_target()` symlink validation
-- [ ] Write security tests
-- [ ] Run all tests
-- [ ] Verify no regressions
+- [x] Fix `copy_ruleset_commands()` symlink validation
+- [x] Fix `copy_entry_to_target()` symlink validation
+- [x] Write security tests
+- [x] Run all tests
+- [x] Verify no regressions
 
 ### Phase 2: Lifecycle Fix (High Priority)
 - [ ] Creative phase for namespaced commands design
@@ -241,4 +241,45 @@ Fix five CodeRabbit-identified issues in the ai-rizz codebase:
 
 ## Planning Status: ✅ Complete
 
-Ready for implementation. Phase 1 (security fixes) should be implemented first.
+## Implementation Status
+
+### Phase 1: Security Fixes (CRITICAL) - ✅ COMPLETE
+
+**Implementation Date**: 2024-12-13
+
+**Changes Made**:
+1. **Fixed `copy_ruleset_commands()` (Issue 4)**:
+   - Added symlink validation before `cp -L` call
+   - Uses `_readlink_f()` to resolve symlink targets
+   - Validates resolved target is within `REPO_DIR`
+   - Skips and warns if symlink points outside repository
+   - Location: Lines ~3445-3463
+
+2. **Fixed `copy_entry_to_target()` (Issue 5)**:
+   - Added symlink validation before `cp -L` call
+   - Uses `_readlink_f()` to resolve symlink targets
+   - Validates resolved target is within `REPO_DIR`
+   - Skips and warns if symlink points outside repository
+   - Location: Lines ~3600-3620
+
+3. **Security Tests**:
+   - Created `tests/unit/test_symlink_security.test.sh`
+   - Tests malicious symlinks in commands directory → rejected
+   - Tests malicious symlinks in ruleset → rejected
+   - Tests valid symlinks within repo → work normally
+   - Tests relative symlinks within repo → work normally
+   - All 6 test cases pass
+
+**Test Results**:
+- All unit tests: 16/16 passed (including new security tests)
+- All integration tests: 7/7 passed
+- No regressions detected
+
+**Success Criteria Met**:
+- ✅ Symlinks pointing outside `REPO_DIR` are rejected
+- ✅ Warning messages are clear and helpful
+- ✅ Valid symlinks (within repo) continue to work
+- ✅ No regressions in existing functionality
+- ✅ All tests pass
+
+Ready for Phase 2 (Lifecycle Fix) implementation.

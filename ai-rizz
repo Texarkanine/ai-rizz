@@ -3442,6 +3442,26 @@ copy_ruleset_commands() {
 					fi
 				fi
 				
+				# Security: Validate symlink targets before copying
+				if [ -L "${crc_source_file}" ]; then
+					crc_resolved_target=$(_readlink_f "${crc_source_file}")
+					if [ -z "${crc_resolved_target}" ]; then
+						warn "Failed to resolve symlink: ${crc_rel_path}"
+						continue
+					fi
+					# Check if resolved target is within REPO_DIR
+					case "${crc_resolved_target}" in
+						"${REPO_DIR}"/*)
+							# Symlink points within repository, safe to copy
+							;;
+						*)
+							# Symlink points outside repository, skip for security
+							warn "Skipping symlink pointing outside repository: ${crc_rel_path} -> ${crc_resolved_target}"
+							continue
+							;;
+					esac
+				fi
+				
 				# Use cp -L to follow symlinks and copy actual source content
 				if ! cp -L "${crc_source_file}" "${crc_target_file}"; then
 					warn "Failed to copy command file: ${crc_rel_path}"
@@ -3599,8 +3619,27 @@ copy_entry_to_target() {
 					
 					# Detect if this is a symlink or a file
 					if [ -L "${cett_rule_file}" ]; then
-						# Symlink: Copy flat to target root (all instances are the same rule)
-						cp -L "${cett_rule_file}" "${cett_target_directory}/"
+						# Security: Validate symlink target before copying
+						cett_resolved_target=$(_readlink_f "${cett_rule_file}")
+						if [ -z "${cett_resolved_target}" ]; then
+							warn "Failed to resolve symlink: ${cett_rule_file}"
+							continue
+						fi
+						# Check if resolved target is within REPO_DIR
+						case "${cett_resolved_target}" in
+							"${REPO_DIR}"/*)
+								# Symlink points within repository, safe to copy
+								# Symlink: Copy flat to target root (all instances are the same rule)
+								if ! cp -L "${cett_rule_file}" "${cett_target_directory}/"; then
+									warn "Failed to copy symlink: ${cett_filename}"
+								fi
+								;;
+							*)
+								# Symlink points outside repository, skip for security
+								warn "Skipping symlink pointing outside repository: ${cett_filename} -> ${cett_resolved_target}"
+								continue
+								;;
+						esac
 					else
 						# File: Preserve directory structure (URI is ruleset/path/to/rule.mdc)
 						cett_rel_path="${cett_rule_file#${cett_source_path}/}"

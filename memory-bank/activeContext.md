@@ -1,11 +1,10 @@
 # Memory Bank: Active Context
 
 ## Current Focus
-Ready for next task
+Ready for next task - use `/van` command to start
 
-## Recently Completed
-- **Portable `_readlink_f()` Function** (2025-12-13) - Implemented portable symlink resolution using readlinkf_posix. Archive: `memory-bank/archive/enhancements/20251213-readlinkf.md`
-- **Short-circuit Mode Selection** (2025-12-13) - Improved UX for adding rulesets with commands. Archive: `memory-bank/archive/enhancements/20251213-mode-shortcircuit.md`
+## Status
+No active task
 
 ## Next Steps
-Use `/van` command to start the next task.
+Use `/van` command to initialize the next task.

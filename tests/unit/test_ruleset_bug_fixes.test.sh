@@ -56,12 +56,12 @@ test_commands_copied_recursively() {
 	assertTrue "Should add ruleset successfully" $?
 	
 	# Expected: Both top-level and nested commands copied with directory structure
-	test -f "commands/ai-rizz/test-recursive/top.md" || fail "Top-level command should be copied"
-	test -f "commands/ai-rizz/test-recursive/subdir/nested.md" || fail "Nested command should be copied recursively"
+	test -f "commands/top.md" || fail "Top-level command should be copied"
+	test -f "commands/subdir/nested.md" || fail "Nested command should be copied recursively"
 	
 	# Verify content matches
-	assertEquals "Top command content should match" "top command content" "$(cat "commands/ai-rizz/test-recursive/top.md")"
-	assertEquals "Nested command content should match" "nested command content" "$(cat "commands/ai-rizz/test-recursive/subdir/nested.md")"
+	assertEquals "Top command content should match" "top command content" "$(cat "commands/top.md")"
+	assertEquals "Nested command content should match" "nested command content" "$(cat "commands/subdir/nested.md")"
 }
 
 # ============================================================================
@@ -220,8 +220,8 @@ test_complex_ruleset_display() {
 	fi
 	
 	# Verify commands copied recursively
-	test -f "commands/ai-rizz/test-complex/top.md" || fail "Top command should be copied"
-	test -f "commands/ai-rizz/test-complex/subs/nested.md" || fail "Nested command should be copied recursively"
+	test -f "commands/top.md" || fail "Top command should be copied"
+	test -f "commands/subs/nested.md" || fail "Nested command should be copied recursively"
 }
 
 # Load shunit2

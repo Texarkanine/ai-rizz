@@ -90,9 +90,9 @@ test_ruleset_with_commands_allows_commit_mode() {
 	cmd_add_ruleset "ruleset-with-commands" --commit
 	assertTrue "Should add ruleset successfully" $?
 	
-	# Expected: Success, commands copied to commands/ai-rizz/<ruleset>/ (namespaced)
+	# Expected: Success, commands copied to commands/ (relative to TARGET_DIR parent)
 	# TARGET_DIR is "test_target", so commands dir is $(dirname "test_target")/commands = "commands"
-	commands_dir="commands/ai-rizz/ruleset-with-commands"
+	commands_dir="commands"
 	test -d "$commands_dir" || fail "Commands directory should be created"
 	test -f "$commands_dir/test-command.md" || fail "test-command.md should be copied"
 	test -f "$commands_dir/other-command.md" || fail "other-command.md should be copied"
@@ -148,8 +148,8 @@ test_commands_copied_to_correct_location() {
 	cmd_add_ruleset "test-commands" --commit
 	assertTrue "Should add ruleset successfully" $?
 	
-	# Action: Verify files in commands/ai-rizz/<ruleset>/ (namespaced)
-	commands_dir="commands/ai-rizz/test-commands"
+	# Action: Verify files in commands/ (relative to TARGET_DIR parent)
+	commands_dir="commands"
 	test -d "$commands_dir" || fail "Commands directory should exist"
 	test -f "$commands_dir/file1.md" || fail "file1.md should be copied"
 	test -f "$commands_dir/file2.txt" || fail "file2.txt should be copied"
@@ -186,7 +186,7 @@ test_commands_symlinks_followed_correctly() {
 	assertTrue "Should add ruleset successfully" $?
 	
 	# Expected: Symlink targets copied, not symlinks themselves
-	commands_dir="commands/ai-rizz/test-symlinks"
+	commands_dir="commands"
 	test -f "$commands_dir/original.md" || fail "original.md should be copied"
 	test -f "$commands_dir/symlink.md" || fail "symlink.md should be copied (as file, not symlink)"
 	test ! -L "$commands_dir/symlink.md" || fail "symlink.md should be a file, not a symlink"
@@ -224,8 +224,8 @@ test_commands_directory_created_if_missing() {
 	assertTrue "Should add ruleset successfully" $?
 	
 	# Expected: Directory created, files copied
-	test -d "commands/ai-rizz/test-auto-create" || fail "Commands directory should be created"
-	test -f "commands/ai-rizz/test-auto-create/test.md" || fail "test.md should be copied"
+	test -d "commands" || fail "Commands directory should be created"
+	test -f "commands/test.md" || fail "test.md should be copied"
 }
 
 # Test that adding single ruleset with commands auto-switches even when only local mode initialized
@@ -258,8 +258,8 @@ test_single_ruleset_with_commands_auto_switches_with_lazy_init() {
 	echo "$output" | grep -q "Warning" || fail "Should show warning about switching to commit mode"
 	
 	# Verify commands/ WAS created (because we switched to commit mode)
-	test -d "commands/ai-rizz/test-auto-switch" || fail "Commands directory should be created (switched to commit mode)"
-	test -f "commands/ai-rizz/test-auto-switch/test.md" || fail "test.md should be copied"
+	test -d "commands" || fail "Commands directory should be created (switched to commit mode)"
+	test -f "commands/test.md" || fail "test.md should be copied"
 	
 	# Verify ruleset was added to commit manifest (not local)
 	if [ -f "$TEST_COMMIT_MANIFEST_FILE" ]; then

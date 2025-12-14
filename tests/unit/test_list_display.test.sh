@@ -2,15 +2,12 @@
 #
 # test_list_display.test.sh - List display formatting test suite
 #
-# Tests the enhanced list display functionality, including expansion of
-# `commands/` subdirectory and proper formatting with both tree and fallback
-# find approaches.
+# Tests the list display functionality, including expansion of `commands/`
+# subdirectory and proper formatting.
 #
 # Test Coverage:
 # - commands/ directory expansion in list output
 # - Proper alignment and indentation
-# - Tree command path works correctly
-# - Fallback find path works correctly
 # - Empty commands/ directory handling
 #
 # Dependencies: shunit2, common test utilities
@@ -81,48 +78,8 @@ test_list_commands_alignment_correct() {
 	# Expected: Correct indentation (4 spaces + tree character for commands)
 	# Check that commands/ line has proper indentation (4 spaces + tree character)
 	echo "$output" | grep -q "^    .*commands" || fail "commands/ should have 4-space indentation"
-	# Check that commands contents have proper indentation
-	# The exact format depends on tree vs fallback, but should show continuation
-	if command -v tree >/dev/null 2>&1; then
-		# With tree, should show commands contents with proper indentation
-		echo "$output" | grep -A 5 "commands" | grep -q "file.md" || fail "Should show file.md in commands expansion (tree mode)"
-	else
-		# With fallback, should have proper indentation
-		echo "$output" | grep -A 5 "commands" | grep -q "file.md" || fail "Should show file.md in commands expansion (fallback mode)"
-	fi
-}
-
-# Test that list works correctly when tree command is not available
-# Expected: Fallback find approach shows commands/ expansion correctly
-test_list_works_without_tree_command() {
-	# Setup: Create ruleset with commands/ containing files
-	mkdir -p "$REPO_DIR/rulesets/test-fallback"
-	mkdir -p "$REPO_DIR/rulesets/test-fallback/commands"
-	echo "test" > "$REPO_DIR/rulesets/test-fallback/commands/fallback.md"
-	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-fallback/rule1.mdc"
-	
-	# Commit the new structure
-	cd "$REPO_DIR" || fail "Failed to change to repo directory"
-	git add . >/dev/null 2>&1
-	git commit --no-gpg-sign -m "Add test-fallback ruleset" >/dev/null 2>&1
-	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
-	
-	# Initialize
-	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
-	
-	# Setup: Mock tree command as unavailable by temporarily removing from PATH
-	original_path="$PATH"
-	PATH="/usr/bin:/bin"  # Minimal path without tree
-	
-	# Action: Run cmd_list
-	output=$(cmd_list)
-	
-	# Restore PATH
-	PATH="$original_path"
-	
-	# Expected: Fallback find approach used, commands/ still expanded
-	echo "$output" | grep -q "commands" || fail "Should show commands/ directory (fallback mode)"
-	echo "$output" | grep -q "fallback.md" || fail "Should show fallback.md in commands expansion (fallback mode)"
+	# Check that commands contents have proper indentation and are shown
+	echo "$output" | grep -A 5 "commands" | grep -q "file.md" || fail "Should show file.md in commands expansion"
 }
 
 # Test that empty commands/ directory is handled correctly

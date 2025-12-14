@@ -2408,9 +2408,8 @@ cmd_deinit() {
 # List available rules and rulesets (multi-mode aware)
 #
 # Shows rules and rulesets with glyphs indicating installation status.
-# Handles dual-mode conflict resolution (commit overrides local), expands
-# rulesets to show contents, and uses tree command when available for
-# better formatting. Syncs repository before listing.
+# Handles dual-mode conflict resolution (commit overrides local) & expands
+# rulesets to show contents. Syncs repository before listing.
 #
 # Globals:
 #   SOURCE_REPO - Source repository URL

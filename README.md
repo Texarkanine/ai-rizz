@@ -33,7 +33,6 @@ Check out my rules in [texarkanine/.cursor-rules](https://github.com/texarkanine
 
 ### Prerequisites
 - git
-- tree (optional; makes prettier displays easier)
 
 ### Installation
 

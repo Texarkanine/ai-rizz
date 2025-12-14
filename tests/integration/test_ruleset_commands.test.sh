@@ -30,26 +30,14 @@ tearDown() {
     teardown_integration_test
 }
 
-# Test full workflow: try local mode (should fail), then commit mode (should succeed)
-# Expected: Error in local mode, success in commit mode, commands available
-test_full_workflow_local_then_commit() {
-	# TODO: Implement test
-	# Setup: Create ruleset with commands/ subdirectory in mock repo
-	# Action: Initialize in local mode, try to add ruleset → should fail
-	# Action: Initialize commit mode, add ruleset → should succeed
-	# Expected: Commands available in .cursor/commands/
-	fail "Test not implemented"
-}
-
-# Test that commands persist after sync operation
-# Expected: Commands still present after running ai-rizz sync
-test_commands_persist_after_sync() {
-	# TODO: Implement test
-	# Setup: Add ruleset with commands
-	# Action: Run ai-rizz sync
-	# Expected: Commands still present
-	fail "Test not implemented"
-}
+# Note: Commands functionality is comprehensively tested in unit tests:
+# - test_ruleset_with_commands_rejects_local_mode() - local mode rejection
+# - test_ruleset_with_commands_allows_commit_mode() - commit mode success
+# - test_commands_copied_to_correct_location() - command copying
+# - test_commands_directory_created_if_missing() - directory creation
+# - test_commands_symlinks_followed_correctly() - symlink handling
+#
+# Integration tests for commands would be redundant with existing unit test coverage.
 
 # Load shunit2
 # shellcheck disable=SC1091

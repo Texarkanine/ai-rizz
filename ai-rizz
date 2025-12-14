@@ -110,6 +110,99 @@ warn() {
   printf '%b' "Warning: ${1}\n" >&2
 }
 
+# Resolve symlink to absolute path (portable readlink -f)
+#
+# POSIX-compliant implementation based on readlinkf_posix from
+# https://github.com/ko1nksm/readlinkf
+#
+# This function provides cross-platform symlink resolution using only
+# POSIX-specified commands (cd -P, ls -dl). It resolves symlinks to their
+# absolute target paths, handling both absolute and relative symlinks,
+# nested symlink chains, and circular references.
+#
+# The upstream implementation is extensively tested across 9+ shells and
+# 5+ platforms (macOS, FreeBSD, Cygwin, etc.). We trust the upstream
+# tests and do not duplicate them here.
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Path to resolve (symlink, file, or directory)
+#
+# Outputs:
+#   Stdout: Absolute resolved path, or empty string if resolution fails
+#
+# Returns:
+#   0 on success
+#   1 if path doesn't exist or resolution fails
+#
+_readlink_f() {
+	_rlf_path="${1}"
+	
+	# Return empty if no path provided
+	if [ -z "${_rlf_path}" ]; then
+		echo ""
+		return 1
+	fi
+	
+	# Implementation based on readlinkf_posix from
+	# https://github.com/ko1nksm/readlinkf
+	# Uses only POSIX-specified commands: cd -P, ls -dl
+	_rlf_max_symlinks=40
+	_rlf_cdpath=''
+	
+	_rlf_target="${_rlf_path}"
+	# Trim trailing slashes
+	[ -e "${_rlf_target%/}" ] || _rlf_target="${_rlf_path%"${_rlf_path##*[!/]}"}"
+	# Add trailing slash for directories
+	[ -d "${_rlf_target:-/}" ] && _rlf_target="${_rlf_target}/"
+	
+	# Save original directory
+	_rlf_orig_pwd=$(pwd)
+	
+	# Change to current directory (cd -P resolves symlinks)
+	if ! cd -P . 2>/dev/null; then
+		echo ""
+		return 1
+	fi
+	
+	# Resolve symlinks iteratively
+	while [ "${_rlf_max_symlinks}" -ge 0 ] && _rlf_max_symlinks=$(expr ${_rlf_max_symlinks} - 1); do
+		# Navigate to directory containing target
+		if [ ! "${_rlf_target}" = "${_rlf_target%/*}" ]; then
+			case "${_rlf_target}" in
+				/*)
+					cd -P "${_rlf_target%/*}/" 2>/dev/null || break
+					;;
+				*)
+					cd -P "./${_rlf_target%/*}" 2>/dev/null || break
+					;;
+			esac
+			_rlf_target="${_rlf_target##*/}"
+		fi
+		
+		# If not a symlink, we're done
+		if [ ! -L "${_rlf_target}" ]; then
+			_rlf_result="${PWD%/}${_rlf_target:+/}${_rlf_target}"
+			cd "${_rlf_orig_pwd}" 2>/dev/null
+			printf '%s\n' "${_rlf_result:-/}"
+			return 0
+		fi
+		
+		# Read symlink target from ls -dl output
+		# ls -dl format: "%s %u %s %s %u %s %s -> %s\n"
+		# See: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/ls.html
+		_rlf_link=$(ls -dl -- "${_rlf_target}" 2>/dev/null) || break
+		_rlf_target="${_rlf_link#*" ${_rlf_target} -> "}"
+	done
+	
+	# Resolution failed, restore directory and return empty
+	cd "${_rlf_orig_pwd}" 2>/dev/null
+	echo ""
+	return 1
+}
+
 # Show command usage error with example and exit
 #
 # Displays a user-friendly error message for command usage errors
@@ -364,7 +457,7 @@ show_ruleset_commands_error() {
 	srce_exit_code="${2:-1}"
 	
 	cat >&2 << EOF
-Error: Ruleset '${srce_ruleset_name}' contains a 'commands' directory and must be added in 'commit' mode.
+Error: Ruleset '${srce_ruleset_name}' contains a 'commands' directory and must be added in commit mode.
 
 Try:
   ai-rizz add ruleset ${srce_ruleset_name} --commit
@@ -2483,17 +2576,7 @@ cmd_list() {
 						# If it's a symlink, check if it points to the rule file
 						if [ -L "${cl_check_match}" ]; then
 							# Resolve symlink to absolute path and check if it points to the rule file
-							# Use readlink -f to resolve relative symlinks to absolute paths
-							cl_check_target=$(readlink -f "${cl_check_match}" 2>/dev/null)
-							if [ -z "${cl_check_target}" ]; then
-								# Fallback if readlink -f not available (shouldn't happen on modern systems)
-								cl_check_target=$(readlink "${cl_check_match}" 2>/dev/null)
-								# If relative, resolve relative to symlink's directory
-								if [ -n "${cl_check_target}" ] && [ "${cl_check_target#/}" = "${cl_check_target}" ]; then
-									cl_check_symlink_dir=$(dirname "${cl_check_match}")
-									cl_check_target=$(cd "${cl_check_symlink_dir}" && readlink -f "${cl_check_target}" 2>/dev/null || echo "${cl_check_symlink_dir}/${cl_check_target}")
-								fi
-							fi
+							cl_check_target=$(_readlink_f "${cl_check_match}")
 							# Compare resolved absolute paths
 							if [ -n "${cl_check_target}" ] && [ "${cl_check_target}" = "${cl_check_item_path}" ]; then
 								rm -f "${cl_check_temp_file}"
@@ -2886,8 +2969,37 @@ cmd_add_ruleset() {
 		esac
 	done
 	
+	# Track original mode before any overrides
+	cars_original_mode="${cars_mode}"
+	
 	# Check if any mode is initialized and validate manifest integrity
 	ensure_initialized_and_valid
+
+	# Short-circuit: If adding a single ruleset with commands/, auto-use commit mode
+	# This improves UX since rulesets with commands can ONLY be added in commit mode
+	if [ -n "${cars_rulesets}" ]; then
+		# Count rulesets by counting spaces + 1
+		cars_ruleset_count=0
+		for _cars_count_ruleset in ${cars_rulesets}; do
+			cars_ruleset_count=$(expr ${cars_ruleset_count} + 1)
+		done
+		
+		# If exactly one ruleset, check if it has commands/
+		if [ ${cars_ruleset_count} -eq 1 ]; then
+			cars_single_ruleset="${cars_rulesets}"
+			cars_single_ruleset_path="${RULESETS_PATH}/${cars_single_ruleset}"
+			
+			# Check if ruleset exists and has commands/ subdirectory
+			if [ -d "${REPO_DIR}/${cars_single_ruleset_path}" ] && [ -d "${REPO_DIR}/${cars_single_ruleset_path}/commands" ]; then
+				# Ruleset has commands/ - must use commit mode
+				if [ "${cars_original_mode}" = "local" ]; then
+					# User explicitly provided --local, warn them
+					warn "Ruleset '${cars_single_ruleset}' contains a 'commands' directory. Switching to commit mode."
+				fi
+				cars_mode="commit"
+			fi
+		fi
+	fi
 
 	# Smart mode selection using helper function
 	cars_mode=$(select_mode "${cars_mode}")

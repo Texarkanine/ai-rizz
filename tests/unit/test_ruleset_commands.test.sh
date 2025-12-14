@@ -28,9 +28,9 @@ source_ai_rizz
 # DETECTION AND VALIDATION TESTS
 # ============================================================================
 
-# Test that adding a ruleset with commands/ subdirectory in local mode is rejected
-# Expected: Error message explaining that rulesets with commands must be committed
-test_ruleset_with_commands_rejects_local_mode() {
+# Test that adding a single ruleset with commands/ subdirectory auto-switches to commit mode
+# Expected: Warning message, then successfully added in commit mode (UX improvement)
+test_ruleset_with_commands_auto_switches_to_commit_mode() {
 	# Setup: Create ruleset with commands/ subdirectory
 	mkdir -p "$REPO_DIR/rulesets/ruleset-with-commands"
 	mkdir -p "$REPO_DIR/rulesets/ruleset-with-commands/commands"
@@ -43,22 +43,28 @@ test_ruleset_with_commands_rejects_local_mode() {
 	git commit --no-gpg-sign -m "Add ruleset with commands" >/dev/null 2>&1
 	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
 	
-	# Initialize in local mode
+	# Initialize both modes
 	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
 	
-	# Action: Try to add ruleset in local mode
+	# Action: Try to add ruleset with --local flag (should auto-switch to commit)
 	output=$(cmd_add_ruleset "ruleset-with-commands" --local 2>&1)
 	exit_code=$?
+
+	# Expected: Warning about switching to commit mode, then success
+	assertEquals "Should exit with success code" 0 $exit_code
+	echo "$output" | grep -q "Warning" || fail "Should show warning about switching to commit mode"
+	echo "$output" | grep -q "commands" || fail "Warning should mention commands"
+	echo "$output" | grep -q "commit mode" || fail "Warning should mention commit mode"
 	
-	# Expected: Error with helpful message, ruleset not added
-	assertEquals "Should exit with error code" 1 $exit_code
-	echo "$output" | grep -q "commands" || fail "Error message should mention commands"
-	echo "$output" | grep -q "commit" || fail "Error message should mention commit mode"
-	
-	# Verify ruleset was NOT added to manifest
-	if [ -f "$TEST_LOCAL_MANIFEST_FILE" ]; then
-		grep -q "ruleset-with-commands" "$TEST_LOCAL_MANIFEST_FILE" && fail "Ruleset should not be added to manifest"
+	# Verify ruleset was added to COMMIT manifest (not local)
+	if [ -f "$TEST_COMMIT_MANIFEST_FILE" ]; then
+		grep -q "ruleset-with-commands" "$TEST_COMMIT_MANIFEST_FILE" || fail "Ruleset should be added to commit manifest"
 	fi
+	if [ -f "$TEST_LOCAL_MANIFEST_FILE" ]; then
+		grep -q "ruleset-with-commands" "$TEST_LOCAL_MANIFEST_FILE" && fail "Ruleset should NOT be added to local manifest"
+	fi
+	return 0
 }
 
 # Test that adding a ruleset with commands/ subdirectory in commit mode is allowed
@@ -222,36 +228,43 @@ test_commands_directory_created_if_missing() {
 	test -f "commands/test.md" || fail "test.md should be copied"
 }
 
-# Test that commands are not copied in local mode (even if somehow bypassed)
-# Expected: Commands directory not created when in local mode
-test_commands_not_copied_in_local_mode() {
+# Test that adding single ruleset with commands auto-switches even when only local mode initialized
+# Expected: Auto-switches to commit mode (lazy-init), copies commands
+test_single_ruleset_with_commands_auto_switches_with_lazy_init() {
 	# Setup: Create ruleset with commands/ subdirectory
-	mkdir -p "$REPO_DIR/rulesets/test-no-local"
-	mkdir -p "$REPO_DIR/rulesets/test-no-local/commands"
-	echo "command content" > "$REPO_DIR/rulesets/test-no-local/commands/test.md"
-	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-no-local/rule1.mdc"
+	mkdir -p "$REPO_DIR/rulesets/test-auto-switch"
+	mkdir -p "$REPO_DIR/rulesets/test-auto-switch/commands"
+	echo "command content" > "$REPO_DIR/rulesets/test-auto-switch/commands/test.md"
+	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-auto-switch/rule1.mdc"
 	
 	# Commit the new structure
 	cd "$REPO_DIR" || fail "Failed to change to repo directory"
 	git add . >/dev/null 2>&1
-	git commit --no-gpg-sign -m "Add test-no-local ruleset" >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add test-auto-switch ruleset" >/dev/null 2>&1
 	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
 	
-	# Initialize in local mode
+	# Initialize only in local mode (commit mode not initialized)
 	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
 	
 	# Ensure commands/ doesn't exist
 	rm -rf "commands"
 	
-	# Action: Try to add ruleset (should fail)
-	output=$(cmd_add_ruleset "test-no-local" --local 2>&1)
+	# Action: Try to add ruleset with --local (should auto-switch to commit, lazy-init commit mode)
+	output=$(cmd_add_ruleset "test-auto-switch" --local 2>&1)
 	exit_code=$?
 	
-	# Expected: Should fail
-	assertEquals "Should exit with error code" 1 $exit_code
+	# Expected: Should succeed (auto-switched to commit mode, lazy-init commit mode)
+	assertEquals "Should exit with success code" 0 $exit_code
+	echo "$output" | grep -q "Warning" || fail "Should show warning about switching to commit mode"
 	
-	# Verify commands/ not created
-	test ! -d "commands" || fail "Commands directory should not be created in local mode"
+	# Verify commands/ WAS created (because we switched to commit mode)
+	test -d "commands" || fail "Commands directory should be created (switched to commit mode)"
+	test -f "commands/test.md" || fail "test.md should be copied"
+	
+	# Verify ruleset was added to commit manifest (not local)
+	if [ -f "$TEST_COMMIT_MANIFEST_FILE" ]; then
+		grep -q "test-auto-switch" "$TEST_COMMIT_MANIFEST_FILE" || fail "Ruleset should be added to commit manifest"
+	fi
 }
 
 # Load shunit2

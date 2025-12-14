@@ -3313,7 +3313,7 @@ sync_manifest_to_directory() {
 			*/"${LOCAL_DIR}"|*/"${SHARED_DIR}")
 				# Clear existing .mdc files to ensure removed rules are deleted
 				# Only delete regular .mdc files, never directories or other files
-				# Remove -maxdepth 1 to handle nested .mdc files (structured rules)
+				# Even if symlinks were used in a ruleset, we only EVER get regular files in the rules dir
 				find "${smtd_target_directory}" -name "*.mdc" -type f -delete 2>/dev/null || true
 				;;
 		*)

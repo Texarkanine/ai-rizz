@@ -9,9 +9,46 @@
 # Source the test utilities
 . "$(dirname "$0")/../common.sh"
 
-# Source the ai-rizz script
-oneTimeSetUp() {
+# Set up test environment with HOME isolation
+setUp() {
+	# Save original HOME
+	_ORIGINAL_HOME="${HOME}"
+	
+	# Create isolated test directory
+	TEST_DIR="$(mktemp -d)"
+	HOME="${TEST_DIR}"
+	export HOME
+	
+	# Set up source repo with test rules (at HOME level)
+	REPO_DIR="${TEST_DIR}/test_repo"
+	mkdir -p "${REPO_DIR}/rules"
+	mkdir -p "${REPO_DIR}/rulesets"
+	echo "Rule 1 content" > "${REPO_DIR}/rules/rule1.mdc"
+	
+	# Create app directory separate from HOME (so COMMIT_MANIFEST != GLOBAL_MANIFEST)
+	APP_DIR="${TEST_DIR}/app"
+	mkdir -p "${APP_DIR}"
+	cd "${APP_DIR}" || fail "Failed to cd to app dir"
+	
+	# Create git repo for tests
+	git init . >/dev/null 2>&1
+	git config user.email "test@test.com" >/dev/null 2>&1
+	git config user.name "Test" >/dev/null 2>&1
+	mkdir -p .git/info && touch .git/info/exclude
+	echo "test" > README.md
+	git add README.md >/dev/null 2>&1
+	git commit --no-gpg-sign -m "init" >/dev/null 2>&1
+	
+	# Source ai-rizz AFTER HOME is set so GLOBAL_MANIFEST_FILE is correct
 	source_ai_rizz
+}
+
+tearDown() {
+	# Restore original HOME
+	HOME="${_ORIGINAL_HOME}"
+	export HOME
+	
+	cd / && rm -rf "${TEST_DIR}"
 }
 
 # ============================================================================
@@ -199,10 +236,6 @@ test_add_rule_commit_uses_repo_dir() {
 	assertEquals "add --commit should succeed" 0 ${car_status}
 	echo "${car_output}" | grep -q "Added rule" || \
 		fail "Should report added rule, got: ${car_output}"
-	
-	# Cleanup
-	rm -f "${COMMIT_MANIFEST_FILE}"
-	rm -rf ".cursor/rules"
 }
 
 # Test add rule in global mode uses GLOBAL_REPO_DIR
@@ -222,10 +255,6 @@ test_add_rule_global_uses_global_repo_dir() {
 	assertEquals "add --global should succeed" 0 ${car_status}
 	echo "${car_output}" | grep -q "Added rule" || \
 		fail "Should report added rule, got: ${car_output}"
-	
-	# Cleanup
-	rm -f "${GLOBAL_MANIFEST_FILE}"
-	rm -rf ".cursor/rules"
 }
 
 # ============================================================================

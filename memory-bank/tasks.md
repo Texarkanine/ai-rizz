@@ -5,7 +5,7 @@
 **Task ID**: phase-8-bug-fixes
 **Title**: Fix remaining bugs from global mode implementation
 **Complexity**: Level 2 (Bug fixes with test infrastructure implications)
-**Status**: 🔴 PLANNING
+**Status**: ✅ COMPLETE
 **Branch**: `command-support-2`
 **PR**: https://github.com/Texarkanine/ai-rizz/pull/15
 
@@ -225,10 +225,10 @@ Same fix as 8.2.2 - add HOME isolation and use consistent repo paths.
 
 ### Definition of Done
 
-- [ ] `ai-rizz remove rule <rule>` works when rule is in global mode
-- [ ] All 23 unit tests pass
-- [ ] All 7 integration tests pass
-- [ ] Manual testing confirms global add/remove/list cycle works
+- [x] `ai-rizz remove rule <rule>` works when rule is in global mode
+- [x] All 23 unit tests pass
+- [x] All 7 integration tests pass
+- [x] Manual testing confirms global add/remove/list cycle works (via test suite)
 
 ---
 
@@ -257,7 +257,7 @@ make test  # Should be 30/30 (23 unit + 7 integration)
 | Date | Phase | Status | Notes |
 |------|-------|--------|-------|
 | 2026-01-25 | Phase 1-7 | COMPLETE | Global mode + command support |
-| 2026-01-25 | Phase 8 | PLANNING | Bug fixes identified and planned |
+| 2026-01-25 | Phase 8 | COMPLETE | All 4 bugs fixed, 30/30 tests pass |
 
 ---
 

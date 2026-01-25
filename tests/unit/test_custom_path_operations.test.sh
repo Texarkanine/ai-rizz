@@ -20,8 +20,12 @@
 
 # Setup - run before each test
 setUp() {
-    # Create a temporary test directory
+    # Save and override HOME for test isolation
+    _ORIGINAL_HOME="${HOME}"
     TEST_DIR="$(mktemp -d)"
+    HOME="${TEST_DIR}"
+    export HOME
+    
     cd "$TEST_DIR" || fail "Failed to change to test directory"
     
     # Set up source ai-rizz for testing
@@ -30,10 +34,11 @@ setUp() {
     # Reset ai-rizz state
     reset_ai_rizz_state
     
-    # Setup test repository structure
+    # Setup test repository structure - use actual REPO_DIR, not fake URL
     REPO_DIR=$(get_repo_dir)
     mkdir -p "$REPO_DIR"
-    TEST_SOURCE_REPO="https://example.com/repo.git"
+    # Use the actual repo path as source, not a fake URL
+    TEST_SOURCE_REPO="$REPO_DIR"
     TEST_TARGET_DIR=".cursor/rules"
     
     # Create repository structure with custom paths
@@ -72,6 +77,10 @@ setUp() {
 
 # Teardown - run after each test
 tearDown() {
+    # Restore original HOME
+    HOME="${_ORIGINAL_HOME}"
+    export HOME
+    
     # Return to original directory before removing test directory
     cd / || fail "Failed to return to root directory"
     

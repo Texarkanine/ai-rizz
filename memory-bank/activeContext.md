@@ -87,20 +87,52 @@
    - Added modes section explaining commit/local/global
    - Added glyph legend (●/◐/★/○)
 
-## All Features Complete
+## Critical Bug Discovered
 
-Command `/` prefix display implemented - commands now show as `/command-name` in list output.
+Two related bugs found in global mode implementation:
 
-## Next Steps
+### Bug 1: Global Cache Naming Collision
+- `get_repo_dir()` uses `basename $(pwd)` when outside git repos
+- Running `ai-rizz init --global` in different directories creates different caches
+- Should always use SAME cache (`_ai-rizz.global`) regardless of PWD
 
-1. **Push commits** to update PR #14
-2. **Mark PR ready for review** (no longer draft)
-3. **Manual testing** of global mode in real-world scenario
+### Bug 2: Mixed Source Repo Operations Broken
+- `REPO_DIR` is set ONCE at startup
+- If global mode uses repo X and local uses repo Y:
+  - `ai-rizz add rule --global` looks in repo Y's cache (WRONG!)
+  - May find wrong rule or fail silently
+
+## Phase 7 Complete: Cache Isolation Bug Fix
+
+See `memory-bank/creative/creative-repo-cache-isolation.md` for full design.
+
+**Implementation**:
+1. Global mode uses fixed cache: `_ai-rizz.global`
+2. Local/commit modes share project cache (UNCHANGED - core feature)
+3. `GLOBAL_REPO_DIR` tracked separately from `REPO_DIR`
+4. `get_repo_dir_for_mode()` returns correct repo for each mode
+5. `repos_match()` compares global vs local/commit source repos
+
+**New functions**:
+- `get_global_repo_dir()` - Fixed global cache path
+- `sync_global_repo()` - Global repo synchronization
+- `get_global_source_repo()` - Extract repo from global manifest
+- `get_local_commit_source_repo()` - Extract repo from local/commit manifest
+- `repos_match()` - Compare source repos
+- `get_repo_dir_for_mode()` - Mode-aware repo selection
+
+**Test coverage**: 12 new tests in `test_cache_isolation.test.sh`
+
+## Status
+
+- All 31 tests pass (24 unit + 7 integration)
+- All phases complete (1-7)
+- PR ready for review
 
 ## Open Questions
 
-None - all phases complete.
+None - all implementation complete.
 
 ## Blockers
 
-None.
+None - ready for review and merge.

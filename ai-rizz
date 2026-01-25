@@ -36,6 +36,10 @@ TARGET_DIR=""       # Target directory for rules
 # Repository directory (set during initialization)
 REPO_DIR=""
 
+# Global mode repository directory (separate from REPO_DIR for cache isolation)
+# This ensures global mode uses a fixed cache path regardless of PWD
+GLOBAL_REPO_DIR=""
+
 # Source repository paths (set during initialization, identical across modes)
 RULES_PATH=""                                       # Rules path from manifest
 RULESETS_PATH=""                                    # Rulesets path from manifest
@@ -88,6 +92,28 @@ get_repo_dir() {
 		grd_project_name=$(basename "$(pwd)")
 	fi
 	echo "${CONFIG_DIR}/repos/${grd_project_name}/repo"
+}
+
+# Get global mode repository directory (fixed cache path)
+#
+# Returns a fixed cache path for global mode that is independent of PWD.
+# Uses "_ai-rizz.global" as the cache name which cannot conflict with
+# git repository names.
+#
+# Globals:
+#   CONFIG_DIR - Base configuration directory path
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stdout: Global repository directory path
+#
+# Returns:
+#   0 on success
+#
+get_global_repo_dir() {
+	echo "${CONFIG_DIR}/repos/_ai-rizz.global/repo"
 }
 
 # Print error message to stderr and exit with specified code
@@ -900,6 +926,171 @@ git_sync() {
   return 0
 }
 
+# Sync global mode's source repository
+#
+# Syncs the global manifest's source repo to the global cache directory.
+# Uses the fixed GLOBAL_REPO_DIR path for cache isolation.
+#
+# Globals:
+#   GLOBAL_REPO_DIR - Target directory for global repository cache
+#   GLOBAL_MANIFEST_FILE - Global manifest file path
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stderr: Warning messages on failure
+#
+# Returns:
+#   0 on success
+#   1 on failure
+#
+sync_global_repo() {
+	# Get global source repo from manifest
+	sgr_source_repo=$(get_global_source_repo)
+	
+	if [ -z "${sgr_source_repo}" ]; then
+		return 1
+	fi
+	
+	# Ensure global cache directory exists
+	mkdir -p "$(dirname "${GLOBAL_REPO_DIR}")"
+	
+	# Clone/update global repository
+	if [ ! -d "${GLOBAL_REPO_DIR}" ]; then
+		if ! git clone "${sgr_source_repo}" "${GLOBAL_REPO_DIR}" >/dev/null; then
+			warn "Failed to clone global repository: ${sgr_source_repo}"
+			return 1
+		fi
+	else
+		if ! (cd "${GLOBAL_REPO_DIR}" && git pull >/dev/null); then
+			warn "Failed to update global repository: ${sgr_source_repo}"
+			return 1
+		fi
+	fi
+	
+	return 0
+}
+
+# Get source repository URL from global manifest
+#
+# Extracts the source repository URL from the global manifest file.
+# Returns empty string if global mode is not active.
+#
+# Globals:
+#   GLOBAL_MANIFEST_FILE - Global manifest file path
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stdout: Global source repository URL, or empty string
+#
+# Returns:
+#   0 always
+#
+get_global_source_repo() {
+	if [ -f "${GLOBAL_MANIFEST_FILE}" ]; then
+		ggsr_metadata=$(read_manifest_metadata "${GLOBAL_MANIFEST_FILE}" 2>/dev/null || echo "")
+		if [ -n "${ggsr_metadata}" ]; then
+			echo "${ggsr_metadata}" | cut -f1 -d"	"
+			return 0
+		fi
+	fi
+	echo ""
+	return 0
+}
+
+# Get source repository URL from local/commit manifest
+#
+# Extracts the source repository URL from the local or commit manifest file.
+# Checks commit manifest first, then local.
+# Returns empty string if neither mode is active.
+#
+# Globals:
+#   COMMIT_MANIFEST_FILE - Commit manifest file path
+#   LOCAL_MANIFEST_FILE - Local manifest file path
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stdout: Local/commit source repository URL, or empty string
+#
+# Returns:
+#   0 always
+#
+get_local_commit_source_repo() {
+	# Try commit manifest first
+	if [ -f "${COMMIT_MANIFEST_FILE}" ]; then
+		glcsr_metadata=$(read_manifest_metadata "${COMMIT_MANIFEST_FILE}" 2>/dev/null || echo "")
+		if [ -n "${glcsr_metadata}" ]; then
+			echo "${glcsr_metadata}" | cut -f1 -d"	"
+			return 0
+		fi
+	fi
+	
+	# Try local manifest
+	if [ -f "${LOCAL_MANIFEST_FILE}" ]; then
+		glcsr_metadata=$(read_manifest_metadata "${LOCAL_MANIFEST_FILE}" 2>/dev/null || echo "")
+		if [ -n "${glcsr_metadata}" ]; then
+			echo "${glcsr_metadata}" | cut -f1 -d"	"
+			return 0
+		fi
+	fi
+	
+	echo ""
+	return 0
+}
+
+# Check if global and local/commit modes use the same source repository
+#
+# Compares source repos between global mode and local/commit modes.
+# Returns success (0) if:
+# - Only one mode is active (no comparison needed)
+# - Both modes use the same source repository
+# Returns failure (1) if source repos differ.
+#
+# Globals:
+#   COMMIT_MANIFEST_FILE - Commit manifest file path
+#   LOCAL_MANIFEST_FILE - Local manifest file path
+#   GLOBAL_MANIFEST_FILE - Global manifest file path
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   None
+#
+# Returns:
+#   0 if repos match or only one mode active
+#   1 if repos differ
+#
+repos_match() {
+	# Get global source repo
+	rm_global_source=$(get_global_source_repo)
+	
+	# If global mode not active, repos "match" (no conflict possible)
+	if [ -z "${rm_global_source}" ]; then
+		return 0
+	fi
+	
+	# Get local/commit source repo directly from manifest (not cached SOURCE_REPO)
+	rm_local_source=$(get_local_commit_source_repo)
+	
+	# If local/commit not active, repos "match"
+	if [ -z "${rm_local_source}" ]; then
+		return 0
+	fi
+	
+	# Compare source repos
+	if [ "${rm_global_source}" = "${rm_local_source}" ]; then
+		return 0
+	fi
+	
+	return 1
+}
+
 # Git Exclude Management  
 # ======================
 
@@ -1472,9 +1663,13 @@ cache_manifest_metadata() {
 		parse_manifest_metadata "${LOCAL_MANIFEST_FILE}" "local"
 	fi
 	
-	# Cache global manifest metadata
+	# Cache global manifest metadata and set GLOBAL_REPO_DIR
 	if [ -f "${GLOBAL_MANIFEST_FILE}" ]; then
 		parse_manifest_metadata "${GLOBAL_MANIFEST_FILE}" "global"
+		# Set the global repo directory to the fixed cache path
+		GLOBAL_REPO_DIR=$(get_global_repo_dir)
+	else
+		GLOBAL_REPO_DIR=""
 	fi
 }
 
@@ -2181,17 +2376,18 @@ check_repository_item() {
 	cri_item_path="${1}"
 	cri_item_type="${2}"
 	cri_expected_type="${3:-file}"  # Default to file if not specified
+	cri_repo_dir="${4:-${REPO_DIR}}"  # Default to REPO_DIR if not specified
 	
 	# Check if item exists in source repo based on expected type
 	case "${cri_expected_type}" in
 		file)
-			if [ ! -f "${REPO_DIR}/${cri_item_path}" ]; then
+			if [ ! -f "${cri_repo_dir}/${cri_item_path}" ]; then
 				warn "${cri_item_type} not found: ${cri_item_path}"
 				return 1
 			fi
 			;;
 		dir)
-			if [ ! -d "${REPO_DIR}/${cri_item_path}" ]; then
+			if [ ! -d "${cri_repo_dir}/${cri_item_path}" ]; then
 				warn "${cri_item_type} not found: ${cri_item_path}"
 				return 1
 			fi
@@ -2203,6 +2399,37 @@ check_repository_item() {
 	esac
 	
 	return 0
+}
+
+# Get the appropriate repository directory for a given mode
+#
+# Returns GLOBAL_REPO_DIR for global mode, REPO_DIR for local/commit modes.
+# This enables cache isolation where global mode uses a separate cache.
+#
+# Globals:
+#   REPO_DIR - Local/commit mode repository directory
+#   GLOBAL_REPO_DIR - Global mode repository directory
+#
+# Arguments:
+#   $1 - Mode ("local", "commit", or "global")
+#
+# Outputs:
+#   Stdout: Appropriate repository directory path
+#
+# Returns:
+#   0 always
+#
+get_repo_dir_for_mode() {
+	grdm_mode="${1}"
+	
+	case "${grdm_mode}" in
+		global)
+			echo "${GLOBAL_REPO_DIR}"
+			;;
+		*)
+			echo "${REPO_DIR}"
+			;;
+	esac
 }
 
 # Handle conflict resolution migration logic
@@ -3284,6 +3511,9 @@ cmd_add_rule() {
 	car_manifest_file=$(echo "${car_manifest_and_target}" | cut -f1 -d"	") # Using literal tab as delimiter
 	car_target_dir=$(echo "${car_manifest_and_target}" | cut -f2 -d"	") # Using literal tab as delimiter
 
+	# Get the correct repo dir for this mode (cache isolation)
+	car_repo_dir=$(get_repo_dir_for_mode "${car_mode}")
+
 	# Process each rule
 	for car_rule in ${car_rules}; do
 		# Handle extension: .mdc for rules, .md for commands
@@ -3299,8 +3529,8 @@ cmd_add_rule() {
 		
 		car_rule_path="${RULES_PATH}/${car_item}"
 		
-		# Check if rule/command exists in source repo using helper function
-		if ! check_repository_item "${car_rule_path}" "Rule"; then
+		# Check if rule/command exists in the correct source repo for this mode
+		if ! check_repository_item "${car_rule_path}" "Rule" "file" "${car_repo_dir}"; then
 			continue
 		fi
 		
@@ -3406,12 +3636,15 @@ cmd_add_ruleset() {
 	cars_manifest_and_target=$(get_manifest_and_target "${cars_mode}")
 	cars_manifest_file=$(echo "${cars_manifest_and_target}" | cut -f1 -d"	") # Using literal tab as delimiter
 
+	# Get the correct repo dir for this mode (cache isolation)
+	cars_repo_dir=$(get_repo_dir_for_mode "${cars_mode}")
+
 	# Process each ruleset
 	for cars_ruleset in ${cars_rulesets}; do
 		cars_ruleset_path="${RULESETS_PATH}/${cars_ruleset}"
 		
-		# Check if ruleset exists in source repo using helper function
-		if ! check_repository_item "${cars_ruleset_path}" "Ruleset" "dir"; then
+		# Check if ruleset exists in the correct source repo for this mode
+		if ! check_repository_item "${cars_ruleset_path}" "Ruleset" "dir" "${cars_repo_dir}"; then
 			continue
 		fi
 		

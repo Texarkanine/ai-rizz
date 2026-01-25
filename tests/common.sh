@@ -213,6 +213,11 @@ reset_ai_rizz_state() {
   LOCAL_SOURCE_REPO=""
   COMMIT_TARGET_DIR=""
   LOCAL_TARGET_DIR=""
+  
+  # Reset GLOBAL_REPO_DIR to test repo (set in setUp via REPO_DIR)
+  if [ -n "$REPO_DIR" ]; then
+    GLOBAL_REPO_DIR="$REPO_DIR"
+  fi
 }
 
 # Source the ai-rizz script - use this in test files to test the actual implementation
@@ -252,6 +257,10 @@ source_ai_rizz() {
   TARGET_DIR="$_TEST_TARGET_DIR"
   REPO_DIR="$_TEST_REPO_DIR"
   
+  # Set GLOBAL_REPO_DIR to use the same test repo as local/commit modes
+  # This ensures global mode tests use the test repo content
+  GLOBAL_REPO_DIR="$_TEST_REPO_DIR"
+  
   # Override functions that interact with external systems for testing
   git_sync() {
     repo_url="$1"
@@ -271,6 +280,17 @@ source_ai_rizz() {
         return 0
         ;;
     esac
+  }
+  
+  # Override sync_global_repo for testing - use test repo
+  sync_global_repo() {
+    # In tests, global repo is same as test repo
+    return 0
+  }
+  
+  # Override get_global_repo_dir for testing - use test repo
+  get_global_repo_dir() {
+    echo "$REPO_DIR"
   }
   
   # Reset ai-rizz state to ensure clean state between tests

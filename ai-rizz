@@ -2990,9 +2990,9 @@ cmd_list() {
 		echo "${cl_is_installed_status}"
 	}
 	
-	# Display rules
+	# Display rules (*.mdc files)
 	echo "Available rules:"
-	cl_rules=$(find "${REPO_DIR}/${RULES_PATH}" -name "*.mdc" | sort 2>/dev/null)
+	cl_rules=$(find "${REPO_DIR}/${RULES_PATH}" -maxdepth 1 -name "*.mdc" -type f 2>/dev/null | sort)
 	if [ -z "${cl_rules}" ]; then
 		echo "  No rules found"
 	else
@@ -3013,6 +3013,38 @@ cmd_list() {
 					;;
 				*)
 					printf "  %s %s\n" "${UNINSTALLED_GLYPH}" "${cl_rule_name}"
+					;;
+			esac
+		done
+	fi
+	echo ""
+	
+	# Display commands (*.md files) with / prefix
+	echo "Available commands:"
+	cl_commands=$(find "${REPO_DIR}/${RULES_PATH}" -maxdepth 1 -name "*.md" ! -name "*.mdc" -type f 2>/dev/null | sort)
+	if [ -z "${cl_commands}" ]; then
+		echo "  No commands found"
+	else
+		for cl_command in ${cl_commands}; do
+			cl_command_name=$(basename "${cl_command}")
+			cl_command_path="${RULES_PATH}/${cl_command_name}"
+			cl_status=$(is_installed "${cl_command_path}")
+			
+			# Strip .md extension for display (matches Cursor invocation)
+			cl_command_display=$(echo "${cl_command_name}" | sed 's/\.md$//')
+			
+			case "${cl_status}" in
+				committed)
+					printf "  %s /%s\n" "${COMMITTED_GLYPH}" "${cl_command_display}"
+					;;
+				local)
+					printf "  %s /%s\n" "${LOCAL_GLYPH}" "${cl_command_display}"
+					;;
+				global)
+					printf "  %s /%s\n" "${GLOBAL_GLYPH}" "${cl_command_display}"
+					;;
+				*)
+					printf "  %s /%s\n" "${UNINSTALLED_GLYPH}" "${cl_command_display}"
 					;;
 			esac
 		done

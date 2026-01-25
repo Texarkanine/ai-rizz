@@ -3,7 +3,7 @@
 ## Current Focus
 
 **Task**: Add `--global` mode and unified command support to ai-rizz
-**Phase**: ✅ Implementation Complete - Draft PR Created
+**Phase**: ✅ ALL PHASES COMPLETE - Ready for Review
 **Branch**: `command-support-2`
 **PR**: https://github.com/Texarkanine/ai-rizz/pull/14
 
@@ -66,24 +66,40 @@
 
 ## Test Results
 
-**All 28 tests pass** (21 unit + 7 integration)
+**All 30 tests pass** (23 unit + 7 integration)
 
-## Deferred Items
+## Completed in This Session
 
-1. **Mode Transition Warnings** - Warn when entity scope changes
-2. **Running Outside Git Repos** - Global-only context support
-3. **Help Documentation Updates** - `--global` in help text
-4. **Command `/` Prefix Display** - Show commands with leading `/`
+1. **Phase 4: Mode Transition Warnings** - Implemented
+   - `get_entity_installed_mode()` - detects current mode of entity
+   - `warn_mode_transition()` - emits appropriate warnings
+   - Integrated into `cmd_add_rule()` and `cmd_add_ruleset()`
+   - 12 new tests in `test_mode_transition_warnings.test.sh`
+
+2. **Phase 6: Global-Only Context** - Implemented
+   - Global mode works outside git repositories
+   - Smart mode selection auto-selects global when only mode active
+   - Commit mode correctly fails outside git repos
+   - 10 new tests in `test_global_only_context.test.sh`
+
+3. **Help Documentation** - Updated
+   - Added `--global/-g` to mode options
+   - Added modes section explaining commit/local/global
+   - Added glyph legend (●/◐/★/○)
+
+## Remaining (Cosmetic Only)
+
+1. **Command `/` Prefix Display** - Show commands with leading `/` in list (deferred - cosmetic)
 
 ## Next Steps
 
-1. **Wait for PR review** on https://github.com/Texarkanine/ai-rizz/pull/14
-2. **Manual testing** of global mode in real-world scenario
-3. **Follow-up PR** for deferred items if needed
+1. **Push commits** to update PR #14
+2. **Mark PR ready for review** (no longer draft)
+3. **Manual testing** of global mode in real-world scenario
 
 ## Open Questions
 
-None - implementation complete.
+None - all phases complete.
 
 ## Blockers
 

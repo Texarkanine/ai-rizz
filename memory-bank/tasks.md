@@ -5,7 +5,7 @@
 **Task ID**: global-mode-command-support
 **Title**: Add `--global` mode and unified command support to ai-rizz
 **Complexity**: Level 4 (Architectural change with multiple components)
-**Status**: ✅ IMPLEMENTATION COMPLETE - DRAFT PR CREATED
+**Status**: ✅ ALL PHASES COMPLETE - READY FOR REVIEW
 **Branch**: `command-support-2`
 **PR**: https://github.com/Texarkanine/ai-rizz/pull/14
 
@@ -107,9 +107,25 @@ global    | ~/.cursor/rules/ai-rizz/   | ~/.cursor/commands/ai-rizz/   | /ai-riz
 
 ---
 
-### Phase 4: Mode Transition Warnings ⏸️ DEFERRED
+### Phase 4: Mode Transition Warnings ✅ COMPLETE
 
-Deferred to follow-up PR. Not critical for initial release.
+#### 4.1 Entity Mode Detection
+- [x] Create `get_entity_installed_mode()` - Returns which mode an entity is currently in
+- [x] Checks commit > local > global (priority order)
+- [x] Returns "none" for new entities
+
+#### 4.2 Mode Transition Warnings
+- [x] Create `warn_mode_transition()` - Emits appropriate warnings
+- [x] Warns for global → commit/local transitions
+- [x] Warns for commit → global transition (team impact)
+- [x] Warns for local → global transition
+- [x] No warning for new entities or same-mode re-adds
+
+#### 4.3 Integration
+- [x] Integrate warnings in `cmd_add_rule()`
+- [x] Integrate warnings in `cmd_add_ruleset()`
+
+**Tests**: `test_mode_transition_warnings.test.sh` (12 tests)
 
 ---
 
@@ -129,15 +145,27 @@ Deferred to follow-up PR. Not critical for initial release.
 
 ---
 
-### Phase 6: Integration and Edge Cases ⏸️ DEFERRED
+### Phase 6: Integration and Edge Cases ✅ COMPLETE
 
-#### Completed
+#### 6.1 Global-Only Context
+- [x] Global mode works outside git repositories
+- [x] `ai-rizz init --global` works outside git repos
+- [x] `ai-rizz add rule/ruleset --global` works outside git repos
+- [x] `ai-rizz list` works with global-only context
+- [x] `ai-rizz deinit --global` works outside git repos
+- [x] Smart mode selection auto-selects global when only mode initialized
+
+#### 6.2 Help Documentation
+- [x] Added `--global/-g` to mode options
+- [x] Added modes section explaining commit/local/global
+- [x] Added glyph legend (●/◐/★/○)
+
+#### 6.3 Edge Cases
 - [x] Rulesets with commands in global mode
 - [x] Mixed mode scenarios (all three active)
+- [x] Commit mode correctly fails outside git repos (requires git)
 
-#### Deferred
-- [ ] Running ai-rizz outside a git repo (global-only context)
-- [ ] Help documentation updates
+**Tests**: `test_global_only_context.test.sh` (10 tests)
 
 ---
 
@@ -146,11 +174,13 @@ Deferred to follow-up PR. Not critical for initial release.
 ### New Test Files Created
 ```
 tests/unit/
-├── test_global_mode_init.test.sh        ✅
-├── test_global_mode_detection.test.sh   ✅
+├── test_global_mode_init.test.sh         ✅
+├── test_global_mode_detection.test.sh    ✅
 ├── test_command_entity_detection.test.sh ✅
-├── test_command_sync.test.sh            ✅
-├── test_command_modes.test.sh           ✅
+├── test_command_sync.test.sh             ✅
+├── test_command_modes.test.sh            ✅
+├── test_mode_transition_warnings.test.sh ✅ (Phase 4)
+├── test_global_only_context.test.sh      ✅ (Phase 6)
 ```
 
 ### Updated Test Files
@@ -163,7 +193,7 @@ tests/unit/
 ```
 
 ### Test Results
-- **All 28 tests pass** (21 unit + 7 integration)
+- **All 30 tests pass** (23 unit + 7 integration)
 
 ## Definition of Done
 
@@ -174,17 +204,15 @@ tests/unit/
 - [x] `ai-rizz add rule foo.md --local` works (commands in any mode)
 - [x] `ai-rizz add ruleset niko --local` works (no more restriction)
 - [x] `ai-rizz list` shows global entities with ★
-- [ ] `ai-rizz list` shows commands with / prefix (DEFERRED)
-- [ ] Mode transition warnings appear appropriately (DEFERRED)
-- [ ] Help documentation updated (DEFERRED)
-- [x] `make test` passes
+- [ ] `ai-rizz list` shows commands with / prefix (DEFERRED - cosmetic)
+- [x] Mode transition warnings appear appropriately
+- [x] Help documentation updated with --global option
+- [x] Running ai-rizz outside git repos works (global-only context)
+- [x] `make test` passes (30/30 tests)
 
 ## Follow-up Items
 
-1. Mode transition warnings (Phase 4)
-2. Running ai-rizz outside git repos (Phase 6)
-3. Help documentation updates
-4. Command listing with `/` prefix in display
+1. Command listing with `/` prefix in display (cosmetic enhancement)
 
 ---
 
@@ -197,5 +225,7 @@ tests/unit/
 | 2026-01-25 | Phase 1 | COMPLETE | Global mode infrastructure |
 | 2026-01-25 | Phase 2 | COMPLETE | Command support infrastructure |
 | 2026-01-25 | Phase 3 | COMPLETE | List display updates |
+| 2026-01-25 | Phase 4 | COMPLETE | Mode transition warnings |
 | 2026-01-25 | Phase 5 | COMPLETE | Deinit and cleanup |
-| 2026-01-25 | PR | CREATED | Draft PR #14 |
+| 2026-01-25 | Phase 6 | COMPLETE | Global-only context + help docs |
+| 2026-01-25 | PR | UPDATED | All phases complete, 30/30 tests pass |

@@ -1282,6 +1282,115 @@ is_mode_active() {
 	return 0
 }
 
+# Get which mode (if any) an entity is currently installed in
+#
+# Checks all active manifests to determine if an entity is already installed
+# in any mode. Used for mode transition warnings.
+#
+# Priority order for checking: commit > local > global
+# (Returns the strongest mode if entity exists in multiple modes)
+#
+# Globals:
+#   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   LOCAL_MANIFEST_FILE - Local manifest filename
+#   GLOBAL_MANIFEST_FILE - Global manifest filename
+#
+# Arguments:
+#   $1 - Entity path to check (e.g., "rules/foo.mdc" or "rulesets/bar")
+#
+# Outputs:
+#   Stdout: "commit", "local", "global", or "none"
+#
+# Returns:
+#   0 always
+#
+get_entity_installed_mode() {
+	geim_entity="${1}"
+	
+	# Check commit mode first (strongest)
+	if [ "$(is_mode_active commit)" = "true" ]; then
+		if read_manifest_entries "${COMMIT_MANIFEST_FILE}" 2>/dev/null | grep -q "^${geim_entity}$"; then
+			echo "commit"
+			return 0
+		fi
+	fi
+	
+	# Check local mode
+	if [ "$(is_mode_active local)" = "true" ]; then
+		if read_manifest_entries "${LOCAL_MANIFEST_FILE}" 2>/dev/null | grep -q "^${geim_entity}$"; then
+			echo "local"
+			return 0
+		fi
+	fi
+	
+	# Check global mode (weakest)
+	if [ "$(is_mode_active global)" = "true" ]; then
+		if read_manifest_entries "${GLOBAL_MANIFEST_FILE}" 2>/dev/null | grep -q "^${geim_entity}$"; then
+			echo "global"
+			return 0
+		fi
+	fi
+	
+	echo "none"
+	return 0
+}
+
+# Warn about mode transitions when adding entities
+#
+# Displays a warning message when an entity is being added to a different
+# mode than it currently exists in. Helps users understand scope changes.
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Entity name (for display)
+#   $2 - Current mode the entity is in ("commit", "local", "global")
+#   $3 - Target mode being added to ("commit", "local", "global")
+#
+# Outputs:
+#   Stderr: Warning message about the mode transition
+#
+# Returns:
+#   0 always
+#
+warn_mode_transition() {
+	wmt_entity="${1}"
+	wmt_current_mode="${2}"
+	wmt_target_mode="${3}"
+	
+	# No warning needed if same mode or no current mode
+	if [ "${wmt_current_mode}" = "none" ] || [ "${wmt_current_mode}" = "${wmt_target_mode}" ]; then
+		return 0
+	fi
+	
+	case "${wmt_current_mode}→${wmt_target_mode}" in
+		"global→commit")
+			warn "⚠️  WARNING: ${wmt_entity} was globally-available but will now only be in this repository. (global → commit)"
+			;;
+		"global→local")
+			warn "⚠️  WARNING: ${wmt_entity} was globally-available but will now only be in this repository (local). (global → local)"
+			;;
+		"commit→global")
+			warn "⚠️  WARNING: ${wmt_entity} will be removed from this repository (other devs may lose access). (commit → global)"
+			;;
+		"commit→local")
+			warn "⚠️  WARNING: ${wmt_entity} will be removed from git-tracked mode and become local-only. (commit → local)"
+			;;
+		"local→global")
+			warn "⚠️  WARNING: ${wmt_entity} will be removed from this repository and become globally-available. (local → global)"
+			;;
+		"local→commit")
+			warn "⚠️  WARNING: ${wmt_entity} will move from local to git-tracked mode. (local → commit)"
+			;;
+		*)
+			# Unknown transition - no warning
+			;;
+	esac
+	
+	return 0
+}
+
 # Get target directory from available manifests
 #
 # Tries commit manifest first, then local, then default. The default
@@ -3163,6 +3272,10 @@ cmd_add_rule() {
 			continue
 		fi
 		
+		# Check for mode transition and warn if entity is moving between modes
+		car_current_mode=$(get_entity_installed_mode "${car_rule_path}")
+		warn_mode_transition "${car_item}" "${car_current_mode}" "${car_mode}"
+		
 		# Check for downgrade conflicts first
 		if ! check_rule_downgrade_conflict "${car_item}" "${car_mode}"; then
 			continue  # Skip this rule, conflict detected
@@ -3269,6 +3382,10 @@ cmd_add_ruleset() {
 		if ! check_repository_item "${cars_ruleset_path}" "Ruleset" "dir"; then
 			continue
 		fi
+		
+		# Check for mode transition and warn if entity is moving between modes
+		cars_current_mode=$(get_entity_installed_mode "${cars_ruleset_path}")
+		warn_mode_transition "${cars_ruleset}" "${cars_current_mode}" "${cars_mode}"
 		
 		# Handle conflict resolution migration using helper function
 		migrate_from_opposite_mode "${cars_ruleset_path}" "${cars_mode}" "${cars_lazy_init_occurred}"
@@ -4094,24 +4211,33 @@ General options:
   -f, --manifest <file>  Alias for --skibidi
   -s, --skibidi <file>   Use custom manifest filename
 
+Mode options (available for init, add, remove, deinit):
+  -c, --commit           Use commit mode (git-tracked, shared with team)
+  -l, --local            Use local mode (git-ignored, personal)
+  -g, --global           Use global mode (user-wide, ~/.cursor/)
+
 Command-specific options:
   init options:
-    -c, --commit           Use commit mode
     -d <target_dir>        Target directory
-    -l, --local            Use local mode (gitignore files)
     --hook-based-ignore    local mode: use pre-commit hook instead of .git/info/exclude
                            (ensures files visible, leaves "dirty" git status)
     --rule-path <path>     Source repository rules path
     --ruleset-path <path>  Source repository rulesets path
 
-  add & remove options:
-    --commit, -c           Use commit mode
-    --local, -l            Use local mode (gitignore files)
-
   deinit options:
-    -c, --commit           Use commit mode
-    -l, --local            Use local mode (gitignore files)
     -y                     Skip confirmation prompts
+
+Modes:
+  commit  Rules are git-tracked and shared with other developers.
+  local   Rules are git-ignored and only available to you in this repo.
+  global  Rules are stored in ~/.cursor/ and available in all repositories.
+          Global mode can be used outside of git repositories.
+
+Glyphs in 'list' output:
+  ●  Committed (git-tracked in this repository)
+  ◐  Local (git-ignored in this repository)
+  ★  Global (user-wide, available everywhere)
+  ○  Not installed
 EOF
   return 0
 }

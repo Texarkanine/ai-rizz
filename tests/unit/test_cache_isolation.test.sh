@@ -3,8 +3,8 @@
 #
 # Tests the Phase 7 bug fixes:
 # - GLOBAL_REPO_DIR is set correctly and separately from REPO_DIR
-# - repos_match() correctly compares source repos
 # - get_global_source_repo() extracts repo from global manifest
+# - get_repo_dir_for_mode() returns correct directory for each mode
 
 # Source the test utilities
 . "$(dirname "$0")/../common.sh"
@@ -67,100 +67,6 @@ test_global_repo_dir_set_when_global_active() {
 	# GLOBAL_REPO_DIR should be set (in tests, it uses REPO_DIR)
 	assertNotNull "GLOBAL_REPO_DIR should be set when global mode active" \
 		"${GLOBAL_REPO_DIR}"
-	
-	# Cleanup
-	rm -f "${GLOBAL_MANIFEST_FILE}"
-}
-
-# ============================================================================
-# Test Source Repo Comparison
-# ============================================================================
-
-# Test repos_match returns true when source repos are the same
-test_repos_match_same_source() {
-	# Set up both modes with same source repo
-	echo "${REPO_DIR}	.cursor/rules	rules	rulesets" > "${COMMIT_MANIFEST_FILE}"
-	
-	mkdir -p "$(dirname "${GLOBAL_MANIFEST_FILE}")"
-	echo "${REPO_DIR}	.cursor/rules	rules	rulesets" > "${GLOBAL_MANIFEST_FILE}"
-	
-	# Cache metadata
-	cache_manifest_metadata
-	
-	# repos_match should return true (exit 0)
-	if repos_match; then
-		:  # Expected
-	else
-		fail "repos_match should return true when source repos are same"
-	fi
-	
-	# Cleanup
-	rm -f "${COMMIT_MANIFEST_FILE}"
-	rm -f "${GLOBAL_MANIFEST_FILE}"
-}
-
-# Test repos_match returns false when source repos differ
-test_repos_match_different_source() {
-	# Set up modes with different source repos
-	echo "${REPO_DIR}	.cursor/rules	rules	rulesets" > "${COMMIT_MANIFEST_FILE}"
-	
-	mkdir -p "$(dirname "${GLOBAL_MANIFEST_FILE}")"
-	echo "https://github.com/other/repo	.cursor/rules	rules	rulesets" > "${GLOBAL_MANIFEST_FILE}"
-	
-	# Cache metadata
-	cache_manifest_metadata
-	
-	# repos_match should return false (exit 1)
-	if repos_match; then
-		fail "repos_match should return false when source repos differ"
-	fi
-	
-	# Cleanup
-	rm -f "${COMMIT_MANIFEST_FILE}"
-	rm -f "${GLOBAL_MANIFEST_FILE}"
-}
-
-# Test repos_match returns true when only one mode is active
-test_repos_match_single_mode_commit() {
-	# Set up only commit mode
-	echo "${REPO_DIR}	.cursor/rules	rules	rulesets" > "${COMMIT_MANIFEST_FILE}"
-	
-	# Ensure no global manifest
-	rm -f "${GLOBAL_MANIFEST_FILE}"
-	
-	# Cache metadata
-	cache_manifest_metadata
-	
-	# repos_match should return true (exit 0) when only one mode exists
-	if repos_match; then
-		:  # Expected
-	else
-		fail "repos_match should return true when only commit mode is active"
-	fi
-	
-	# Cleanup
-	rm -f "${COMMIT_MANIFEST_FILE}"
-}
-
-# Test repos_match returns true when only global mode is active
-test_repos_match_single_mode_global() {
-	# Ensure no local/commit manifests
-	rm -f "${COMMIT_MANIFEST_FILE}"
-	rm -f "${LOCAL_MANIFEST_FILE}"
-	
-	# Set up only global mode
-	mkdir -p "$(dirname "${GLOBAL_MANIFEST_FILE}")"
-	echo "${REPO_DIR}	.cursor/rules	rules	rulesets" > "${GLOBAL_MANIFEST_FILE}"
-	
-	# Reset SOURCE_REPO since no local/commit mode
-	SOURCE_REPO=""
-	
-	# repos_match should return true (exit 0) when only one mode exists
-	if repos_match; then
-		:  # Expected
-	else
-		fail "repos_match should return true when only global mode is active"
-	fi
 	
 	# Cleanup
 	rm -f "${GLOBAL_MANIFEST_FILE}"

@@ -212,6 +212,23 @@ test_global_list_works_outside_git_repo() {
     echo "$output" | grep -q "★" || fail "Should show global glyph: $output"
 }
 
+test_global_list_shows_available_commands_outside_git_repo() {
+    # Test: Listing should show available commands from global repo cache
+    # Expected: Shows cmd1.md (created in setUp) as an available command
+    
+    assertFalse "Should not be in a git repo" "[ -d .git ]"
+    
+    # Initialize global mode
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+    
+    # Capture list output
+    output=$(cmd_list 2>&1)
+    
+    # Should show the command (cmd1.md created in setUp)
+    # Commands are displayed with / prefix and without .md extension
+    echo "$output" | grep -q "/cmd1" || fail "Should list /cmd1 command in Available commands section: $output"
+}
+
 # ============================================================================
 # GLOBAL-ONLY DEINIT TESTS
 # ============================================================================

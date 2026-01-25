@@ -53,6 +53,7 @@ GLOBAL_COMMANDS_DIR=""           # Set to "${HOME}/.cursor/commands/ai-rizz" at 
 
 # Initialize global paths (called after script loading and during tests)
 init_global_paths() {
+	CONFIG_DIR="${HOME}/.config/ai-rizz"
 	GLOBAL_MANIFEST_FILE="${HOME}/ai-rizz.skbd"
 	GLOBAL_RULES_DIR="${HOME}/.cursor/rules/ai-rizz"
 	GLOBAL_COMMANDS_DIR="${HOME}/.cursor/commands/ai-rizz"
@@ -3047,11 +3048,29 @@ cmd_list() {
 		validate_manifest_format "${GLOBAL_MANIFEST_FILE}" || error "Corrupted global manifest file"
 	fi
 	
-	# Use the unified SOURCE_REPO variable
-	cl_source_repo="${SOURCE_REPO}"
+	# Determine which repo dir to use for listing available items
+	# When only global mode is active, use GLOBAL_REPO_DIR
+	# When local/commit modes are active, use REPO_DIR (they share the same source repo)
+	cl_has_local_commit="false"
+	if [ "$(is_mode_active local)" = "true" ] || [ "$(is_mode_active commit)" = "true" ]; then
+		cl_has_local_commit="true"
+	fi
+	
+	if [ "${cl_has_local_commit}" = "true" ]; then
+		cl_repo_dir="${REPO_DIR}"
+		cl_source_repo="${SOURCE_REPO}"
+	else
+		# Global-only context: use global repo dir
+		cl_repo_dir="${GLOBAL_REPO_DIR}"
+		cl_source_repo=$(get_global_source_repo)
+	fi
 	
 	# Update source repository
-	git_sync "${cl_source_repo}"
+	if [ "${cl_has_local_commit}" = "true" ]; then
+		git_sync "${cl_source_repo}"
+	else
+		sync_global_repo
+	fi
 	
 	# Helper function to check if an item is installed in any mode
 	is_installed() {
@@ -3062,7 +3081,7 @@ cmd_list() {
 		check_rulesets_for_item() {
 			cl_check_manifest_file="${1}"
 			cl_check_item_basename=$(basename "${cl_is_installed_item}")
-			cl_check_item_path="${REPO_DIR}/${cl_is_installed_item}"
+			cl_check_item_path="${cl_repo_dir}/${cl_is_installed_item}"
 			cl_check_entries=""
 			
 			cl_check_entries=$(read_manifest_entries "${cl_check_manifest_file}" 2>/dev/null) || return 1
@@ -3071,7 +3090,7 @@ cmd_list() {
 			for cl_check_entry in ${cl_check_entries}; do
 				if [ -n "${cl_check_entry}" ] && echo "${cl_check_entry}" | grep -q "^${RULESETS_PATH}/"; then
 					# Check if this ruleset contains the item (search recursively)
-					cl_check_ruleset_dir="${REPO_DIR}/${cl_check_entry}"
+					cl_check_ruleset_dir="${cl_repo_dir}/${cl_check_entry}"
 					if [ ! -d "${cl_check_ruleset_dir}" ]; then
 						continue
 					fi
@@ -3146,7 +3165,7 @@ cmd_list() {
 	
 	# Display rules (*.mdc files)
 	echo "Available rules:"
-	cl_rules=$(find "${REPO_DIR}/${RULES_PATH}" -maxdepth 1 -name "*.mdc" -type f 2>/dev/null | sort)
+	cl_rules=$(find "${cl_repo_dir}/${RULES_PATH}" -maxdepth 1 -name "*.mdc" -type f 2>/dev/null | sort)
 	if [ -z "${cl_rules}" ]; then
 		echo "  No rules found"
 	else
@@ -3175,7 +3194,7 @@ cmd_list() {
 	
 	# Display commands (*.md files) with / prefix
 	echo "Available commands:"
-	cl_commands=$(find "${REPO_DIR}/${RULES_PATH}" -maxdepth 1 -name "*.md" ! -name "*.mdc" -type f 2>/dev/null | sort)
+	cl_commands=$(find "${cl_repo_dir}/${RULES_PATH}" -maxdepth 1 -name "*.md" ! -name "*.mdc" -type f 2>/dev/null | sort)
 	if [ -z "${cl_commands}" ]; then
 		echo "  No commands found"
 	else
@@ -3207,7 +3226,7 @@ cmd_list() {
 	
 	# Display rulesets
 	echo "Available rulesets:"
-	cl_rulesets=$(find "${REPO_DIR}/${RULESETS_PATH}" -mindepth 1 -maxdepth 1 -type d | sort 2>/dev/null)
+	cl_rulesets=$(find "${cl_repo_dir}/${RULESETS_PATH}" -mindepth 1 -maxdepth 1 -type d | sort 2>/dev/null)
 	if [ -z "${cl_rulesets}" ]; then
 		echo "  No rulesets found"
 	else

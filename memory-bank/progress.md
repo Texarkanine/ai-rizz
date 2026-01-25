@@ -3,7 +3,8 @@
 ## Current Task Progress
 
 **Task**: Global Mode + Command Support
-**Overall Status**: Planning Complete
+**Overall Status**: ✅ COMPLETE - Draft PR Created
+**PR**: https://github.com/Texarkanine/ai-rizz/pull/14
 
 ### Completed Steps
 
@@ -12,18 +13,17 @@
 - [x] Design decision: Subdirectory approach for commands
 - [x] Design decision: Remove all command/ruleset restrictions
 - [x] Implementation plan created
+- [x] Phase 1: Global Mode Infrastructure
+- [x] Phase 2: Command Support Infrastructure
+- [x] Phase 3: List Display Updates
+- [x] Phase 5: Deinit and Cleanup
+- [x] All tests pass (28/28)
+- [x] Draft PR created
 
-### In Progress
+### Deferred
 
-- [ ] Phase 1: Global Mode Infrastructure (NEXT)
-
-### Pending
-
-- [ ] Phase 2: Command Support Infrastructure
-- [ ] Phase 3: List Display Updates
 - [ ] Phase 4: Mode Transition Warnings
-- [ ] Phase 5: Deinit and Cleanup
-- [ ] Phase 6: Integration and Edge Cases
+- [ ] Phase 6: Integration and Edge Cases (partial)
 
 ## Key Milestones
 
@@ -31,14 +31,15 @@
 |-----------|--------|------|
 | Creative Phase | ✅ Complete | 2026-01-25 |
 | Planning Phase | ✅ Complete | 2026-01-25 |
-| Test Stubs | ⬜ Pending | - |
-| Phase 1 Implementation | ⬜ Pending | - |
-| Phase 2 Implementation | ⬜ Pending | - |
-| Phase 3 Implementation | ⬜ Pending | - |
-| Phase 4 Implementation | ⬜ Pending | - |
-| Phase 5 Implementation | ⬜ Pending | - |
-| Phase 6 Implementation | ⬜ Pending | - |
-| Full Test Suite Pass | ⬜ Pending | - |
+| Test Stubs | ✅ Complete | 2026-01-25 |
+| Phase 1 Implementation | ✅ Complete | 2026-01-25 |
+| Phase 2 Implementation | ✅ Complete | 2026-01-25 |
+| Phase 3 Implementation | ✅ Complete | 2026-01-25 |
+| Phase 4 Implementation | ⏸️ Deferred | - |
+| Phase 5 Implementation | ✅ Complete | 2026-01-25 |
+| Phase 6 Implementation | ⏸️ Partial | - |
+| Full Test Suite Pass | ✅ Complete | 2026-01-25 |
+| Draft PR Created | ✅ Complete | 2026-01-25 |
 
 ## What Changed
 
@@ -48,32 +49,65 @@
 
 **Revised understanding**: Subdirectories in `.cursor/commands/` work fine (e.g., `/local/foo`, `/shared/foo`). User has 2+ months real-world validation of this approach.
 
-**Result**: Fully uniform model where commands follow identical mode semantics as rules. Massive simplification - delete all command/ruleset restrictions.
+**Result**: Fully uniform model where commands follow identical mode semantics as rules. Massive simplification - deleted all command/ruleset restrictions.
 
-### Code to DELETE
+### Code DELETED
 
 - `show_ruleset_commands_error()` function
-- Check in `cmd_add_ruleset` that blocks local mode for rulesets with commands
+- Check in `cmd_add_ruleset` that blocked local mode for rulesets with commands
+- Auto-switch to commit mode for rulesets with commands
 - Any command-specific mode restrictions
 
-### Code to ADD
+### Code ADDED
 
-- Global mode constants and detection
-- Command subdirectory handling (`.cursor/commands/{local,shared}/`)
-- Global target directories (`~/.cursor/{rules,commands}/ai-rizz/`)
-- Mode transition warnings
-- Global glyph (`★`) display
+- Global mode constants (`GLOBAL_MANIFEST_FILE`, `GLOBAL_RULES_DIR`, `GLOBAL_COMMANDS_DIR`, `GLOBAL_GLYPH`)
+- `init_global_paths()` for dynamic path initialization
+- `is_command()` and `get_entity_type()` for entity detection
+- `get_commands_target_dir()` for mode-specific command routing
+- Global mode handling in:
+  - `is_mode_active()`
+  - `select_mode()`
+  - `cmd_init()`
+  - `cmd_deinit()`
+  - `cmd_list()`
+  - `cmd_add_rule()`
+  - `cmd_add_ruleset()`
+  - `cmd_remove_ruleset()`
+  - `copy_entry_to_target()`
+  - `sync_manifest_to_directory()`
+  - `sync_all_modes()`
 
-## Test Coverage Plan
+### Test Changes
 
-~10 new test files covering:
-- Global mode initialization
-- Global mode detection
-- Command entity detection
-- Command sync to subdirs
-- Commands in all modes
-- List with global entities
-- List with commands
-- Mode transition warnings
-- Global deinit
-- Integration scenarios
+**New Test Files (5)**:
+- `test_global_mode_init.test.sh`
+- `test_global_mode_detection.test.sh`
+- `test_command_entity_detection.test.sh`
+- `test_command_sync.test.sh`
+- `test_command_modes.test.sh`
+
+**Updated Test Files (4)**:
+- `test_ruleset_bug_fixes.test.sh` - Updated command paths
+- `test_ruleset_commands.test.sh` - Updated for new behavior (no auto-switch)
+- `test_ruleset_removal_and_structure.test.sh` - Updated command paths
+- `test_symlink_security.test.sh` - Updated command paths
+
+## Test Coverage
+
+| Category | Tests | Status |
+|----------|-------|--------|
+| Global Mode Init | 6 | ✅ Pass |
+| Global Mode Detection | 5 | ✅ Pass |
+| Command Entity Detection | 5 | ✅ Pass |
+| Command Sync | 3 | ✅ Pass |
+| Command Modes | 6 | ✅ Pass |
+| Existing Unit Tests | 16 | ✅ Pass |
+| Integration Tests | 7 | ✅ Pass |
+| **Total** | **28** | **✅ All Pass** |
+
+## Follow-up Items for Future PR
+
+1. Mode transition warnings when moving entities between scopes
+2. Running ai-rizz outside git repos (global-only context)
+3. Help documentation with `--global` option
+4. Command listing with `/` prefix display

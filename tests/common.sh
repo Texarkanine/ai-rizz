@@ -100,7 +100,7 @@ setUp() {
   cd "$REPO_DIR" || fail "Failed to change to repo directory"
   git init . >/dev/null 2>&1
   git add . >/dev/null 2>&1
-  git commit -m "Initial commit" >/dev/null 2>&1
+  git commit --no-gpg-sign -m "Initial commit" >/dev/null 2>&1
   cd "$TEST_DIR" || fail "Failed to change back to test directory"
   
   # Create target directory
@@ -123,7 +123,7 @@ setUp() {
   # Make initial commit to fully initialize the git repository
   echo "Test repository" > README.md
   git add README.md >/dev/null 2>&1
-  git commit -m "Initial test setup" >/dev/null 2>&1
+  git commit --no-gpg-sign -m "Initial test setup" >/dev/null 2>&1
   
   # Initialize manifest with source repo and target dir
   echo "$TEST_SOURCE_REPO	$TEST_TARGET_DIR" > "$TEST_MANIFEST_FILE"
@@ -395,7 +395,7 @@ setup_integration_test() {
     # Make initial commit to fully initialize the git repository
     echo "Integration test repository" > README.md
     git add README.md >/dev/null 2>&1
-    git commit -m "Initial integration test setup" >/dev/null 2>&1
+    git commit --no-gpg-sign -m "Initial integration test setup" >/dev/null 2>&1
     
     # Set up ai-rizz path for integration tests
     if [ -z "$AI_RIZZ_PATH" ]; then
@@ -579,7 +579,7 @@ EOF
     git config user.email "test@example.com" >/dev/null 2>&1
     git config user.name "Test User" >/dev/null 2>&1
     git add . >/dev/null 2>&1
-    git commit -m "Initial mock repository" >/dev/null 2>&1
+    git commit --no-gpg-sign -m "Initial mock repository" >/dev/null 2>&1
     
     # Return to the original directory (where tests actually run)
     cd "$_mock_repo_orig_dir" || return 1

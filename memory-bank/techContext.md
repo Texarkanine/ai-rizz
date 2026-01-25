@@ -9,7 +9,7 @@
 
 ## Project Structure
 
-```
+```text
 ai-rizz/
 ├── ai-rizz                 # Main executable script
 ├── Makefile                # Test runner
@@ -43,7 +43,7 @@ ai-rizz supports three operational modes:
 
 ### Manifest Format
 
-```
+```text
 # ai-rizz.skbd
 source_repo: <repo-url-or-path>
 target_dir: <target-directory>

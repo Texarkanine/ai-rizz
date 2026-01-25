@@ -72,7 +72,7 @@ setUp() {
     # Make initial commit
     echo "Test repository" > README.md
     git add README.md >/dev/null 2>&1
-    git commit -m "Initial test setup" >/dev/null 2>&1
+    git commit --no-gpg-sign -m "Initial test setup" >/dev/null 2>&1
 }
 
 # Teardown - run after each test

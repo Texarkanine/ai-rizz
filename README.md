@@ -124,7 +124,7 @@ Command-specific options:
 
 ai-rizz stores copies of source repositories in `$HOME/.config/ai-rizz/repos/PROJECT-NAME/repo/` where PROJECT-NAME is the current directory name. This allows different projects to use different source repositories without conflicts.
 
-Global mode uses a separate cache at `$HOME/.config/ai-rizz/repos/global/repo/` shared across all repositories.
+Global mode uses a separate cache at `$HOME/.config/ai-rizz/repos/_ai-rizz.global/repo/` shared across all repositories.
 
 ### Rule Modes
 
@@ -141,7 +141,7 @@ Global mode uses a separate cache at `$HOME/.config/ai-rizz/repos/global/repo/` 
 - Other developers get them when they clone/pull
 
 #### Global mode (`--global`)
-- Rules stored in `~/.cursor/rules/`
+- Rules stored in `~/.cursor/rules/ai-rizz/`
 - Available in all repositories on this machine
 - Manifest stored at `~/ai-rizz.skbd`
 

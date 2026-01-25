@@ -7,7 +7,7 @@
 **Complexity**: Level 2 (Bug fixes with test infrastructure implications)
 **Status**: ✅ COMPLETE
 **Branch**: `command-support-2`
-**PR**: https://github.com/Texarkanine/ai-rizz/pull/15
+**PR**: [`#15`](https://github.com/Texarkanine/ai-rizz/pull/15)
 
 ## Task Summary
 

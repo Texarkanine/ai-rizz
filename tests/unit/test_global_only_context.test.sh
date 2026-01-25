@@ -119,19 +119,18 @@ test_global_init_works_outside_git_repo() {
 }
 
 test_local_init_fails_outside_git_repo() {
-    # Test: ai-rizz init --local should gracefully fail outside git repo
+    # Test: ai-rizz init --local should fail outside git repo
     # Expected: Error message about git context
-    # Note: Local mode needs git excludes, so it should fail gracefully
     
     # Verify we're NOT in a git repo
     assertFalse "Should not be in a git repo" "[ -d .git ]"
     
-    # Try to init local mode - should work but without git excludes
-    # (Local mode is designed to work without git, just without exclude management)
+    # This should fail (local mode requires git, just like commit mode)
     output=$(cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --local 2>&1)
+    exit_code=$?
     
-    # Local mode should still work (just without git exclude management)
-    assertTrue "Local manifest should exist" "[ -f '${LOCAL_MANIFEST_FILE}' ]"
+    assertNotEquals "Local init should fail outside git repo" "0" "$exit_code"
+    echo "$output" | grep -qi "git" || fail "Should mention git in error: $output"
 }
 
 test_commit_init_fails_outside_git_repo() {

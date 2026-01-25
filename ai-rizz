@@ -2736,10 +2736,9 @@ EOF
 			;;
 	esac
 	
-	# Ensure git repository context for commit mode only
-	# Local mode can work without git (just won't have git exclude management)
-	# Global mode is user-wide and doesn't need git
-	if [ "${ci_mode}" = "commit" ] && [ ! -d ".git" ]; then
+	# Ensure git repository context for local and commit modes
+	# Only global mode can work outside a git repository
+	if [ "${ci_mode}" != "global" ] && [ ! -d ".git" ]; then
 		show_git_context_error
 	fi
 	

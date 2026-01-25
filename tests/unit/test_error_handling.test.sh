@@ -256,7 +256,7 @@ test_graceful_empty_repository() {
     git init . >/dev/null 2>&1
     git config user.email "test@example.com" >/dev/null 2>&1
     git config user.name "Test User" >/dev/null 2>&1
-    git commit --allow-empty -m "Empty commit" >/dev/null 2>&1
+    git commit --no-gpg-sign --allow-empty -m "Empty commit" >/dev/null 2>&1
     cd "$TEST_DIR/app" || fail "Failed to return to test app dir"
     
     # Test: Init with empty repo

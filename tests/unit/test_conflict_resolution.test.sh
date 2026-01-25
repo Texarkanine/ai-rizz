@@ -126,7 +126,7 @@ test_migrate_updates_git_tracking() {
     cmd_add_rule "rule1.mdc" --local
     
     # Initialize git tracking to verify changes  
-    git commit -m "Initial local setup" >/dev/null 2>&1
+    git commit --no-gpg-sign -m "Initial local setup" >/dev/null 2>&1
     
     # Test: Migrate to commit mode
     cmd_add_rule "rule1.mdc" --commit

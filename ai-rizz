@@ -3857,53 +3857,147 @@ cmd_remove_rule() {
 #   1 on error (via error() function)
 #
 cmd_remove_ruleset() {
+	crrs_mode=""
+	crrs_rulesets=""
+	
+	# Parse arguments (flags can appear anywhere)
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			--local|-l)
+				crrs_mode="local"
+				shift
+				;;
+			--commit|-c)
+				crrs_mode="commit"
+				shift
+				;;
+			--global|-g)
+				crrs_mode="global"
+				shift
+				;;
+			*)
+				if [ -z "${crrs_rulesets}" ]; then
+					crrs_rulesets="$1"
+				else
+					crrs_rulesets="${crrs_rulesets} $1"
+				fi
+				shift
+				;;
+		esac
+	done
+	
 	# Check if any mode is initialized and validate manifest integrity
 	ensure_initialized_and_valid
+	
+	# If no mode specified, check environment variable
+	if [ -z "${crrs_mode}" ]; then
+		if [ -n "${AI_RIZZ_MODE}" ]; then
+			case "${AI_RIZZ_MODE}" in
+				local|commit|global)
+					crrs_mode="${AI_RIZZ_MODE}"
+					;;
+			esac
+		fi
+	fi
 
 	# Process each ruleset
-	for ruleset in "$@"; do
+	for ruleset in ${crrs_rulesets}; do
 		removed=false
 		ruleset_path="${RULESETS_PATH}/$ruleset"
 		
-		# Remove from whichever mode contains it
-		if [ "$(is_mode_active local)" = "true" ]; then
-			if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-				# Remove commands from local mode
-				crr_commands_dir=$(get_commands_target_dir "local")
-				remove_ruleset_commands "${ruleset_path}" "${crr_commands_dir}"
-				
-				remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
-				echo "Removed ruleset: $ruleset_path"
-				removed=true
+		# If a specific mode was requested, only remove from that mode
+		if [ -n "${crrs_mode}" ]; then
+			case "${crrs_mode}" in
+				local)
+					if [ "$(is_mode_active local)" = "true" ]; then
+						if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+							crrs_commands_dir=$(get_commands_target_dir "local")
+							crrs_repo_dir=$(get_repo_dir_for_mode "local")
+							remove_ruleset_commands "${ruleset_path}" "${crrs_commands_dir}" "${crrs_repo_dir}"
+							
+							remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
+							echo "Removed ruleset: $ruleset_path"
+							removed=true
+						else
+							warn "Ruleset not found in local mode: $ruleset"
+						fi
+					fi
+					;;
+				commit)
+					if [ "$(is_mode_active commit)" = "true" ]; then
+						if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+							crrs_commands_dir=$(get_commands_target_dir "commit")
+							crrs_repo_dir=$(get_repo_dir_for_mode "commit")
+							remove_ruleset_commands "${ruleset_path}" "${crrs_commands_dir}" "${crrs_repo_dir}"
+							
+							remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
+							echo "Removed ruleset: $ruleset_path"
+							removed=true
+						else
+							warn "Ruleset not found in commit mode: $ruleset"
+						fi
+					fi
+					;;
+				global)
+					if [ "$(is_mode_active global)" = "true" ]; then
+						if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+							crrs_commands_dir=$(get_commands_target_dir "global")
+							crrs_repo_dir=$(get_repo_dir_for_mode "global")
+							remove_ruleset_commands "${ruleset_path}" "${crrs_commands_dir}" "${crrs_repo_dir}"
+							
+							remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$ruleset_path"
+							echo "Removed ruleset: $ruleset_path"
+							removed=true
+						else
+							warn "Ruleset not found in global mode: $ruleset"
+						fi
+					fi
+					;;
+			esac
+		else
+			# No specific mode - remove from whichever mode contains it
+			if [ "$(is_mode_active local)" = "true" ]; then
+				if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+					# Remove commands from local mode
+					crrs_commands_dir=$(get_commands_target_dir "local")
+					crrs_repo_dir=$(get_repo_dir_for_mode "local")
+					remove_ruleset_commands "${ruleset_path}" "${crrs_commands_dir}" "${crrs_repo_dir}"
+					
+					remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
+					echo "Removed ruleset: $ruleset_path"
+					removed=true
+				fi
 			fi
-		fi
-		
-		if [ "$(is_mode_active commit)" = "true" ]; then
-			if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-				# Remove commands from commit mode
-				crr_commands_dir=$(get_commands_target_dir "commit")
-				remove_ruleset_commands "${ruleset_path}" "${crr_commands_dir}"
-				
-				remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
-				echo "Removed ruleset: $ruleset_path"
-				removed=true
+			
+			if [ "$(is_mode_active commit)" = "true" ]; then
+				if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+					# Remove commands from commit mode
+					crrs_commands_dir=$(get_commands_target_dir "commit")
+					crrs_repo_dir=$(get_repo_dir_for_mode "commit")
+					remove_ruleset_commands "${ruleset_path}" "${crrs_commands_dir}" "${crrs_repo_dir}"
+					
+					remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
+					echo "Removed ruleset: $ruleset_path"
+					removed=true
+				fi
 			fi
-		fi
-		
-		if [ "$(is_mode_active global)" = "true" ]; then
-			if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-				# Remove commands from global mode
-				crr_commands_dir=$(get_commands_target_dir "global")
-				remove_ruleset_commands "${ruleset_path}" "${crr_commands_dir}"
-				
-				remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$ruleset_path"
-				echo "Removed ruleset: $ruleset_path"
-				removed=true
+			
+			if [ "$(is_mode_active global)" = "true" ]; then
+				if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+					# Remove commands from global mode
+					crrs_commands_dir=$(get_commands_target_dir "global")
+					crrs_repo_dir=$(get_repo_dir_for_mode "global")
+					remove_ruleset_commands "${ruleset_path}" "${crrs_commands_dir}" "${crrs_repo_dir}"
+					
+					remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$ruleset_path"
+					echo "Removed ruleset: $ruleset_path"
+					removed=true
+				fi
 			fi
-		fi
-		
-		if [ "$removed" = "false" ]; then
-			warn "Ruleset not found in any mode: $ruleset"
+			
+			if [ "$removed" = "false" ]; then
+				warn "Ruleset not found in any mode: $ruleset"
+			fi
 		fi
 	done
 	
@@ -4117,11 +4211,12 @@ file_exists_in_commit_mode() {
 # not the symlink itself. Creates target directory if it doesn't exist.
 #
 # Globals:
-#   REPO_DIR - Repository directory
+#   REPO_DIR - Default source repository directory (used if $3 not provided)
 #
 # Arguments:
 #   $1 - Ruleset path in source repo (e.g., `rulesets/memory-bank`) (required)
 #   $2 - Target commands directory (e.g., `.cursor/commands`) (required)
+#   $3 - Source repository directory (optional, defaults to REPO_DIR)
 #
 # Outputs:
 #   Stderr: Warning messages on failure
@@ -4133,8 +4228,9 @@ file_exists_in_commit_mode() {
 copy_ruleset_commands() {
 	crc_ruleset_path="${1}"
 	crc_target_commands_dir="${2}"
+	crc_repo_dir="${3:-${REPO_DIR}}"
 	
-	crc_source_commands_dir="${REPO_DIR}/${crc_ruleset_path}/commands"
+	crc_source_commands_dir="${crc_repo_dir}/${crc_ruleset_path}/commands"
 	
 	# Check if source commands directory exists
 	if [ ! -d "${crc_source_commands_dir}" ]; then
@@ -4178,9 +4274,9 @@ copy_ruleset_commands() {
 						warn "Failed to resolve symlink: ${crc_rel_path}"
 						continue
 					fi
-					# Check if resolved target is within REPO_DIR
+					# Check if resolved target is within the source repo directory
 					case "${crc_resolved_target}" in
-						"${REPO_DIR}"/*)
+						"${crc_repo_dir}"/*)
 							# Symlink points within repository, safe to copy
 							;;
 						*)
@@ -4211,11 +4307,12 @@ copy_ruleset_commands() {
 # commands. Cleans up empty directories after file removal.
 #
 # Globals:
-#   REPO_DIR - Source repository directory
+#   REPO_DIR - Default source repository directory (used if $3 not provided)
 #
 # Arguments:
 #   $1 - Ruleset path (e.g., "rulesets/test-ruleset")
 #   $2 - Target commands directory (e.g., "/path/to/commands")
+#   $3 - Source repository directory (optional, defaults to REPO_DIR)
 #
 # Outputs:
 #   Stderr: Warning messages for failures
@@ -4227,8 +4324,9 @@ copy_ruleset_commands() {
 remove_ruleset_commands() {
 	rrc_ruleset_path="${1}"
 	rrc_target_commands_dir="${2}"
+	rrc_repo_dir="${3:-${REPO_DIR}}"
 	
-	rrc_source_commands_dir="${REPO_DIR}/${rrc_ruleset_path}/commands"
+	rrc_source_commands_dir="${rrc_repo_dir}/${rrc_ruleset_path}/commands"
 	
 	# Check if source commands directory exists
 	if [ ! -d "${rrc_source_commands_dir}" ]; then
@@ -4424,7 +4522,7 @@ copy_entry_to_target() {
 		# Copy commands/ subdirectory if exists - works in all modes now
 		if [ -n "${cett_mode}" ]; then
 			cett_commands_dir=$(get_commands_target_dir "${cett_mode}")
-			copy_ruleset_commands "${cett_entry}" "${cett_commands_dir}"
+			copy_ruleset_commands "${cett_entry}" "${cett_commands_dir}" "${cett_repo_dir}"
 		fi
 	else
 		warn "Entry not found in repository: ${cett_entry}"

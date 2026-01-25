@@ -264,6 +264,153 @@ test_ruleset_with_commands_in_local_only_mode() {
 	grep -q "test-local-cmd" "$TEST_LOCAL_MANIFEST_FILE" || fail "Ruleset should be added to local manifest"
 }
 
+# ============================================================================
+# REMOVE RULESET MODE FLAG TESTS
+# ============================================================================
+
+# Test that cmd_remove_ruleset parses --global flag correctly
+# Expected: Removes ruleset from global mode only, doesn't treat --global as ruleset name
+test_remove_ruleset_global_flag_after_name() {
+	# Setup: Create ruleset and add to global mode
+	mkdir -p "$HOME/.cursor/rules/ai-rizz"
+	mkdir -p "$HOME/.cursor/commands/ai-rizz"
+	
+	# Initialize global mode
+	cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+	cmd_add_ruleset "ruleset1" --global
+	
+	# Verify ruleset is in global manifest
+	grep -q "rulesets/ruleset1" "$GLOBAL_MANIFEST_FILE" || fail "Ruleset should be in global manifest after add"
+	
+	# Action: Remove with flag AFTER name (like: remove ruleset foo --global)
+	output=$(cmd_remove_ruleset "ruleset1" --global 2>&1)
+	exit_code=$?
+	
+	# Expected: Success, ruleset removed from global manifest
+	assertEquals "Should exit with success code" 0 $exit_code
+	
+	# Verify ruleset was removed from global manifest
+	if [ -f "$GLOBAL_MANIFEST_FILE" ]; then
+		grep -q "rulesets/ruleset1" "$GLOBAL_MANIFEST_FILE" && fail "Ruleset should be removed from global manifest"
+	fi
+	
+	# BUG CHECK: --global should NOT be treated as a ruleset name
+	# If flag parsing is broken, output will contain "Ruleset not found" warning for "--global"
+	echo "$output" | grep -q "Ruleset not found.*--global\|not found.*-g" && \
+		fail "Flag --global should be parsed as mode flag, not treated as ruleset name. Output: $output"
+	
+	# Cleanup global mode
+	rm -f "$GLOBAL_MANIFEST_FILE"
+	rm -rf "$HOME/.cursor/rules/ai-rizz"
+	rm -rf "$HOME/.cursor/commands/ai-rizz"
+}
+
+# Test that cmd_remove_ruleset parses --global flag before name
+# Expected: Removes ruleset from global mode only
+test_remove_ruleset_global_flag_before_name() {
+	# Setup: Create ruleset and add to global mode
+	mkdir -p "$HOME/.cursor/rules/ai-rizz"
+	mkdir -p "$HOME/.cursor/commands/ai-rizz"
+	
+	# Initialize global mode
+	cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+	cmd_add_ruleset "ruleset1" --global
+	
+	# Verify ruleset is in global manifest
+	grep -q "rulesets/ruleset1" "$GLOBAL_MANIFEST_FILE" || fail "Ruleset should be in global manifest after add"
+	
+	# Action: Remove with flag BEFORE name (like: remove ruleset --global foo)
+	output=$(cmd_remove_ruleset --global "ruleset1" 2>&1)
+	exit_code=$?
+	
+	# Expected: Success, ruleset removed from global manifest
+	assertEquals "Should exit with success code" 0 $exit_code
+	
+	# Verify ruleset was removed from global manifest
+	if [ -f "$GLOBAL_MANIFEST_FILE" ]; then
+		grep -q "rulesets/ruleset1" "$GLOBAL_MANIFEST_FILE" && fail "Ruleset should be removed from global manifest"
+	fi
+	
+	# BUG CHECK: --global should NOT be treated as a ruleset name
+	echo "$output" | grep -q "Ruleset not found.*--global\|not found.*-g" && \
+		fail "Flag --global should be parsed as mode flag, not treated as ruleset name. Output: $output"
+	
+	# Cleanup global mode
+	rm -f "$GLOBAL_MANIFEST_FILE"
+	rm -rf "$HOME/.cursor/rules/ai-rizz"
+	rm -rf "$HOME/.cursor/commands/ai-rizz"
+}
+
+# Test that cmd_remove_ruleset parses -g short flag
+# Expected: Removes ruleset from global mode only
+test_remove_ruleset_global_short_flag() {
+	# Setup: Create ruleset and add to global mode
+	mkdir -p "$HOME/.cursor/rules/ai-rizz"
+	mkdir -p "$HOME/.cursor/commands/ai-rizz"
+	
+	# Initialize global mode
+	cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+	cmd_add_ruleset "ruleset1" --global
+	
+	# Verify ruleset is in global manifest
+	grep -q "rulesets/ruleset1" "$GLOBAL_MANIFEST_FILE" || fail "Ruleset should be in global manifest after add"
+	
+	# Action: Remove with short flag -g
+	output=$(cmd_remove_ruleset -g "ruleset1" 2>&1)
+	exit_code=$?
+	
+	# Expected: Success, ruleset removed from global manifest
+	assertEquals "Should exit with success code" 0 $exit_code
+	
+	# Verify ruleset was removed from global manifest
+	if [ -f "$GLOBAL_MANIFEST_FILE" ]; then
+		grep -q "rulesets/ruleset1" "$GLOBAL_MANIFEST_FILE" && fail "Ruleset should be removed from global manifest"
+	fi
+	
+	# BUG CHECK: -g should NOT be treated as a ruleset name
+	echo "$output" | grep -q "Ruleset not found.*-g" && \
+		fail "Flag -g should be parsed as mode flag, not treated as ruleset name. Output: $output"
+	
+	# Cleanup global mode
+	rm -f "$GLOBAL_MANIFEST_FILE"
+	rm -rf "$HOME/.cursor/rules/ai-rizz"
+	rm -rf "$HOME/.cursor/commands/ai-rizz"
+}
+
+# Test that --global mode-specific removal only removes from global mode
+# Expected: Ruleset remains in local/commit mode when --global specified
+test_remove_ruleset_global_flag_mode_specific() {
+	# Setup: Add ruleset to both local and global modes
+	mkdir -p "$HOME/.cursor/rules/ai-rizz"
+	mkdir -p "$HOME/.cursor/commands/ai-rizz"
+	
+	# Initialize both modes
+	cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --local
+	cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+	
+	# Add to both modes
+	cmd_add_ruleset "ruleset1" --local
+	cmd_add_ruleset "ruleset1" --global
+	
+	# Verify in both manifests
+	grep -q "rulesets/ruleset1" "$LOCAL_MANIFEST_FILE" || fail "Ruleset should be in local manifest"
+	grep -q "rulesets/ruleset1" "$GLOBAL_MANIFEST_FILE" || fail "Ruleset should be in global manifest"
+	
+	# Action: Remove from global mode ONLY
+	cmd_remove_ruleset "ruleset1" --global 2>&1
+	
+	# Expected: Removed from global, remains in local
+	if [ -f "$GLOBAL_MANIFEST_FILE" ]; then
+		grep -q "rulesets/ruleset1" "$GLOBAL_MANIFEST_FILE" && fail "Ruleset should be removed from global manifest"
+	fi
+	grep -q "rulesets/ruleset1" "$LOCAL_MANIFEST_FILE" || fail "Ruleset should REMAIN in local manifest"
+	
+	# Cleanup
+	rm -f "$GLOBAL_MANIFEST_FILE"
+	rm -rf "$HOME/.cursor/rules/ai-rizz"
+	rm -rf "$HOME/.cursor/commands/ai-rizz"
+}
+
 # Load shunit2
 # shellcheck disable=SC1091
 . "$(dirname "$0")/../../shunit2"

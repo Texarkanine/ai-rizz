@@ -3470,13 +3470,22 @@ cmd_add_rule() {
 	# Process each rule
 	for car_rule in ${car_rules}; do
 		# Handle extension: .mdc for rules, .md for commands
-		# If no extension, default to .mdc (rule)
+		# If no extension, try .mdc first, then .md (allows extensionless add)
 		case "${car_rule}" in
 			*".mdc"|*".md") 
 				car_item="${car_rule}"
 				;;  
 			*) 
-				car_item="${car_rule}.mdc"
+				# Try .mdc (rule) first
+				if [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.mdc" ]; then
+					car_item="${car_rule}.mdc"
+				# Fall back to .md (command)
+				elif [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.md" ]; then
+					car_item="${car_rule}.md"
+				else
+					# Neither exists - default to .mdc for error message
+					car_item="${car_rule}.mdc"
+				fi
 				;;  
 		esac
 		
@@ -3653,33 +3662,95 @@ cmd_add_ruleset() {
 #   1 on error (via error() function)
 #
 cmd_remove_rule() {
+	crr_mode=""
+	crr_rules=""
+	
+	# Parse arguments (flags can appear anywhere)
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			--local|-l)
+				crr_mode="local"
+				shift
+				;;
+			--commit|-c)
+				crr_mode="commit"
+				shift
+				;;
+			--global|-g)
+				crr_mode="global"
+				shift
+				;;
+			*)
+				if [ -z "${crr_rules}" ]; then
+					crr_rules="$1"
+				else
+					crr_rules="${crr_rules} $1"
+				fi
+				shift
+				;;
+		esac
+	done
+	
 	# Check if any mode is initialized and validate manifest integrity
 	ensure_initialized_and_valid
 
-	# If both modes are active, check if we can use environment variable for mode
-	if [ "$(is_mode_active commit)" = "true" ] && [ "$(is_mode_active local)" = "true" ] && [ -n "${AI_RIZZ_MODE}" ]; then
-		case "${AI_RIZZ_MODE}" in
-			local|commit)
-				crr_mode="${AI_RIZZ_MODE}"
-				;;
-			*)
-				# Invalid mode in environment variable - ignore it
-				crr_mode=""
-				;;
-		esac
-	else
-		crr_mode=""
+	# If no mode specified and multiple modes active, check environment variable
+	if [ -z "${crr_mode}" ]; then
+		if [ "$(is_mode_active commit)" = "true" ] && [ "$(is_mode_active local)" = "true" ] && [ -n "${AI_RIZZ_MODE}" ]; then
+			case "${AI_RIZZ_MODE}" in
+				local|commit|global)
+					crr_mode="${AI_RIZZ_MODE}"
+					;;
+			esac
+		fi
 	fi
 
 	# Process each rule
-	for rule in "$@"; do
-		# Add .mdc extension if not present
+	for rule in ${crr_rules}; do
+		# Handle extension: .mdc for rules, .md for commands
+		# If no extension, try .mdc first, then .md (allows extensionless remove)
 		case "${rule}" in
-			*".mdc") 
+			*".mdc"|*".md") 
 				crr_item="${rule}"
 				;;  
 			*) 
-				crr_item="${rule}.mdc"
+				# Try .mdc (rule) first - check all manifests
+				crr_mdc_path="${RULES_PATH}/${rule}.mdc"
+				crr_md_path="${RULES_PATH}/${rule}.md"
+				crr_found_mdc=false
+				crr_found_md=false
+				
+				# Check all manifests for .mdc
+				if [ "$(is_mode_active local)" = "true" ] && read_manifest_entries "$LOCAL_MANIFEST_FILE" 2>/dev/null | grep -q "^${crr_mdc_path}$"; then
+					crr_found_mdc=true
+				fi
+				if [ "$(is_mode_active commit)" = "true" ] && read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null | grep -q "^${crr_mdc_path}$"; then
+					crr_found_mdc=true
+				fi
+				if [ "$(is_mode_active global)" = "true" ] && read_manifest_entries "$GLOBAL_MANIFEST_FILE" 2>/dev/null | grep -q "^${crr_mdc_path}$"; then
+					crr_found_mdc=true
+				fi
+				
+				# Check all manifests for .md
+				if [ "$(is_mode_active local)" = "true" ] && read_manifest_entries "$LOCAL_MANIFEST_FILE" 2>/dev/null | grep -q "^${crr_md_path}$"; then
+					crr_found_md=true
+				fi
+				if [ "$(is_mode_active commit)" = "true" ] && read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null | grep -q "^${crr_md_path}$"; then
+					crr_found_md=true
+				fi
+				if [ "$(is_mode_active global)" = "true" ] && read_manifest_entries "$GLOBAL_MANIFEST_FILE" 2>/dev/null | grep -q "^${crr_md_path}$"; then
+					crr_found_md=true
+				fi
+				
+				# Prefer .mdc, fall back to .md
+				if [ "${crr_found_mdc}" = "true" ]; then
+					crr_item="${rule}.mdc"
+				elif [ "${crr_found_md}" = "true" ]; then
+					crr_item="${rule}.md"
+				else
+					# Neither found - default to .mdc for error message
+					crr_item="${rule}.mdc"
+				fi
 				;;  
 		esac
 		
@@ -4228,8 +4299,6 @@ copy_entry_to_target() {
 	cett_target_directory="${2}"
 	cett_mode="${3:-}"
 	
-	cett_source_path="${REPO_DIR}/${cett_entry}"
-	
 	# Determine mode from target directory if not provided
 	if [ -z "${cett_mode}" ]; then
 		case "${cett_target_directory}" in
@@ -4244,6 +4313,10 @@ copy_entry_to_target() {
 				;;
 		esac
 	fi
+	
+	# Use mode-specific repo dir (global mode has separate cache)
+	cett_repo_dir=$(get_repo_dir_for_mode "${cett_mode}")
+	cett_source_path="${cett_repo_dir}/${cett_entry}"
 	
 	# Check if we're syncing to local directory and need to avoid commit conflicts
 	cett_is_local_sync=false

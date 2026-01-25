@@ -1,150 +1,147 @@
-# Reflection: cmd_list Global Repo Dir Bug Fix
+# Reflection: Global Mode Command Support Bug Fixes (Post Phase 8)
 
-**Task ID**: cmd-list-global-repo-dir
-**Parent Task**: global-mode-command-support (Phase 8+)
+**Task ID**: global-mode-post-phase8-bugs
+**Parent Task**: global-mode-command-support
 **Date**: 2026-01-25
-**Complexity**: Level 2 (Bug fix with test infrastructure investigation)
-**Duration**: ~30 minutes
-**PR**: https://github.com/Texarkanine/ai-rizz/pull/15
+**Complexity**: Level 2 (Multiple related bug fixes)
+**Duration**: ~2 hours
+**PR**: https://github.com/Texarkanine/ai-rizz/pull/16
 
 ---
 
 ## Summary
 
-Fixed a bug where `cmd_list` hardcoded `REPO_DIR` for finding available rules/commands/rulesets, causing "No commands found" in global-only context even when commands existed in the global cache.
+Fixed multiple related bugs in global mode command support discovered during manual testing:
+
+1. **cmd_list repo dir**: Used `REPO_DIR` instead of `GLOBAL_REPO_DIR` in global-only context
+2. **Extensionless add/remove**: `ai-rizz add rule foo` didn't find `foo.md` commands
+3. **--global flag for remove**: `cmd_remove_rule` didn't parse `--global` flag
+4. **Command file cleanup**: Removing commands left orphan files in commands directory
+5. **copy_entry_to_target repo dir**: Used wrong repo dir for global mode sync
 
 ---
 
-## The Bug
+## Bug 1: cmd_list Repo Dir
 
-**Symptom**: User manually placed `foo.md` in global cache (`~/.config/ai-rizz/repos/_ai-rizz.global/repo/rules/`), but `ai-rizz list` showed "No commands found".
+**Symptom**: `ai-rizz list` showed "No commands found" in global-only context even when commands existed.
 
-**Root Cause**: `cmd_list` used `${REPO_DIR}` directly in `find` commands:
-```shell
-cl_commands=$(find "${REPO_DIR}/${RULES_PATH}" -maxdepth 1 -name "*.md" ...)
-```
+**Root Cause**: `cmd_list` used `${REPO_DIR}` directly in `find` commands. In global-only context, `REPO_DIR` pointed to wrong location.
 
-In global-only context (outside git repo), `REPO_DIR` pointed to wrong location based on `basename $(pwd)`, not the global cache.
-
-**Fix**: Add mode-aware repo dir selection:
-```shell
-if local/commit mode active:
-    cl_repo_dir = REPO_DIR
-else:
-    cl_repo_dir = GLOBAL_REPO_DIR
-```
+**Fix**: Add mode-aware repo dir selection - use `GLOBAL_REPO_DIR` when only global mode is active.
 
 ---
 
-## Debugging Journey
+## Bug 2: Extensionless Add/Remove
+
+**Symptom**: `ai-rizz add rule foo` failed with "Rule not found: rules/foo.mdc" even when `foo.md` existed.
+
+**Root Cause**: When no extension provided, code defaulted to `.mdc` without checking for `.md`.
+
+**Fix**: Try `.mdc` first, fall back to `.md` if not found. Applied to both `cmd_add_rule` and `cmd_remove_rule`.
+
+---
+
+## Bug 3: --global Flag for Remove
+
+**Symptom**: `ai-rizz remove rule foo --global` treated `--global` as a rule name.
+
+**Root Cause**: `cmd_remove_rule` didn't parse flags - just iterated all arguments as rule names.
+
+**Fix**: Add proper argument parsing matching `cmd_add_rule` pattern.
+
+---
+
+## Bug 4: Command File Cleanup
+
+**Symptom**: `ai-rizz remove rule foo` updated manifest but left `~/.cursor/commands/ai-rizz/foo.md` on disk.
+
+**Root Cause**: `sync_manifest_to_directory` only cleared `*.mdc` files, not `*.md` commands.
+
+**Fix**: Also clear the commands directory during sync.
+
+---
+
+## Bug 5: copy_entry_to_target Repo Dir
+
+**Symptom**: Sync warning "Entry not found in repository" for global mode entries.
+
+**Root Cause**: `copy_entry_to_target` used `REPO_DIR` directly instead of mode-specific repo dir.
+
+**Fix**: Use `get_repo_dir_for_mode()` to get correct path.
+
+---
+
+## Debugging Journey (Bug 1)
 
 ### Initial Hypothesis (Wrong)
-Suspected the `! -name "*.mdc"` filter was too aggressive, filtering out all `.md` files.
+Suspected the `! -name "*.mdc"` filter was too aggressive.
 
 ### Investigation with Mermaid Diagram
-Created sequence diagram to trace execution flow:
-```
-cmd_list → ensure_initialized_and_valid → cache_manifest_metadata
-        → get_global_repo_dir → returns CONFIG_DIR/repos/...
-```
+Drawing sequence diagrams revealed the execution flow and where the bug occurred.
 
 ### Discovery 1: CONFIG_DIR Not Updated
-`init_global_paths()` updated `GLOBAL_MANIFEST_FILE`, `GLOBAL_RULES_DIR`, etc. based on `HOME`, but NOT `CONFIG_DIR`. So when tests changed `HOME`, `get_global_repo_dir()` returned wrong path.
-
-**Fix**: Added `CONFIG_DIR="$HOME/.config/ai-rizz"` to `init_global_paths()`.
+`init_global_paths()` didn't update `CONFIG_DIR` when `HOME` changed.
 
 ### Discovery 2: Test Infrastructure Override
-Even after fixing CONFIG_DIR, tests still failed. Debug output revealed:
-```
-CONFIG_DIR=/tmp/.../test_home/.config/ai-rizz  ← CORRECT
-get_global_repo_dir=/nonexistent/...           ← WRONG!?
-```
-
-How could `get_global_repo_dir()` return wrong value when `CONFIG_DIR` was correct?
-
-**Root Cause**: `tests/common.sh` line 307-309 **overrides** `get_global_repo_dir()`:
-```shell
-get_global_repo_dir() {
-    echo "$REPO_DIR"  # Returns REPO_DIR, not actual global path!
-}
-```
-
-This override exists to simplify most tests, but breaks tests that deliberately set `REPO_DIR` to invalid value to verify isolation.
-
-**Fix**: Simplified test to not rely on REPO_DIR isolation, just verify commands show up.
+`tests/common.sh` overrides `get_global_repo_dir()` to return `REPO_DIR`, which masked the real behavior during investigation.
 
 ---
 
 ## What Went Well
 
 ### 1. Mermaid Diagrams Helped
-When stuck, drawing the sequence diagram revealed the execution flow clearly. The visualization made it obvious where to look next.
+Drawing sequence diagrams revealed execution flow and made issues obvious.
 
-### 2. Progressive Debug Output
-Adding targeted debug statements (`CONFIG_DIR`, `get_global_repo_dir()`, `cl_repo_dir`) isolated the issue to the function override in common.sh.
+### 2. TDD Caught the Final Bug
+Writing tests for extensionless add/remove revealed the command cleanup bug - tests for "remove deletes file" failed, exposing a bug we hadn't noticed yet.
 
-### 3. /niko/refresh Command
-Using the systematic re-diagnosis approach (step back, map structure, investigate with evidence) instead of trial-and-error led directly to root cause.
+### 3. User-Reported Bugs Led to Complete Fix
+Each bug the user reported led to finding related issues. The "extensionless add" request uncovered missing `--global` flag support and the command cleanup bug.
 
 ---
 
 ## Challenges Encountered
 
 ### 1. Test Infrastructure Shadowing Production Code
-The `common.sh` override of `get_global_repo_dir()` made production code appear buggy when it wasn't. This is a form of test pollution - test infrastructure masking real behavior.
+The `common.sh` override of `get_global_repo_dir()` masked real behavior during investigation.
 
-### 2. Multiple Layers of Indirection
-The bug involved:
-- `cmd_list` → `REPO_DIR` vs `GLOBAL_REPO_DIR`
-- `cache_manifest_metadata` → `get_global_repo_dir()`
-- `get_global_repo_dir` → `CONFIG_DIR`
-- `init_global_paths` → `HOME`
-- Test override → `REPO_DIR`
+### 2. Multiple Related Bugs
+What seemed like one bug (commands not showing) was actually five related bugs across different code paths.
 
-Each layer looked correct in isolation. Only tracing the full chain revealed the issue.
+### 3. Inconsistent Command Handling
+Rules and commands had different cleanup logic - rules were deleted on sync, commands weren't.
 
 ---
 
 ## Lessons Learned
 
 ### 1. Test Infrastructure Can Mask Bugs
-The `common.sh` override was helpful for most tests but created a blind spot. When debugging production behavior, consider temporarily disabling test overrides.
+The `common.sh` override was helpful for most tests but created a blind spot during debugging.
 
-**Takeaway**: Document which functions are overridden in test infrastructure and why.
+### 2. TDD Reveals Hidden Bugs
+Writing tests for one feature (extensionless remove) revealed another bug (command cleanup).
 
-### 2. Visualize Before Diving Deep
-The mermaid sequence diagram took 2 minutes to create but saved 20+ minutes of confused debugging. When stuck, step back and draw.
+### 3. Commands Need Parity with Rules
+Anywhere rules are handled, commands should be too. The sync cleanup only handled `*.mdc`.
 
-### 3. Debug Output Should Include Function Calls
-Adding `echo "get_global_repo_dir=$(get_global_repo_dir)"` revealed that the function itself was misbehaving - not just its callers. Debug the mechanism, not just the values.
-
-### 4. Variables vs Functions
-`GLOBAL_REPO_DIR` (variable) and `get_global_repo_dir()` (function) can diverge. The variable was cached correctly, but the function was overridden. Prefer consistent access patterns.
+### 4. Argument Parsing Must Be Consistent
+`cmd_add_rule` had flag parsing, but `cmd_remove_rule` didn't - inconsistency leads to bugs.
 
 ---
 
 ## Process Improvements
 
-### For Test Infrastructure
+### For New Features
 
-1. **Document overrides prominently**:
-   ```shell
-   # WARNING: This function is overridden in common.sh for testing
-   # Tests that need real behavior must re-override it
-   ```
-
-2. **Consider conditional overrides**:
-   ```shell
-   if [ -z "${USE_REAL_GLOBAL_REPO_DIR:-}" ]; then
-       get_global_repo_dir() { echo "$REPO_DIR"; }
-   fi
-   ```
+1. **Ensure parity**: When adding command support, audit ALL rule code paths
+2. **Test cleanup**: Don't just test add - test remove deletes files too
+3. **Consistent interfaces**: If add has `--global`, remove should too
 
 ### For Debugging
 
-1. **Draw diagrams early** when multiple components interact
-2. **Debug function calls**, not just variable values
-3. **Check test infrastructure** when production code looks correct
+1. **Draw diagrams** when stuck
+2. **Check test infrastructure** when production looks correct
+3. **Write regression tests** before considering a bug fixed
 
 ---
 
@@ -152,10 +149,14 @@ Adding `echo "get_global_repo_dir=$(get_global_repo_dir)"` revealed that the fun
 
 | File | Change |
 |------|--------|
-| `ai-rizz` | Added `CONFIG_DIR` to `init_global_paths()` |
-| `ai-rizz` | Added mode-aware `cl_repo_dir` selection in `cmd_list()` |
-| `ai-rizz` | Changed 5 `find` commands from `REPO_DIR` to `cl_repo_dir` |
-| `test_global_only_context.test.sh` | Added `test_global_list_shows_available_commands_outside_git_repo` |
+| `ai-rizz` | `init_global_paths()` - add `CONFIG_DIR` update |
+| `ai-rizz` | `cmd_list()` - mode-aware repo dir selection |
+| `ai-rizz` | `cmd_add_rule()` - extensionless lookup (.mdc then .md) |
+| `ai-rizz` | `cmd_remove_rule()` - add flag parsing, extensionless lookup |
+| `ai-rizz` | `copy_entry_to_target()` - use mode-specific repo dir |
+| `ai-rizz` | `sync_manifest_to_directory()` - clear commands dir too |
+| `test_command_sync.test.sh` | 6 new tests for extensionless and cleanup |
+| `test_global_only_context.test.sh` | 1 new test for commands in list |
 
 ---
 
@@ -163,16 +164,15 @@ Adding `echo "get_global_repo_dir=$(get_global_repo_dir)"` revealed that the fun
 
 | Metric | Value |
 |--------|-------|
-| Time to diagnose | ~25 minutes |
-| Debug iterations | 3 (filter hypothesis → CONFIG_DIR → override) |
-| Lines changed | ~35 |
-| Tests added | 1 |
-| Diagrams drawn | 2 (sequence + flowchart) |
+| Bugs fixed | 5 |
+| Lines changed (ai-rizz) | ~200 |
+| Tests added | 7 |
+| Time to fix all | ~2 hours |
 
 ---
 
 ## Conclusion
 
-This was a "pernicious little" bug because the test infrastructure masked the real behavior. The fix was straightforward once the root cause was identified, but finding it required systematic investigation through multiple layers of indirection.
+What started as "commands not showing in list" turned into five related bugs across different code paths. The TDD approach was crucial - writing tests for extensionless remove revealed the command cleanup bug that would have gone unnoticed.
 
-**Key insight**: When production code looks correct but tests fail in unexpected ways, investigate the test infrastructure itself - it may be the source of the discrepancy.
+**Key insight**: When adding a new entity type (commands), audit EVERY code path that handles the existing type (rules). Cleanup, sync, add, remove, list - all need updating.

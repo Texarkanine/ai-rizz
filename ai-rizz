@@ -578,7 +578,13 @@ show_git_context_error() {
   cat >&2 << EOF
 Error: Not in a git repository.
 
-ai-rizz must be run inside a git repository. To set up a new git repository:
+ai-rizz in "${1}" mode must be run inside a git repository. 
+
+Did you mean to use --global mode?
+
+  ai-rizz init --global
+
+To set up a new git repository:
 
   mkdir myproject
   cd myproject
@@ -590,7 +596,7 @@ Or initialize git in the current directory:
   git init
   ai-rizz init <repository-url>
 EOF
-  exit "${1:-1}"
+  exit 1
 }
 
 # Progressive Manifest Utilities  
@@ -1445,14 +1451,16 @@ is_mode_active() {
 	
 	case "${ima_mode}" in
 		local)
-			if [ -f "${LOCAL_MANIFEST_FILE}" ]; then
+			# Local mode requires both git repo AND manifest file
+			if [ -d ".git" ] && [ -f "${LOCAL_MANIFEST_FILE}" ]; then
 				echo "true"
 			else
 				echo "false"
 			fi
 			;;
 		commit)
-			if [ -f "${COMMIT_MANIFEST_FILE}" ]; then
+			# Commit mode requires both git repo AND manifest file
+			if [ -d ".git" ] && [ -f "${COMMIT_MANIFEST_FILE}" ]; then
 				echo "true"
 			else
 				echo "false"
@@ -2739,7 +2747,7 @@ EOF
 	# Ensure git repository context for local and commit modes
 	# Only global mode can work outside a git repository
 	if [ "${ci_mode}" != "global" ] && [ ! -d ".git" ]; then
-		show_git_context_error
+		show_git_context_error "${ci_mode}"
 	fi
 	
 	# Clone/sync source repository first
@@ -3512,6 +3520,13 @@ cmd_add_rule() {
 
 	# Get the correct repo dir for this mode (cache isolation)
 	car_repo_dir=$(get_repo_dir_for_mode "${car_mode}")
+	
+	# Sync the appropriate repo based on mode
+	if [ "${car_mode}" = "global" ]; then
+		sync_global_repo
+	else
+		git_sync "${SOURCE_REPO}"
+	fi
 
 	# Process each rule
 	for car_rule in ${car_rules}; do
@@ -3637,6 +3652,13 @@ cmd_add_ruleset() {
 
 	# Get the correct repo dir for this mode (cache isolation)
 	cars_repo_dir=$(get_repo_dir_for_mode "${cars_mode}")
+	
+	# Sync the appropriate repo based on mode
+	if [ "${cars_mode}" = "global" ]; then
+		sync_global_repo
+	else
+		git_sync "${SOURCE_REPO}"
+	fi
 
 	# Process each ruleset
 	for cars_ruleset in ${cars_rulesets}; do

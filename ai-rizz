@@ -1079,7 +1079,7 @@ update_git_exclude() {
 
 # Setup git excludes for local mode
 #
-# Adds local manifest and target directory to git excludes.
+# Adds local manifest, rules directory, and commands directory to git excludes.
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename to exclude
@@ -1099,9 +1099,12 @@ setup_local_mode_excludes() {
 	
 	update_git_exclude "${LOCAL_MANIFEST_FILE}" "add"
 	update_git_exclude "${slme_target_dir}/${LOCAL_DIR}" "add"
+	update_git_exclude ".cursor/commands/${LOCAL_DIR}" "add"
 }
 
 # Remove all local mode excludes
+#
+# Removes local manifest, rules directory, and commands directory from git excludes.
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename to unexclude
@@ -1121,6 +1124,7 @@ remove_local_mode_excludes() {
 	
 	update_git_exclude "${LOCAL_MANIFEST_FILE}" "remove"
 	update_git_exclude "${rlme_target_dir}/${LOCAL_DIR}" "remove"
+	update_git_exclude ".cursor/commands/${LOCAL_DIR}" "remove"
 }
 
 # Check if hook-based mode is active
@@ -1205,7 +1209,7 @@ TARGET_DIR=$(head -n1 "$MANIFEST_PATH" 2>/dev/null | cut -f2)
 [ -z "$TARGET_DIR" ] && exit 0
 
 # Unstage local files (safe even if already ignored)
-git reset HEAD -- "$TARGET_DIR/local/" "$LOCAL_MANIFEST" 2>/dev/null || true
+git reset HEAD -- "$TARGET_DIR/local/" "$LOCAL_MANIFEST" ".cursor/commands/local/" 2>/dev/null || true
 # END ai-rizz hook
 HOOKEOF
 )

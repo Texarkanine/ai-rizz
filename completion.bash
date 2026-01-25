@@ -5,6 +5,7 @@
 # - Command completion (init, deinit, list, add, remove, sync, help)
 # - Rule and ruleset type completion for add/remove commands
 # - Dynamic rule completion from the current project's repository
+#   (includes both .mdc rules and .md commands)
 # - Dynamic ruleset completion from the current project's repository
 #
 # Installation:
@@ -73,11 +74,12 @@ _ai_rizz_completion() {
 			COMPREPLY=()
 			;;
 		rule)
-			# Get available rules from the current project's repo
+			# Get available rules and commands from the current project's repo
+			# Rules are .mdc files, commands are .md files
 			local repo_dir
 			repo_dir="$(_get_repo_dir)"
 			if [[ -d "${repo_dir}/rules" ]]; then
-				COMPREPLY=( $(compgen -W "$(find "${repo_dir}/rules" -name "*.mdc" -printf "%f\n" | sed 's/\.mdc$//')" -- "${cur}") )
+				COMPREPLY=( $(compgen -W "$(find "${repo_dir}/rules" \( -name "*.mdc" -o -name "*.md" \) -printf "%f\n" | sed 's/\.\(mdc\|md\)$//')" -- "${cur}") )
 			fi
 			;;
 		ruleset)

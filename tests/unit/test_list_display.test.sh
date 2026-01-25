@@ -252,8 +252,15 @@ test_list_shows_uninstalled_glyph_for_new_command() {
 
 # Test that no commands message is shown when none exist
 test_list_shows_no_commands_message_when_empty() {
-    # Setup: Don't create any .md files, only .mdc rules
-    # The setUp already creates rule1.mdc, rule2.mdc, rule3.mdc
+    # Setup: Remove any .md files to ensure no commands exist
+    # The common setUp creates command1.md and command2.md for other tests
+    rm -f "$REPO_DIR/rules/"*.md
+    
+    # Commit the removal
+    cd "$REPO_DIR" || fail "Failed to cd to repo"
+    git add . >/dev/null 2>&1
+    git commit --no-gpg-sign -m "Remove command files for empty test" >/dev/null 2>&1
+    cd "$TEST_DIR/app" || fail "Failed to cd to app"
     
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
     

@@ -12,8 +12,10 @@
 # - Hook removal on deinit
 # - Mode switching (regular <-> hook-based)
 # - Hook unstages local files when staged
+# - Hook unstages local command files when staged
 # - Hook preserves user's existing hooks
 # - validate_git_exclude_state recognizes hook-based mode
+# - Git exclude protects local commands directory
 # - Works with custom manifest names and target directories
 #
 # Dependencies: shunit2, common test utilities
@@ -177,6 +179,75 @@ test_validate_git_exclude_state_recognizes_hook_based_mode() {
     if echo "$output" | grep -q "not in git exclude"; then
         fail "Should not warn when hook is present. Output: $output"
     fi
+}
+
+# ============================================================================
+# COMMAND PROTECTION TESTS
+# ============================================================================
+
+test_hook_unstages_local_commands() {
+    # Test: Hook should unstage local command files
+    # Expected: Commands in .cursor/commands/local/ should be unstaged
+    
+    # Setup: Hook-based mode
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --hook-based-ignore
+    cmd_add_rule "command1.md" --local
+    
+    # Verify command file exists in commands directory
+    assertTrue "Commands directory should exist" "[ -d '.cursor/commands/local' ]"
+    assert_file_exists ".cursor/commands/local/command1.md"
+    
+    # Stage local command files
+    git add ".cursor/commands/local/command1.md"
+    
+    # Verify files are staged before hook
+    staged_before=$(git diff --cached --name-only)
+    assertTrue "Command should be staged before hook" "echo '$staged_before' | grep -q '.cursor/commands/local/command1.md'"
+    
+    # Test: Run pre-commit hook
+    .git/hooks/pre-commit
+    
+    # Expected: Command files unstaged
+    staged_after=$(git diff --cached --name-only)
+    assertFalse "Local command should be unstaged" "echo '$staged_after' | grep -q '.cursor/commands/local/command1.md'"
+    
+    return 0
+}
+
+test_git_exclude_protects_local_commands() {
+    # Test: Git exclude mode should protect local commands
+    # Expected: .cursor/commands/local/ should be in git exclude
+    
+    # Setup: Regular local mode (git exclude, NOT hook-based)
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    cmd_add_rule "command1.md" --local
+    
+    # Verify command deployed
+    assertTrue "Commands directory should exist" "[ -d '.cursor/commands/local' ]"
+    assert_file_exists ".cursor/commands/local/command1.md"
+    
+    # Verify git exclude contains commands directory
+    assert_git_exclude_contains ".cursor/commands/local"
+    
+    return 0
+}
+
+test_git_exclude_removes_local_commands_on_deinit() {
+    # Test: Deinit should remove commands directory from git exclude
+    # Expected: .cursor/commands/local/ removed from git exclude
+    
+    # Setup: Regular local mode
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    cmd_add_rule "command1.md" --local
+    assert_git_exclude_contains ".cursor/commands/local"
+    
+    # Test: Deinit local mode
+    cmd_deinit --local -y
+    
+    # Expected: Commands directory removed from git exclude
+    assert_git_exclude_not_contains ".cursor/commands/local"
+    
+    return 0
 }
 
 # ============================================================================

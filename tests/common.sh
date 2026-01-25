@@ -90,6 +90,10 @@ setUp() {
   echo "Rule 2 content" > "$REPO_DIR/rules/rule2.mdc"
   echo "Rule 3 content" > "$REPO_DIR/rules/rule3.mdc"
   
+  # Create command files (.md extension)
+  echo "Command 1 content" > "$REPO_DIR/rules/command1.md"
+  echo "Command 2 content" > "$REPO_DIR/rules/command2.md"
+  
   # Create ruleset symlinks
   ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/ruleset1/rule1.mdc"
   ln -sf "$REPO_DIR/rules/rule2.mdc" "$REPO_DIR/rulesets/ruleset1/rule2.mdc"
@@ -540,6 +544,27 @@ This rule is designed for team collaboration.
 - Code review guidelines
 EOF
 
+    # Create command files (.md extension)
+    cat > "$MOCK_REPO_DIR/rules/test-command.md" << 'EOF'
+# Test Command
+
+This is a test command for testing purposes.
+
+## Usage
+
+/test-command
+EOF
+
+    cat > "$MOCK_REPO_DIR/rules/another-command.md" << 'EOF'
+# Another Command
+
+This is another test command.
+
+## Usage
+
+/another-command
+EOF
+
     # Create ruleset symlinks
     ln -sf "../../rules/rule1.mdc" "$MOCK_REPO_DIR/rulesets/basic/rule1.mdc"
     ln -sf "../../rules/rule2.mdc" "$MOCK_REPO_DIR/rulesets/basic/rule2.mdc"
@@ -767,6 +792,55 @@ assert_rule_not_deployed() {
     assertFalse "Rule should not be deployed: $rule_file" "[ -f '$rule_file' ]"
 }
 
+# Verify command is deployed to target directory
+#
+# Checks that a command file exists in the specified target directory.
+# Used to verify that sync operations correctly deploy commands.
+#
+# Arguments:
+#   $1 - Target directory path
+#   $2 - Command name (without .md extension)
+#
+# Outputs:
+#   None (uses shunit2 assertions)
+#
+# Returns:
+#   0 if command is deployed
+#   1 if command is not deployed (via assertion failure)
+#
+assert_command_deployed() {
+    target_dir="$1"
+    command_name="$2"
+    command_file="$target_dir/$command_name.md"
+    
+    assertTrue "Target directory should exist: $target_dir" "[ -d '$target_dir' ]"
+    assertTrue "Command should be deployed: $command_file" "[ -f '$command_file' ]"
+}
+
+# Verify command is not deployed to target directory
+#
+# Checks that a command file does not exist in the specified target directory.
+# Used to verify that remove operations correctly clean up deployed commands.
+#
+# Arguments:
+#   $1 - Target directory path
+#   $2 - Command name (without .md extension)
+#
+# Outputs:
+#   None (uses shunit2 assertions)
+#
+# Returns:
+#   0 if command is not deployed
+#   1 if command is deployed (via assertion failure)
+#
+assert_command_not_deployed() {
+    target_dir="$1"
+    command_name="$2"
+    command_file="$target_dir/$command_name.md"
+    
+    assertFalse "Command should not be deployed: $command_file" "[ -f '$command_file' ]"
+}
+
 # Verify directory is empty or does not exist
 #
 # Checks that a directory either doesn't exist or contains no files.
@@ -883,6 +957,25 @@ EOF
     
     # Make it readable
     chmod 644 "$rule_file"
+}
+
+# Create a test command file with specified content
+create_test_command() {
+    target_dir="$1"
+    command_name="$2"
+    command_file="$target_dir/$command_name.md"
+    
+    # Ensure target directory exists
+    mkdir -p "$target_dir"
+    
+    # Create command with simple content
+    cat > "$command_file" << EOF
+# $command_name
+Test command content for $command_name
+EOF
+    
+    # Make it readable
+    chmod 644 "$command_file"
 }
 
 # Remove a test rule file

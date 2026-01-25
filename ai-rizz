@@ -4034,6 +4034,15 @@ sync_manifest_to_directory() {
 			# Only delete regular .mdc files, never directories or other files
 			# Even if symlinks were used in a ruleset, we only EVER get regular files in the rules dir
 			find "${smtd_target_directory}" -name "*.mdc" -type f -delete 2>/dev/null || true
+			
+			# Also clear the corresponding commands directory for this mode
+			# Commands are stored separately from rules
+			if [ -n "${smtd_mode}" ]; then
+				smtd_commands_dir=$(get_commands_target_dir "${smtd_mode}")
+				if [ -d "${smtd_commands_dir}" ]; then
+					find "${smtd_commands_dir}" -name "*.md" -type f -delete 2>/dev/null || true
+				fi
+			fi
 			;;
 		*)
 			warn "Refusing to clear unrecognized target directory: ${smtd_target_directory}"

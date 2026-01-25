@@ -538,7 +538,9 @@ Then add the ruleset:
 ### Repository Integrity
 
 #### Source Repository Consistency
-All active modes must use the same source repository. If they differ, `ai-rizz` will complain and ask you to resolve it.
+Local and commit modes must use the same source repository. If they differ, `ai-rizz` will complain and ask you to resolve it.
+
+Global mode can use a different source repository, allowing you to share one set of rules globally while using project-specific rules locally.
 
 #### Conflict Resolution
 When both modes contain the same rule/ruleset:

@@ -1,9 +1,10 @@
 # ai-rizz
 
-A command-line tool for managing AI rules and rulesets. Pull rules from a source repository and use them in your working repositories either:
+A command-line tool for managing AI rules and rulesets. Pull rules from a source repository and use them:
 
 * Locally only (git-ignored, for personal use)
 * Committed (git-tracked, shared with team)
+* Globally (shared across all repositories)
 
 Each rule can be handled independently. Rule repositories may also choose to bundle rules into "rulesets" for easier management of related rules.
 
@@ -70,6 +71,13 @@ ai-rizz add rule shared-rule.mdc --commit   # creates commit mode
 ai-rizz list                                # shows: ○ ◐ ●
 ```
 
+**Global rules (shared across all repos):**
+```bash
+ai-rizz init https://github.com/texarkanine/.cursor-rules.git --global
+ai-rizz add rule always-use-this.mdc --global
+ai-rizz list                                # shows: ★ for global rules
+```
+
 > ## ⚠️ `.gitignore` and `.cursorignore`
 > Some builds of Cursor [ignore all files ignored by git](https://forum.cursor.com/t/cursor-2-1-50-ignores-rules-in-git-info-exclude-on-mac-not-on-windows-wsl/145695/4).
 > If you find that local rules aren't being applied (quick test: can you [@Mention](https://cursor.com/docs/context/mentions) the files?), see the [--hook-based-ignore `init` option](#--hook-based-ignore-local-mode).
@@ -95,16 +103,19 @@ Command-specific options:
     -c, --commit           Initialize commit mode (git-tracked)
     -d <target_dir>        Target directory (default: .cursor/rules)
     -f, --manifest <file>  Alias for --skibidi
+    -g, --global           Initialize global mode (shared across repos)
     -l, --local            Initialize local mode (git-ignored)
     -s, --skibidi <file>   Use custom manifest filename
 
   add options:
     -c, --commit           Add to commit mode (auto-initializes if needed)
+    -g, --global           Add to global mode (auto-initializes if needed)
     -l, --local            Add to local mode (auto-initializes if needed)
 
   deinit options:
-    -a, --all              Remove both modes completely
+    -a, --all              Remove all modes completely
     -c, --commit           Remove commit mode only
+    -g, --global           Remove global mode only
     -l, --local            Remove local mode only
     -y                     Skip confirmation prompts
 ```
@@ -112,6 +123,8 @@ Command-specific options:
 ### Configuration
 
 ai-rizz stores copies of source repositories in `$HOME/.config/ai-rizz/repos/PROJECT-NAME/repo/` where PROJECT-NAME is the current directory name. This allows different projects to use different source repositories without conflicts.
+
+Global mode uses a separate cache at `$HOME/.config/ai-rizz/repos/global/repo/` shared across all repositories.
 
 ### Rule Modes
 
@@ -127,11 +140,17 @@ ai-rizz stores copies of source repositories in `$HOME/.config/ai-rizz/repos/PRO
 - Files are committed to git
 - Other developers get them when they clone/pull
 
+#### Global mode (`--global`)
+- Rules stored in `~/.cursor/rules/`
+- Available in all repositories on this machine
+- Manifest stored at `~/ai-rizz.skbd`
+
 #### Status Display
 What `ai-rizz list` shows:
 - **○** Rule available but not installed
 - **◐** Rule installed locally only (git-ignored)  
 - **●** Rule installed and committed (git-tracked)
+- **★** Rule installed globally (all repositories)
 
 #### Moving Rules Between Modes
 ```bash
@@ -161,7 +180,7 @@ make uninstall
 #### Initialization
 
 ```
-ai-rizz init [<source_repo>] [-d <target_dir>] [--local|-l|--commit|-c] [-f|--manifest|-s|--skibidi <file>]
+ai-rizz init [<source_repo>] [-d <target_dir>] [--local|-l|--commit|-c|--global|-g] [-f|--manifest|-s|--skibidi <file>]
 ```
 
 Sets up one mode in your repository:
@@ -170,10 +189,11 @@ Sets up one mode in your repository:
 - `-d <target_dir>`: Target directory (default: `.cursor/rules`)
 - `--local, -l`: Set up local mode (git-ignored rules)
 - `--commit, -c`: Set up commit mode (git-tracked rules)
+- `--global, -g`: Set up global mode (rules shared across all repos)
 - `-f, --manifest <file>`: Use custom manifest filename instead of default ai-rizz.skbd
 - `-s, --skibidi <file>`: Alias for --manifest
 
-If you don't specify `--local` or `--commit`, ai-rizz will ask which you want.
+If you don't specify a mode, ai-rizz will ask which you want.
 
 Examples:
 
@@ -227,14 +247,15 @@ Sorry! You'll have to wait until Cursor updates to offer an alternative.
 #### Adding Rules and Rulesets
 
 ```
-ai-rizz add rule <rule>... [--local|-l|--commit|-c]
-ai-rizz add ruleset <ruleset>... [--local|-l|--commit|-c]
+ai-rizz add rule <rule>... [--local|-l|--commit|-c|--global|-g]
+ai-rizz add ruleset <ruleset>... [--local|-l|--commit|-c|--global|-g]
 ```
 
 ```bash
 ai-rizz add rule foo.mdc              # Uses your current mode if only one mode active
 ai-rizz add rule bar.mdc --local      # Force local (git-ignored)
 ai-rizz add rule baz.mdc --commit     # Force commit (git-tracked)
+ai-rizz add rule qux.mdc --global     # Force global (all repos)
 ```
 
 **Note**: Adding to a non-existent mode creates it automatically. Re-adding an existing rule moves it between modes.
@@ -261,6 +282,7 @@ ai-rizz list
 ○ available-rule.mdc     # Available but not installed
 ◐ personal-rule.mdc      # Installed locally (git-ignored)
 ● team-rule.mdc          # Installed and committed (git-tracked)
+★ global-rule.mdc        # Installed globally (all repos)
 
 Available rulesets:
 ○ shell
@@ -284,12 +306,13 @@ Pulls latest rules from source repository and updates your local copies.
 #### Deinitializing
 
 ```
-ai-rizz deinit [--local|-l|--commit|-c|--all|-a] [-y]
+ai-rizz deinit [--local|-l|--commit|-c|--global|-g|--all|-a] [-y]
 ```
 
 ```bash
 ai-rizz deinit --local               # Remove only local rules/setup
-ai-rizz deinit --commit              # Remove only committed rules/setup  
+ai-rizz deinit --commit              # Remove only committed rules/setup
+ai-rizz deinit --global              # Remove only global rules/setup
 ai-rizz deinit --all                 # Remove everything
 ai-rizz deinit                       # Interactive: ask which to remove
 ```
@@ -515,7 +538,7 @@ Then add the ruleset:
 ### Repository Integrity
 
 #### Source Repository Consistency
-Both modes must use the same source repository. If they differ, `ai-rizz` will complain and ask you to resolve it.
+All active modes must use the same source repository. If they differ, `ai-rizz` will complain and ask you to resolve it.
 
 #### Conflict Resolution
 When both modes contain the same rule/ruleset:
@@ -598,6 +621,11 @@ ai-rizz uses a dual-manifest system to support per-rule mode selection:
   - When `init`ialized with `--hook-based-ignore`: Not git-ignored, protected by pre-commit hook (leaves "dirty" git status)
 - Contains rules from local manifest
 - Created when local mode is initialized
+
+**`~/.cursor/rules/`** (Global Directory):
+- Shared across all repositories
+- Contains rules from global manifest (`~/ai-rizz.skbd`)
+- Created when global mode is initialized
 
 #### Manifest File Schema
 

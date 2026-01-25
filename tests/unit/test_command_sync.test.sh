@@ -103,26 +103,29 @@ test_command_syncs_to_global_commands_dir() {
     export HOME
     init_global_paths
     
-    # Ensure cleanup happens even if test fails early
-    tcstgcd_cleanup() {
-        HOME="${tcstgcd_original_home}"
-        export HOME
-        init_global_paths
-    }
-    trap 'tcstgcd_cleanup' RETURN
+    # Run test in subshell to ensure cleanup on early failure
+    (
+        # Create command in source
+        create_command_in_source "test-cmd.md"
+        
+        # Initialize and add command in global mode
+        cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+        cmd_add_rule "test-cmd.md" --global
+        
+        # Verify command is in global commands directory
+        assertTrue "Command should be in global commands dir" \
+            "[ -f '${GLOBAL_COMMANDS_DIR}/test-cmd.md' ]"
+        assertFalse "Command should NOT be in global rules dir" \
+            "[ -f '${GLOBAL_RULES_DIR}/test-cmd.md' ]"
+    )
+    tcstgcd_status=$?
     
-    # Create command in source
-    create_command_in_source "test-cmd.md"
+    # Cleanup
+    HOME="${tcstgcd_original_home}"
+    export HOME
+    init_global_paths
     
-    # Initialize and add command in global mode
-    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
-    cmd_add_rule "test-cmd.md" --global
-    
-    # Verify command is in global commands directory
-    assertTrue "Command should be in global commands dir" \
-        "[ -f '${GLOBAL_COMMANDS_DIR}/test-cmd.md' ]"
-    assertFalse "Command should NOT be in global rules dir" \
-        "[ -f '${GLOBAL_RULES_DIR}/test-cmd.md' ]"
+    return $tcstgcd_status
 }
 
 # ============================================================================
@@ -300,31 +303,34 @@ test_remove_command_deletes_file_global_mode() {
     export HOME
     init_global_paths
     
-    # Ensure cleanup happens even if test fails early
-    trcdfgm_cleanup() {
-        HOME="${trcdfgm_original_home}"
-        export HOME
-        init_global_paths
-    }
-    trap 'trcdfgm_cleanup' RETURN
+    # Run test in subshell to ensure cleanup on early failure
+    (
+        # Create command
+        create_command_in_source "delete-global.md"
+        
+        # Initialize and add
+        cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+        cmd_add_rule "delete-global.md" --global
+        
+        # Verify file exists
+        assertTrue "Command file should exist before remove" \
+            "[ -f '${GLOBAL_COMMANDS_DIR}/delete-global.md' ]"
+        
+        # Remove using --global flag
+        cmd_remove_rule "delete-global.md" --global
+        
+        # File should be deleted
+        assertFalse "Command file should be deleted after remove" \
+            "[ -f '${GLOBAL_COMMANDS_DIR}/delete-global.md' ]"
+    )
+    trcdfgm_status=$?
     
-    # Create command
-    create_command_in_source "delete-global.md"
+    # Cleanup
+    HOME="${trcdfgm_original_home}"
+    export HOME
+    init_global_paths
     
-    # Initialize and add
-    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
-    cmd_add_rule "delete-global.md" --global
-    
-    # Verify file exists
-    assertTrue "Command file should exist before remove" \
-        "[ -f '${GLOBAL_COMMANDS_DIR}/delete-global.md' ]"
-    
-    # Remove using --global flag
-    cmd_remove_rule "delete-global.md" --global
-    
-    # File should be deleted
-    assertFalse "Command file should be deleted after remove" \
-        "[ -f '${GLOBAL_COMMANDS_DIR}/delete-global.md' ]"
+    return $trcdfgm_status
 }
 
 test_remove_rule_deletes_file() {

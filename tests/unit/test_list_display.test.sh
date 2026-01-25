@@ -203,25 +203,31 @@ test_list_shows_correct_glyph_for_installed_command() {
 # Test that global commands show ★ glyph
 test_list_shows_global_glyph_for_global_command() {
     setup_global_for_commands
-    # Ensure cleanup happens even if test fails early
-    trap 'teardown_global_for_commands' RETURN
     
-    # Setup: Create command file
-    echo "# Test" > "$REPO_DIR/rules/global-cmd.md"
+    # Run test in subshell to ensure cleanup on early failure
+    (
+        # Setup: Create command file
+        echo "# Test" > "$REPO_DIR/rules/global-cmd.md"
+        
+        cd "$REPO_DIR" || fail "Failed to cd to repo"
+        git add . >/dev/null 2>&1
+        git commit --no-gpg-sign -m "Add global-cmd" >/dev/null 2>&1
+        cd "$TEST_DIR/app" || fail "Failed to cd to app"
+        
+        cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+        cmd_add_rule "global-cmd.md" --global
+        
+        output=$(cmd_list)
+        
+        # Should show global glyph (★) for the command
+        echo "$output" | grep -E "★.*global-cmd|★.*\/global-cmd" || \
+            fail "Should show global glyph for global command: $output"
+    )
+    tlsggfgc_status=$?
     
-    cd "$REPO_DIR" || fail "Failed to cd to repo"
-    git add . >/dev/null 2>&1
-    git commit --no-gpg-sign -m "Add global-cmd" >/dev/null 2>&1
-    cd "$TEST_DIR/app" || fail "Failed to cd to app"
+    teardown_global_for_commands
     
-    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
-    cmd_add_rule "global-cmd.md" --global
-    
-    output=$(cmd_list)
-    
-    # Should show global glyph (★) for the command
-    echo "$output" | grep -E "★.*global-cmd|★.*\/global-cmd" || \
-        fail "Should show global glyph for global command: $output"
+    return $tlsggfgc_status
 }
 
 # Test that uninstalled commands show ○ glyph

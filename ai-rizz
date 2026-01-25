@@ -4479,9 +4479,9 @@ copy_entry_to_target() {
 							warn "Failed to resolve symlink: ${cett_rule_file}"
 							continue
 						fi
-						# Check if resolved target is within REPO_DIR
-						case "${cett_resolved_target}" in
-							"${REPO_DIR}"/*)
+					# Check if resolved target is within repo dir (mode-specific)
+					case "${cett_resolved_target}" in
+						"${cett_repo_dir}"/*)
 								# Symlink points within repository, safe to copy
 								# Symlink: Copy flat to target root (all instances are the same rule)
 								if ! cp -L "${cett_rule_file}" "${cett_target_directory}/"; then

@@ -56,9 +56,8 @@ test_ruleset_with_commands_works_in_local_mode() {
 	echo "$output" | grep -q "Switching to commit mode" && fail "Should NOT show warning about switching to commit mode"
 	
 	# Verify ruleset was added to LOCAL manifest (not commit)
-	if [ -f "$TEST_LOCAL_MANIFEST_FILE" ]; then
-		grep -q "ruleset-with-commands" "$TEST_LOCAL_MANIFEST_FILE" || fail "Ruleset should be added to local manifest"
-	fi
+	test -f "$TEST_LOCAL_MANIFEST_FILE" || fail "Local manifest should be created"
+	grep -q "ruleset-with-commands" "$TEST_LOCAL_MANIFEST_FILE" || fail "Ruleset should be added to local manifest"
 	if [ -f "$TEST_COMMIT_MANIFEST_FILE" ]; then
 		grep -q "ruleset-with-commands" "$TEST_COMMIT_MANIFEST_FILE" && fail "Ruleset should NOT be added to commit manifest"
 	fi

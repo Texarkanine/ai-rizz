@@ -45,16 +45,16 @@ test_commands_removed_when_ruleset_removed() {
 	assertTrue "Should add ruleset successfully" $?
 	
 	# Verify commands copied
-	test -f "commands/cmd1.md" || fail "cmd1.md should be copied"
-	test -f "commands/subdir/nested.md" || fail "Nested command should be copied"
+	test -f ".cursor/commands/shared/cmd1.md" || fail "cmd1.md should be copied"
+	test -f ".cursor/commands/shared/subdir/nested.md" || fail "Nested command should be copied"
 	
 	# Remove ruleset
 	cmd_remove_ruleset "test-remove-cmd"
 	assertTrue "Should remove ruleset successfully" $?
 	
 	# Expected: Commands should be removed
-	test ! -f "commands/cmd1.md" || fail "cmd1.md should be removed"
-	test ! -f "commands/subdir/nested.md" || fail "Nested command should be removed"
+	test ! -f ".cursor/commands/shared/cmd1.md" || fail "cmd1.md should be removed"
+	test ! -f ".cursor/commands/shared/subdir/nested.md" || fail "Nested command should be removed"
 	# CURRENTLY FAILS: Commands remain after ruleset removal
 }
 
@@ -78,8 +78,8 @@ test_commands_removed_even_with_conflicts() {
 	cmd_add_ruleset "test-cmd2" --commit
 	
 	# Verify command exists (last one wins)
-	test -f "commands/shared.md" || fail "shared.md should exist"
-	assertEquals "Content should be from last ruleset" "cmd2 content" "$(cat commands/shared.md)"
+	test -f ".cursor/commands/shared/shared.md" || fail "shared.md should exist"
+	assertEquals "Content should be from last ruleset" "cmd2 content" "$(cat .cursor/commands/shared/shared.md)"
 	
 	# Remove first ruleset
 	cmd_remove_ruleset "test-cmd1"
@@ -88,14 +88,14 @@ test_commands_removed_even_with_conflicts() {
 	# Note: This is an error condition - rulesets shouldn't have overlapping command paths
 	# When test-cmd1 is removed, shared.md is deleted, but sync restores it from test-cmd2
 	# So the file will exist after sync (from test-cmd2)
-	test -f "commands/shared.md" || fail "shared.md should exist (restored from test-cmd2 by sync)"
-	assertEquals "Content should be from test-cmd2" "cmd2 content" "$(cat commands/shared.md)"
+	test -f ".cursor/commands/shared/shared.md" || fail "shared.md should exist (restored from test-cmd2 by sync)"
+	assertEquals "Content should be from test-cmd2" "cmd2 content" "$(cat .cursor/commands/shared/shared.md)"
 	
 	# Remove second ruleset
 	cmd_remove_ruleset "test-cmd2"
 	
 	# Expected: Command should now be removed (both rulesets removed)
-	test ! -f "commands/shared.md" || fail "shared.md should be removed (both rulesets removed)"
+	test ! -f ".cursor/commands/shared/shared.md" || fail "shared.md should be removed (both rulesets removed)"
 }
 
 # ============================================================================
@@ -185,8 +185,8 @@ test_complex_ruleset_structure_preserved() {
 	assertTrue "Should add ruleset successfully" $?
 	
 	# Expected: Commands preserved, file rules preserve structure, symlinked rules flat
-	test -f "commands/top.md" || fail "Top command should be copied"
-	test -f "commands/subs/nested.md" || fail "Nested command should be copied"
+	test -f ".cursor/commands/shared/top.md" || fail "Top command should be copied"
+	test -f ".cursor/commands/shared/subs/nested.md" || fail "Nested command should be copied"
 	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rootrule.mdc" || fail "Root file rule should be copied"
 	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/Core/core-rule.mdc" || fail "Subdirectory file rule should preserve structure"
 	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/symlinked-rule.mdc" || fail "Symlinked rule should be copied (flat)"
@@ -196,8 +196,8 @@ test_complex_ruleset_structure_preserved() {
 	cmd_remove_ruleset "test-complex"
 	
 	# Expected: Commands removed, rules removed
-	test ! -f "commands/top.md" || fail "Commands should be removed"
-	test ! -f "commands/subs/nested.md" || fail "Nested commands should be removed"
+	test ! -f ".cursor/commands/shared/top.md" || fail "Commands should be removed"
+	test ! -f ".cursor/commands/shared/subs/nested.md" || fail "Nested commands should be removed"
 	test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rootrule.mdc" || fail "Rules should be removed"
 	test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/Core/core-rule.mdc" || fail "Structured rules should be removed"
 }
@@ -236,7 +236,7 @@ test_list_display_shows_correct_structure() {
 	fi
 	
 	# Expected: commands/ subdir gets special treatment (one level shown)
-	echo "$output" | grep -A 15 "test-list-display" | grep -q "commands" || fail "commands/ directory should appear in list"
+	echo "$output" | grep -A 15 "test-list-display" | grep -q "commands" || fail ".cursor/commands/shared/ directory should appear in list"
 	# Top-level files in commands/ should appear
 	echo "$output" | grep -A 20 "test-list-display" | grep -A 10 "commands" | grep -q "top.md" || fail "top.md should appear in commands/ expansion"
 	# Subdirs in commands/ should appear

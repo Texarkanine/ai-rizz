@@ -59,8 +59,17 @@ setUp() {
   unset AI_RIZZ_RULESET_PATH
   unset AI_RIZZ_MODE
 
+  # Save original HOME to restore in tearDown
+  _ORIGINAL_HOME="${HOME}"
+
   # Create a temporary test directory
   TEST_DIR="$(mktemp -d)"
+  
+  # Override HOME to isolate from user's global mode configuration
+  # This prevents ~/ai-rizz.skbd from interfering with tests
+  HOME="${TEST_DIR}"
+  export HOME
+  
   cd "$TEST_DIR" || fail "Failed to change to test directory"
   
   # Reset ai-rizz state to ensure clean state between tests
@@ -90,8 +99,10 @@ setUp() {
   # Initialize test_repo as a git repository
   cd "$REPO_DIR" || fail "Failed to change to repo directory"
   git init . >/dev/null 2>&1
+  git config user.email "test@example.com" >/dev/null 2>&1
+  git config user.name "Test User" >/dev/null 2>&1
   git add . >/dev/null 2>&1
-  git commit -m "Initial commit" >/dev/null 2>&1
+  git commit --no-gpg-sign -m "Initial commit" >/dev/null 2>&1
   cd "$TEST_DIR" || fail "Failed to change back to test directory"
   
   # Create target directory
@@ -114,7 +125,7 @@ setUp() {
   # Make initial commit to fully initialize the git repository
   echo "Test repository" > README.md
   git add README.md >/dev/null 2>&1
-  git commit -m "Initial test setup" >/dev/null 2>&1
+  git commit --no-gpg-sign -m "Initial test setup" >/dev/null 2>&1
   
   # Initialize manifest with source repo and target dir
   echo "$TEST_SOURCE_REPO	$TEST_TARGET_DIR" > "$TEST_MANIFEST_FILE"
@@ -122,6 +133,12 @@ setUp() {
 
 # Clean up test environment
 tearDown() {
+  # Restore original HOME before cleanup
+  if [ -n "$_ORIGINAL_HOME" ]; then
+    HOME="${_ORIGINAL_HOME}"
+    export HOME
+  fi
+  
   # Return to original directory before removing test directory
   cd / || fail "Failed to return to root directory"
   
@@ -213,6 +230,11 @@ reset_ai_rizz_state() {
   LOCAL_SOURCE_REPO=""
   COMMIT_TARGET_DIR=""
   LOCAL_TARGET_DIR=""
+  
+  # Reset GLOBAL_REPO_DIR to test repo (set in setUp via REPO_DIR)
+  if [ -n "$REPO_DIR" ]; then
+    GLOBAL_REPO_DIR="$REPO_DIR"
+  fi
 }
 
 # Source the ai-rizz script - use this in test files to test the actual implementation
@@ -252,6 +274,10 @@ source_ai_rizz() {
   TARGET_DIR="$_TEST_TARGET_DIR"
   REPO_DIR="$_TEST_REPO_DIR"
   
+  # Set GLOBAL_REPO_DIR to use the same test repo as local/commit modes
+  # This ensures global mode tests use the test repo content
+  GLOBAL_REPO_DIR="$_TEST_REPO_DIR"
+  
   # Override functions that interact with external systems for testing
   git_sync() {
     repo_url="$1"
@@ -273,6 +299,17 @@ source_ai_rizz() {
     esac
   }
   
+  # Override sync_global_repo for testing - use test repo
+  sync_global_repo() {
+    # In tests, global repo is same as test repo
+    return 0
+  }
+  
+  # Override get_global_repo_dir for testing - use test repo
+  get_global_repo_dir() {
+    echo "$REPO_DIR"
+  }
+  
   # Reset ai-rizz state to ensure clean state between tests
   reset_ai_rizz_state
 }
@@ -285,6 +322,7 @@ source_ai_rizz() {
 INTEGRATION_TEST_DIR=""
 MOCK_REPO_DIR=""
 ORIGINAL_PWD=""
+ORIGINAL_HOME=""
 
 # Set up isolated integration test environment
 #
@@ -311,16 +349,28 @@ ORIGINAL_PWD=""
 #   1 on failure
 #
 setup_integration_test() {
-    # Save original directory
+    # Save original directory and HOME
     ORIGINAL_PWD="$(pwd)"
+    ORIGINAL_HOME="${HOME}"
     
     # Create temporary test directory
     INTEGRATION_TEST_DIR="$(mktemp -d)"
     test_debug "Created integration test directory: $INTEGRATION_TEST_DIR"
     
-    # Change to test directory
-    cd "$INTEGRATION_TEST_DIR" || {
-        test_error "Failed to change to integration test directory"
+    # Override HOME to isolate from user's global mode configuration
+    # This prevents ~/ai-rizz.skbd from interfering with tests
+    HOME="${INTEGRATION_TEST_DIR}"
+    export HOME
+    
+    # Create project subdirectory for test work (separate from HOME)
+    # This prevents commit manifest ($PWD/ai-rizz.skbd) from conflicting
+    # with global manifest ($HOME/ai-rizz.skbd)
+    PROJECT_DIR="${INTEGRATION_TEST_DIR}/project"
+    mkdir -p "$PROJECT_DIR"
+    
+    # Change to project directory (not HOME)
+    cd "$PROJECT_DIR" || {
+        test_error "Failed to change to project directory"
         return 1
     }
     
@@ -347,7 +397,7 @@ setup_integration_test() {
     # Make initial commit to fully initialize the git repository
     echo "Integration test repository" > README.md
     git add README.md >/dev/null 2>&1
-    git commit -m "Initial integration test setup" >/dev/null 2>&1
+    git commit --no-gpg-sign -m "Initial integration test setup" >/dev/null 2>&1
     
     # Set up ai-rizz path for integration tests
     if [ -z "$AI_RIZZ_PATH" ]; then
@@ -386,6 +436,12 @@ setup_integration_test() {
 #   0 always
 #
 teardown_integration_test() {
+    # Restore original HOME first (before directory changes)
+    if [ -n "$ORIGINAL_HOME" ]; then
+        HOME="${ORIGINAL_HOME}"
+        export HOME
+    fi
+    
     # Return to original directory
     if [ -n "$ORIGINAL_PWD" ] && [ -d "$ORIGINAL_PWD" ]; then
         cd "$ORIGINAL_PWD" || test_error "Failed to return to original directory"
@@ -401,6 +457,7 @@ teardown_integration_test() {
     INTEGRATION_TEST_DIR=""
     MOCK_REPO_DIR=""
     ORIGINAL_PWD=""
+    ORIGINAL_HOME=""
 }
 
 # Create mock rule repository for testing
@@ -425,6 +482,9 @@ teardown_integration_test() {
 #   1 on failure
 #
 create_mock_repo() {
+    # Save current directory to return to it after creating mock repo
+    _mock_repo_orig_dir="$(pwd)"
+    
     MOCK_REPO_DIR="$INTEGRATION_TEST_DIR/mock_repo"
     
     # Create repository structure
@@ -521,10 +581,10 @@ EOF
     git config user.email "test@example.com" >/dev/null 2>&1
     git config user.name "Test User" >/dev/null 2>&1
     git add . >/dev/null 2>&1
-    git commit -m "Initial mock repository" >/dev/null 2>&1
+    git commit --no-gpg-sign -m "Initial mock repository" >/dev/null 2>&1
     
-    # Return to test directory
-    cd "$INTEGRATION_TEST_DIR" || return 1
+    # Return to the original directory (where tests actually run)
+    cd "$_mock_repo_orig_dir" || return 1
     
     test_debug "Created mock repository: $MOCK_REPO_DIR"
     return 0

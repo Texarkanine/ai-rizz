@@ -1,10 +1,29 @@
 # Memory Bank: Active Context
 
 ## Current Focus
-Ready for next task - use `/van` command to start
 
-## Status
-No active task
+No active task.
+
+---
+
+## Context Template
+
+When working on a task, populate this section:
+
+```markdown
+**Task**: <task name>
+**Phase**: <current phase>
+**Branch**: `<branch-name>`
+
+## Working On
+
+<current focus>
+
+## Recent Decisions
+
+<recent decisions>
 
 ## Next Steps
-Use `/van` command to initialize the next task.
+
+<immediate next steps>
+```

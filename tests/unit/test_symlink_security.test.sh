@@ -62,7 +62,8 @@ test_commands_malicious_symlink_rejected() {
 	echo "$output" | grep -q "Skipping symlink pointing outside repository" || fail "Should show warning about skipping malicious symlink"
 	
 	# Verify malicious file was NOT copied
-	commands_dir="commands"
+	# Commands now go to .cursor/commands/shared/ for commit mode
+	commands_dir=".cursor/commands/shared"
 	test ! -f "$commands_dir/malicious.md" || fail "Malicious symlink target should NOT be copied"
 	
 	# Verify sensitive data was NOT copied
@@ -99,7 +100,8 @@ test_commands_valid_symlink_works() {
 	assertTrue "Should add ruleset successfully" $?
 	
 	# Expected: Valid symlink followed, content copied
-	commands_dir="commands"
+	# Commands now go to .cursor/commands/shared/ for commit mode
+	commands_dir=".cursor/commands/shared"
 	test -f "$commands_dir/original.md" || fail "original.md should be copied"
 	test -f "$commands_dir/valid-symlink.md" || fail "valid-symlink.md should be copied (as file, not symlink)"
 	test ! -L "$commands_dir/valid-symlink.md" || fail "valid-symlink.md should be a file, not a symlink"
@@ -134,7 +136,8 @@ test_commands_relative_symlink_works() {
 	assertTrue "Should add ruleset successfully" $?
 	
 	# Expected: Relative symlink resolved and followed, content copied
-	commands_dir="commands"
+	# Commands now go to .cursor/commands/shared/ for commit mode
+	commands_dir=".cursor/commands/shared"
 	test -f "$commands_dir/rule-symlink.mdc" || fail "rule-symlink.mdc should be copied"
 	test ! -L "$commands_dir/rule-symlink.mdc" || fail "rule-symlink.mdc should be a file, not a symlink"
 	assertEquals "rule-symlink.mdc content should match rule1" "Rule 1 content" "$(cat "$commands_dir/rule-symlink.mdc")"

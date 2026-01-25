@@ -204,7 +204,7 @@ tests/unit/
 - [x] `ai-rizz add rule foo.md --local` works (commands in any mode)
 - [x] `ai-rizz add ruleset niko --local` works (no more restriction)
 - [x] `ai-rizz list` shows global entities with ★
-- [ ] `ai-rizz list` shows commands with / prefix (DEFERRED - cosmetic)
+- [x] `ai-rizz list` shows commands with / prefix
 - [x] Mode transition warnings appear appropriately
 - [x] Help documentation updated with --global option
 - [x] Running ai-rizz outside git repos works (global-only context)
@@ -212,7 +212,7 @@ tests/unit/
 
 ## Follow-up Items
 
-1. Command listing with `/` prefix in display (cosmetic enhancement)
+None - all features complete.
 
 ---
 
@@ -229,3 +229,4 @@ tests/unit/
 | 2026-01-25 | Phase 5 | COMPLETE | Deinit and cleanup |
 | 2026-01-25 | Phase 6 | COMPLETE | Global-only context + help docs |
 | 2026-01-25 | PR | UPDATED | All phases complete, 30/30 tests pass |
+| 2026-01-25 | Command Display | COMPLETE | Added / prefix for commands in list |

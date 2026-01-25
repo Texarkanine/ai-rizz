@@ -87,9 +87,9 @@
    - Added modes section explaining commit/local/global
    - Added glyph legend (●/◐/★/○)
 
-## Remaining (Cosmetic Only)
+## All Features Complete
 
-1. **Command `/` Prefix Display** - Show commands with leading `/` in list (deferred - cosmetic)
+Command `/` prefix display implemented - commands now show as `/command-name` in list output.
 
 ## Next Steps
 

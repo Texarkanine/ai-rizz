@@ -259,7 +259,8 @@ get_commands_target_dir() {
 			echo "${GLOBAL_COMMANDS_DIR}"
 			;;
 		*)
-			# Default to shared for unknown modes
+			# Default to shared for unknown modes (shouldn't happen)
+			warn "Unknown mode '${gctd_mode}' in get_commands_target_dir, defaulting to shared"
 			echo ".cursor/commands/${SHARED_DIR}"
 			;;
 	esac
@@ -3771,30 +3772,30 @@ cmd_remove_rule() {
 						fi
 					fi
 					;;
-			commit)
-				if [ "$(is_mode_active commit)" = "true" ]; then
-					if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-						remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
-						echo "Removed rule: $rule_path"
-						removed=true
-					else
-						warn "Rule not found in commit mode: ${crr_item}"
+				commit)
+					if [ "$(is_mode_active commit)" = "true" ]; then
+						if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+							remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
+							echo "Removed rule: $rule_path"
+							removed=true
+						else
+							warn "Rule not found in commit mode: ${crr_item}"
+						fi
 					fi
-				fi
-				;;
-			global)
-				if [ "$(is_mode_active global)" = "true" ]; then
-					if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-						remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$rule_path"
-						echo "Removed rule: $rule_path"
-						removed=true
-					else
-						warn "Rule not found in global mode: ${crr_item}"
+					;;
+				global)
+					if [ "$(is_mode_active global)" = "true" ]; then
+						if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+							remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$rule_path"
+							echo "Removed rule: $rule_path"
+							removed=true
+						else
+							warn "Rule not found in global mode: ${crr_item}"
+						fi
 					fi
-				fi
-				;;
-		esac
-	else
+					;;
+			esac
+		else
 			# No specific mode - remove from whichever mode contains it
 			if [ "$(is_mode_active local)" = "true" ]; then
 				if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
@@ -3804,30 +3805,30 @@ cmd_remove_rule() {
 				fi
 			fi
 			
-		if [ "$(is_mode_active commit)" = "true" ] && [ "$removed" = "false" ]; then
-			if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-				remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
-				echo "Removed rule: $rule_path"
-				removed=true
+			if [ "$(is_mode_active commit)" = "true" ] && [ "$removed" = "false" ]; then
+				if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+					remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
+					echo "Removed rule: $rule_path"
+					removed=true
+				fi
+			fi
+			
+			if [ "$(is_mode_active global)" = "true" ] && [ "$removed" = "false" ]; then
+				if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
+					remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$rule_path"
+					echo "Removed rule: $rule_path"
+					removed=true
+				fi
+			fi
+			
+			if [ "$removed" = "false" ]; then
+				warn "Rule not found in any mode: ${crr_item}"
 			fi
 		fi
-		
-		if [ "$(is_mode_active global)" = "true" ] && [ "$removed" = "false" ]; then
-			if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
-				remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$rule_path"
-				echo "Removed rule: $rule_path"
-				removed=true
-			fi
-		fi
-		
-		if [ "$removed" = "false" ]; then
-			warn "Rule not found in any mode: ${crr_item}"
-		fi
-	fi
-done
+	done
 
-# Sync to ensure proper cleanup
-sync_all_modes
+	# Sync to ensure proper cleanup
+	sync_all_modes
 	
 	return 0
 }

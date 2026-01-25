@@ -21,10 +21,10 @@ source_ai_rizz
 
 create_command_in_source() {
     # Create a command file in the source repo's rules directory
-    command_name="${1}"
+    ccis_command_name="${1}"
     mkdir -p "${REPO_DIR}/rules"
-    cat > "${REPO_DIR}/rules/${command_name}" << EOF
-# Test Command: ${command_name}
+    cat > "${REPO_DIR}/rules/${ccis_command_name}" << EOF
+# Test Command: ${ccis_command_name}
 This is a test command.
 EOF
 }
@@ -95,13 +95,21 @@ test_command_syncs_to_global_commands_dir() {
     # Expected: Command file exists in global commands directory
     
     # Setup global test environment
-    TEST_HOME="${TEST_DIR}/test_home"
-    mkdir -p "${TEST_HOME}/.cursor/commands"
-    mkdir -p "${TEST_HOME}/.cursor/rules"
-    ORIGINAL_HOME="${HOME}"
-    HOME="${TEST_HOME}"
+    tcstgcd_test_home="${TEST_DIR}/test_home"
+    mkdir -p "${tcstgcd_test_home}/.cursor/commands"
+    mkdir -p "${tcstgcd_test_home}/.cursor/rules"
+    tcstgcd_original_home="${HOME}"
+    HOME="${tcstgcd_test_home}"
     export HOME
     init_global_paths
+    
+    # Ensure cleanup happens even if test fails early
+    tcstgcd_cleanup() {
+        HOME="${tcstgcd_original_home}"
+        export HOME
+        init_global_paths
+    }
+    trap 'tcstgcd_cleanup' RETURN
     
     # Create command in source
     create_command_in_source "test-cmd.md"
@@ -115,10 +123,6 @@ test_command_syncs_to_global_commands_dir() {
         "[ -f '${GLOBAL_COMMANDS_DIR}/test-cmd.md' ]"
     assertFalse "Command should NOT be in global rules dir" \
         "[ -f '${GLOBAL_RULES_DIR}/test-cmd.md' ]"
-    
-    # Cleanup
-    HOME="${ORIGINAL_HOME}"
-    export HOME
 }
 
 # ============================================================================
@@ -288,13 +292,21 @@ test_remove_command_deletes_file_global_mode() {
     # BUG: This was failing - file persisted after remove
     
     # Setup global test environment
-    TEST_HOME="${TEST_DIR}/test_home"
-    mkdir -p "${TEST_HOME}/.cursor/commands"
-    mkdir -p "${TEST_HOME}/.cursor/rules"
-    ORIGINAL_HOME="${HOME}"
-    HOME="${TEST_HOME}"
+    trcdfgm_test_home="${TEST_DIR}/test_home"
+    mkdir -p "${trcdfgm_test_home}/.cursor/commands"
+    mkdir -p "${trcdfgm_test_home}/.cursor/rules"
+    trcdfgm_original_home="${HOME}"
+    HOME="${trcdfgm_test_home}"
     export HOME
     init_global_paths
+    
+    # Ensure cleanup happens even if test fails early
+    trcdfgm_cleanup() {
+        HOME="${trcdfgm_original_home}"
+        export HOME
+        init_global_paths
+    }
+    trap 'trcdfgm_cleanup' RETURN
     
     # Create command
     create_command_in_source "delete-global.md"
@@ -313,10 +325,6 @@ test_remove_command_deletes_file_global_mode() {
     # File should be deleted
     assertFalse "Command file should be deleted after remove" \
         "[ -f '${GLOBAL_COMMANDS_DIR}/delete-global.md' ]"
-    
-    # Cleanup
-    HOME="${ORIGINAL_HOME}"
-    export HOME
 }
 
 test_remove_rule_deletes_file() {

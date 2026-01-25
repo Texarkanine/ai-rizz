@@ -21,26 +21,26 @@ source_ai_rizz
 # ============================================================================
 
 create_command_in_source() {
-    command_name="${1}"
+    ccs_command_name="${1}"
     mkdir -p "${REPO_DIR}/rules"
-    cat > "${REPO_DIR}/rules/${command_name}" << 'EOF'
+    cat > "${REPO_DIR}/rules/${ccs_command_name}" << 'EOF'
 # Test Command
 This is a test command.
 EOF
 }
 
 create_ruleset_with_commands() {
-    ruleset_name="${1}"
-    mkdir -p "${REPO_DIR}/rulesets/${ruleset_name}/commands"
+    crwc_ruleset_name="${1}"
+    mkdir -p "${REPO_DIR}/rulesets/${crwc_ruleset_name}/commands"
     
     # Create a rule in the ruleset
-    cat > "${REPO_DIR}/rulesets/${ruleset_name}/main.mdc" << 'EOF'
+    cat > "${REPO_DIR}/rulesets/${crwc_ruleset_name}/main.mdc" << 'EOF'
 # Main Rule
 This is the main rule.
 EOF
     
     # Create a command in the ruleset
-    cat > "${REPO_DIR}/rulesets/${ruleset_name}/commands/do-thing.md" << 'EOF'
+    cat > "${REPO_DIR}/rulesets/${crwc_ruleset_name}/commands/do-thing.md" << 'EOF'
 # Do Thing Command
 This command does a thing.
 EOF
@@ -48,19 +48,20 @@ EOF
 
 # Global test environment setup
 setup_global_test_environment() {
-    TEST_HOME="${TEST_DIR}/test_home"
-    mkdir -p "${TEST_HOME}/.cursor/rules"
-    mkdir -p "${TEST_HOME}/.cursor/commands"
-    ORIGINAL_HOME="${HOME}"
-    HOME="${TEST_HOME}"
+    sgte_test_home="${TEST_DIR}/test_home"
+    mkdir -p "${sgte_test_home}/.cursor/rules"
+    mkdir -p "${sgte_test_home}/.cursor/commands"
+    SGTE_ORIGINAL_HOME="${HOME}"
+    HOME="${sgte_test_home}"
     export HOME
     init_global_paths
 }
 
 teardown_global_test_environment() {
-    if [ -n "${ORIGINAL_HOME}" ]; then
-        HOME="${ORIGINAL_HOME}"
+    if [ -n "${SGTE_ORIGINAL_HOME}" ]; then
+        HOME="${SGTE_ORIGINAL_HOME}"
         export HOME
+        init_global_paths
     fi
 }
 

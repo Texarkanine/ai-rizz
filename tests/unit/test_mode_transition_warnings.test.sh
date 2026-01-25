@@ -20,9 +20,9 @@ source_ai_rizz
 # ============================================================================
 
 create_test_rule() {
-    rule_name="${1}"
+    ctr_rule_name="${1}"
     mkdir -p "${REPO_DIR}/rules"
-    cat > "${REPO_DIR}/rules/${rule_name}" << 'EOF'
+    cat > "${REPO_DIR}/rules/${ctr_rule_name}" << 'EOF'
 # Test Rule
 This is a test rule.
 EOF
@@ -30,19 +30,20 @@ EOF
 
 # Global test environment setup
 setup_global_test_environment() {
-    TEST_HOME="${TEST_DIR}/test_home"
-    mkdir -p "${TEST_HOME}/.cursor/rules"
-    mkdir -p "${TEST_HOME}/.cursor/commands"
-    ORIGINAL_HOME="${HOME}"
-    HOME="${TEST_HOME}"
+    sgte_test_home="${TEST_DIR}/test_home"
+    mkdir -p "${sgte_test_home}/.cursor/rules"
+    mkdir -p "${sgte_test_home}/.cursor/commands"
+    SGTE_ORIGINAL_HOME="${HOME}"
+    HOME="${sgte_test_home}"
     export HOME
     init_global_paths
 }
 
 teardown_global_test_environment() {
-    if [ -n "${ORIGINAL_HOME}" ]; then
-        HOME="${ORIGINAL_HOME}"
+    if [ -n "${SGTE_ORIGINAL_HOME}" ]; then
+        HOME="${SGTE_ORIGINAL_HOME}"
         export HOME
+        init_global_paths
     fi
 }
 
@@ -242,9 +243,9 @@ test_no_warning_for_same_mode() {
 # ============================================================================
 
 create_test_ruleset() {
-    ruleset_name="${1}"
-    mkdir -p "${REPO_DIR}/rulesets/${ruleset_name}"
-    cat > "${REPO_DIR}/rulesets/${ruleset_name}/main.mdc" << 'EOF'
+    ctrs_ruleset_name="${1}"
+    mkdir -p "${REPO_DIR}/rulesets/${ctrs_ruleset_name}"
+    cat > "${REPO_DIR}/rulesets/${ctrs_ruleset_name}/main.mdc" << 'EOF'
 # Main Rule
 This is the main rule.
 EOF

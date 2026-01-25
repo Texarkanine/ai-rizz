@@ -119,19 +119,20 @@ test_list_handles_empty_commands_directory() {
 
 # Global test environment setup for command prefix tests
 setup_global_for_commands() {
-    TEST_HOME="${TEST_DIR}/test_home"
-    mkdir -p "${TEST_HOME}/.cursor/rules"
-    mkdir -p "${TEST_HOME}/.cursor/commands"
-    ORIGINAL_HOME="${HOME}"
-    HOME="${TEST_HOME}"
+    sgfc_test_home="${TEST_DIR}/test_home"
+    mkdir -p "${sgfc_test_home}/.cursor/rules"
+    mkdir -p "${sgfc_test_home}/.cursor/commands"
+    SGFC_ORIGINAL_HOME="${HOME}"
+    HOME="${sgfc_test_home}"
     export HOME
     init_global_paths
 }
 
 teardown_global_for_commands() {
-    if [ -n "${ORIGINAL_HOME}" ]; then
-        HOME="${ORIGINAL_HOME}"
+    if [ -n "${SGFC_ORIGINAL_HOME}" ]; then
+        HOME="${SGFC_ORIGINAL_HOME}"
         export HOME
+        init_global_paths
     fi
 }
 
@@ -202,6 +203,8 @@ test_list_shows_correct_glyph_for_installed_command() {
 # Test that global commands show ★ glyph
 test_list_shows_global_glyph_for_global_command() {
     setup_global_for_commands
+    # Ensure cleanup happens even if test fails early
+    trap 'teardown_global_for_commands' RETURN
     
     # Setup: Create command file
     echo "# Test" > "$REPO_DIR/rules/global-cmd.md"
@@ -219,8 +222,6 @@ test_list_shows_global_glyph_for_global_command() {
     # Should show global glyph (★) for the command
     echo "$output" | grep -E "★.*global-cmd|★.*\/global-cmd" || \
         fail "Should show global glyph for global command: $output"
-    
-    teardown_global_for_commands
 }
 
 # Test that uninstalled commands show ○ glyph

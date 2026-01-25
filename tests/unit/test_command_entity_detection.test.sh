@@ -110,10 +110,10 @@ test_get_commands_target_dir_global() {
     # Expected: ~/.cursor/commands/ai-rizz for global mode
     
     # Setup global test environment
-    TEST_HOME="${TEST_DIR}/test_home"
-    mkdir -p "${TEST_HOME}/.cursor/commands"
-    ORIGINAL_HOME="${HOME}"
-    HOME="${TEST_HOME}"
+    gctdg_test_home="${TEST_DIR}/test_home"
+    mkdir -p "${gctdg_test_home}/.cursor/commands"
+    gctdg_original_home="${HOME}"
+    HOME="${gctdg_test_home}"
     export HOME
     init_global_paths
     
@@ -122,9 +122,10 @@ test_get_commands_target_dir_global() {
     result=$(get_commands_target_dir "global")
     assertEquals "Should return global commands dir" "${GLOBAL_COMMANDS_DIR}" "${result}"
     
-    # Cleanup
-    HOME="${ORIGINAL_HOME}"
+    # Cleanup - restore HOME and re-initialize global paths
+    HOME="${gctdg_original_home}"
     export HOME
+    init_global_paths
 }
 
 # Load and run shunit2

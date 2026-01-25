@@ -624,7 +624,7 @@ ai-rizz uses a dual-manifest system to support per-rule mode selection:
 - Contains rules from local manifest
 - Created when local mode is initialized
 
-**`~/.cursor/rules/`** (Global Directory):
+**`~/.cursor/rules/ai-rizz/`** (Global Directory):
 - Shared across all repositories
 - Contains rules from global manifest (`~/ai-rizz.skbd`)
 - Created when global mode is initialized

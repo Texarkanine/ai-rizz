@@ -99,6 +99,8 @@ setUp() {
   # Initialize test_repo as a git repository
   cd "$REPO_DIR" || fail "Failed to change to repo directory"
   git init . >/dev/null 2>&1
+  git config user.email "test@example.com" >/dev/null 2>&1
+  git config user.name "Test User" >/dev/null 2>&1
   git add . >/dev/null 2>&1
   git commit --no-gpg-sign -m "Initial commit" >/dev/null 2>&1
   cd "$TEST_DIR" || fail "Failed to change back to test directory"

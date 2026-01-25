@@ -5,7 +5,7 @@
 **Task**: Add `--global` mode and unified command support to ai-rizz
 **Phase**: ✅ ALL PHASES COMPLETE - Ready for Review
 **Branch**: `command-support-2`
-**PR**: https://github.com/Texarkanine/ai-rizz/pull/14
+**PR**: https://github.com/Texarkanine/ai-rizz/pull/15
 
 ## Implementation Summary
 

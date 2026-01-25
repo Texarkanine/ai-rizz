@@ -258,6 +258,7 @@ make test  # Should be 30/30 (23 unit + 7 integration)
 |------|-------|--------|-------|
 | 2026-01-25 | Phase 1-7 | COMPLETE | Global mode + command support |
 | 2026-01-25 | Phase 8 | COMPLETE | All 4 bugs fixed, 30/30 tests pass |
+| 2026-01-25 | Reflection | COMPLETE | `reflection-command-support-complete.md` |
 
 ---
 

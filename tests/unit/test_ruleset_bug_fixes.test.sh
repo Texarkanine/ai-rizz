@@ -56,12 +56,12 @@ test_commands_copied_recursively() {
 	assertTrue "Should add ruleset successfully" $?
 	
 	# Expected: Both top-level and nested commands copied with directory structure
-	test -f "commands/top.md" || fail "Top-level command should be copied"
-	test -f "commands/subdir/nested.md" || fail "Nested command should be copied recursively"
+	test -f ".cursor/commands/shared/top.md" || fail "Top-level command should be copied"
+	test -f ".cursor/commands/shared/subdir/nested.md" || fail "Nested command should be copied recursively"
 	
 	# Verify content matches
-	assertEquals "Top command content should match" "top command content" "$(cat "commands/top.md")"
-	assertEquals "Nested command content should match" "nested command content" "$(cat "commands/subdir/nested.md")"
+	assertEquals "Top command content should match" "top command content" "$(cat ".cursor/commands/shared/top.md")"
+	assertEquals "Nested command content should match" "nested command content" "$(cat ".cursor/commands/shared/subdir/nested.md")"
 }
 
 # ============================================================================
@@ -211,7 +211,7 @@ test_complex_ruleset_display() {
 	output=$(cmd_list)
 	
 	# Expected: Top-level components visible, subdirs shown but NOT their contents
-	echo "$output" | grep -A 10 "test-complex" | grep -q "commands" || fail "commands/ should appear"
+	echo "$output" | grep -A 10 "test-complex" | grep -q "commands" || fail ".cursor/commands/shared/ should appear"
 	echo "$output" | grep -A 10 "test-complex" | grep -q "test-complex.mdc" || fail "Root .mdc should appear"
 	echo "$output" | grep -A 10 "test-complex" | grep -q "supporting" || fail "supporting/ should appear (top-level subdir)"
 	# Subdirectory contents should NOT appear (per Phase 3 requirements)
@@ -220,8 +220,8 @@ test_complex_ruleset_display() {
 	fi
 	
 	# Verify commands copied recursively
-	test -f "commands/top.md" || fail "Top command should be copied"
-	test -f "commands/subs/nested.md" || fail "Nested command should be copied recursively"
+	test -f ".cursor/commands/shared/top.md" || fail "Top command should be copied"
+	test -f ".cursor/commands/shared/subs/nested.md" || fail "Nested command should be copied recursively"
 }
 
 # Load shunit2

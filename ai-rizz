@@ -40,9 +40,27 @@ REPO_DIR=""
 RULES_PATH=""                                       # Rules path from manifest
 RULESETS_PATH=""                                    # Rulesets path from manifest
 
+# Global mode configuration (user-wide, repo-independent)
+# These paths are computed dynamically to respect HOME changes in tests
+# Use the accessor functions below rather than these variables directly
+GLOBAL_MANIFEST_FILE=""          # Set to "${HOME}/ai-rizz.skbd" at runtime
+GLOBAL_RULES_DIR=""              # Set to "${HOME}/.cursor/rules/ai-rizz" at runtime
+GLOBAL_COMMANDS_DIR=""           # Set to "${HOME}/.cursor/commands/ai-rizz" at runtime
+
+# Initialize global paths (called after script loading and during tests)
+init_global_paths() {
+	GLOBAL_MANIFEST_FILE="${HOME}/ai-rizz.skbd"
+	GLOBAL_RULES_DIR="${HOME}/.cursor/rules/ai-rizz"
+	GLOBAL_COMMANDS_DIR="${HOME}/.cursor/commands/ai-rizz"
+}
+
+# Initialize global paths on script load
+init_global_paths
+
 # Display formatting variables  
 COMMITTED_GLYPH="●"
 LOCAL_GLYPH="◐"
+GLOBAL_GLYPH="★"
 UNINSTALLED_GLYPH="○"
 
 # Utilities
@@ -108,6 +126,118 @@ error() {
 #
 warn() {
   printf '%b' "Warning: ${1}\n" >&2
+}
+
+# Entity Type Detection Utilities
+# ================================
+
+# Check if an entity is a command (*.md) vs a rule (*.mdc)
+#
+# Commands are identified by their .md extension in the rules/ directory.
+# Rules have .mdc extension. This enables mixed entity management in the
+# same source repository.
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Entity name/path (e.g., "my-command.md", "rules/niko/plan.md")
+#
+# Outputs:
+#   Stdout: "true" if entity is a command, "false" otherwise
+#
+# Returns:
+#   0 always
+#
+is_command() {
+	ic_entity="${1}"
+	
+	# Extract extension
+	case "${ic_entity}" in
+		*.md)
+			echo "true"
+			;;
+		*)
+			echo "false"
+			;;
+	esac
+	
+	return 0
+}
+
+# Get the entity type based on file extension
+#
+# Returns "command" for *.md files, "rule" for everything else
+# (including *.mdc files and directories/rulesets).
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Entity name/path
+#
+# Outputs:
+#   Stdout: "command" or "rule"
+#
+# Returns:
+#   0 always
+#
+get_entity_type() {
+	get_entity="${1}"
+	
+	if [ "$(is_command "${get_entity}")" = "true" ]; then
+		echo "command"
+	else
+		echo "rule"
+	fi
+	
+	return 0
+}
+
+# Get the commands target directory for a given mode
+#
+# Returns the appropriate .cursor/commands/ subdirectory based on mode.
+# Commands use a parallel structure to rules:
+#   - local:  .cursor/commands/local/
+#   - commit: .cursor/commands/shared/
+#   - global: ~/.cursor/commands/ai-rizz/
+#
+# Globals:
+#   GLOBAL_COMMANDS_DIR - Global commands directory
+#   LOCAL_DIR - Local directory name
+#   SHARED_DIR - Shared directory name
+#
+# Arguments:
+#   $1 - Mode: "local", "commit", or "global"
+#
+# Outputs:
+#   Stdout: Target commands directory path
+#
+# Returns:
+#   0 always
+#
+get_commands_target_dir() {
+	gctd_mode="${1}"
+	
+	case "${gctd_mode}" in
+		local)
+			echo ".cursor/commands/${LOCAL_DIR}"
+			;;
+		commit)
+			echo ".cursor/commands/${SHARED_DIR}"
+			;;
+		global)
+			# Ensure global paths are current
+			init_global_paths
+			echo "${GLOBAL_COMMANDS_DIR}"
+			;;
+		*)
+			# Default to shared for unknown modes
+			echo ".cursor/commands/${SHARED_DIR}"
+			;;
+	esac
+	
+	return 0
 }
 
 # Resolve symlink to absolute path (portable readlink -f)
@@ -355,11 +485,12 @@ EOF
 #
 show_mode_selection_error() {
   cat >&2 << EOF
-Error: Both modes available. Please specify which mode to use.
+Error: Multiple modes available. Please specify which mode to use.
 
 To specify mode:
   ai-rizz ${1} --local     # Use local mode (git-ignored)
   ai-rizz ${1} --commit    # Use commit mode (git-tracked)
+  ai-rizz ${1} --global    # Use global mode (user-wide)
 
 For more information on modes, run: ai-rizz help
 EOF
@@ -391,9 +522,11 @@ Error: Invalid mode: '${1}'
 Valid modes are:
   --local, -l     Local mode (git-ignored)
   --commit, -c    Commit mode (git-tracked)
+  --global, -g    Global mode (user-wide)
 
 Example usage:
   ai-rizz add rule example-rule --local
+  ai-rizz add rule example-rule --global
 EOF
   exit "${2:-1}"
 }
@@ -432,37 +565,6 @@ Or initialize git in the current directory:
   ai-rizz init <repository-url>
 EOF
   exit "${1:-1}"
-}
-
-# Show error when trying to add ruleset with commands in local mode
-#
-# Displays a user-friendly error message when attempting to add a ruleset
-# containing a `commands/` subdirectory in local mode.
-#
-# Globals:
-#   None
-#
-# Arguments:
-#   $1 - Ruleset name that was attempted (required)
-#   $2 - Exit code (optional, defaults to 1)
-#
-# Outputs:
-#   Stderr: Formatted error message with resolution steps
-#
-# Returns:
-#   Returns with specified exit code (caller should exit)
-#
-show_ruleset_commands_error() {
-	srce_ruleset_name="${1}"
-	srce_exit_code="${2:-1}"
-	
-	cat >&2 << EOF
-Error: Ruleset '${srce_ruleset_name}' contains a 'commands' directory and must be added in commit mode.
-
-Try:
-  ai-rizz add ruleset ${srce_ruleset_name} --commit
-EOF
-	return "${srce_exit_code}"
 }
 
 # Progressive Manifest Utilities  
@@ -672,7 +774,10 @@ remove_manifest_entry_from_file() {
 #   1 if no manifests available
 #
 get_any_manifest_metadata() {
-	# Try commit manifest first
+	# Ensure global paths are current
+	init_global_paths
+	
+	# Try commit manifest first (highest priority)
 	if [ -f "${COMMIT_MANIFEST_FILE}" ]; then
 		read_manifest_metadata "${COMMIT_MANIFEST_FILE}"
 		return $?
@@ -681,6 +786,12 @@ get_any_manifest_metadata() {
 	# Try local manifest
 	if [ -f "${LOCAL_MANIFEST_FILE}" ]; then
 		read_manifest_metadata "${LOCAL_MANIFEST_FILE}"
+		return $?
+	fi
+	
+	# Try global manifest (lowest priority, repo-independent)
+	if [ -f "${GLOBAL_MANIFEST_FILE}" ]; then
+		read_manifest_metadata "${GLOBAL_MANIFEST_FILE}"
 		return $?
 	fi
 	
@@ -1122,11 +1233,12 @@ validate_git_exclude_state() {
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename
 #   COMMIT_MANIFEST_FILE - Commit manifest filename
+#   GLOBAL_MANIFEST_FILE - Global manifest filename (~/ai-rizz.skbd)
 #   LOCAL_DIR - Local directory name
 #   SHARED_DIR - Shared directory name
 #
 # Arguments:
-#   $1 - Mode to check: "local" or "commit"
+#   $1 - Mode to check: "local", "commit", or "global"
 #
 # Outputs:
 #   Stdout: "true" if mode is active, "false" otherwise
@@ -1136,6 +1248,9 @@ validate_git_exclude_state() {
 #
 is_mode_active() {
 	ima_mode="${1}"
+	
+	# Ensure global paths are current (handles HOME changes in tests)
+	init_global_paths
 	
 	case "${ima_mode}" in
 		local)
@@ -1147,6 +1262,13 @@ is_mode_active() {
 			;;
 		commit)
 			if [ -f "${COMMIT_MANIFEST_FILE}" ]; then
+				echo "true"
+			else
+				echo "false"
+			fi
+			;;
+		global)
+			if [ -f "${GLOBAL_MANIFEST_FILE}" ]; then
 				echo "true"
 			else
 				echo "false"
@@ -1228,6 +1350,9 @@ get_target_directory() {
 #   0 always
 #
 cache_manifest_metadata() {
+	# Ensure global paths are current
+	init_global_paths
+	
 	# Cache commit manifest metadata
 	if [ -f "${COMMIT_MANIFEST_FILE}" ]; then
 		parse_manifest_metadata "${COMMIT_MANIFEST_FILE}" "commit"
@@ -1236,6 +1361,11 @@ cache_manifest_metadata() {
 	# Cache local manifest metadata
 	if [ -f "${LOCAL_MANIFEST_FILE}" ]; then
 		parse_manifest_metadata "${LOCAL_MANIFEST_FILE}" "local"
+	fi
+	
+	# Cache global manifest metadata
+	if [ -f "${GLOBAL_MANIFEST_FILE}" ]; then
+		parse_manifest_metadata "${GLOBAL_MANIFEST_FILE}" "global"
 	fi
 }
 
@@ -1709,8 +1839,10 @@ validate_manifest_integrity() {
 #   0 if any mode is initialized and integrity is valid
 #
 ensure_initialized_and_valid() {
-	# Check if any mode is initialized
-	if [ "$(is_mode_active commit)" = "false" ] && [ "$(is_mode_active local)" = "false" ]; then
+	# Check if any mode is initialized (including global)
+	if [ "$(is_mode_active commit)" = "false" ] && \
+	   [ "$(is_mode_active local)" = "false" ] && \
+	   [ "$(is_mode_active global)" = "false" ]; then
 		show_initialization_error
 	fi
 	
@@ -1724,8 +1856,10 @@ ensure_initialized_and_valid() {
 # Handle smart mode selection
 #
 # Implements the common pattern of selecting a mode when not explicitly provided
-# by choosing the single available mode or prompting for selection when both exist.
+# by choosing the single available mode or prompting for selection when multiple exist.
 # Will check AI_RIZZ_MODE environment variable as a fallback if no mode is provided.
+#
+# Supports three modes: local, commit, and global
 #
 # Globals:
 #   None
@@ -1734,7 +1868,7 @@ ensure_initialized_and_valid() {
 #   $1 - Current mode value (may be empty)
 #
 # Outputs:
-#   Stdout: Selected mode ("local" or "commit")
+#   Stdout: Selected mode ("local", "commit", or "global")
 #   Stderr: Error messages on failure
 #
 # Returns:
@@ -1747,7 +1881,7 @@ select_mode() {
 	# If mode already specified, validate and return
 	if [ -n "${sm_current_mode}" ]; then
 		case "${sm_current_mode}" in
-			local|commit)
+			local|commit|global)
 				echo "${sm_current_mode}"
 				return 0
 				;;
@@ -1760,7 +1894,7 @@ select_mode() {
 	# Check environment variable as fallback
 	if [ -n "${AI_RIZZ_MODE}" ]; then
 		case "${AI_RIZZ_MODE}" in
-			local|commit)
+			local|commit|global)
 				echo "${AI_RIZZ_MODE}"
 				return 0
 				;;
@@ -1770,16 +1904,35 @@ select_mode() {
 		esac
 	fi
 	
-	# Smart mode selection
-	if [ "$(is_mode_active local)" = "true" ] && [ "$(is_mode_active commit)" = "false" ]; then
-		echo "local"
-	elif [ "$(is_mode_active commit)" = "true" ] && [ "$(is_mode_active local)" = "false" ]; then
-		echo "commit"
-	else
-		show_mode_selection_error "command"
+	# Smart mode selection - count active modes
+	sm_local_active=$(is_mode_active local)
+	sm_commit_active=$(is_mode_active commit)
+	sm_global_active=$(is_mode_active global)
+	
+	sm_active_count=0
+	sm_single_mode=""
+	
+	if [ "${sm_local_active}" = "true" ]; then
+		sm_active_count=$((sm_active_count + 1))
+		sm_single_mode="local"
+	fi
+	if [ "${sm_commit_active}" = "true" ]; then
+		sm_active_count=$((sm_active_count + 1))
+		sm_single_mode="commit"
+	fi
+	if [ "${sm_global_active}" = "true" ]; then
+		sm_active_count=$((sm_active_count + 1))
+		sm_single_mode="global"
 	fi
 	
-	return 0
+	# Auto-select if only one mode is active
+	if [ "${sm_active_count}" -eq 1 ]; then
+		echo "${sm_single_mode}"
+		return 0
+	fi
+	
+	# Multiple modes active - require explicit selection
+	show_mode_selection_error "command"
 }
 
 # Handle lazy initialization with tracking
@@ -1843,6 +1996,9 @@ initialize_mode_if_needed() {
 get_manifest_and_target() {
 	gmt_mode="${1}"
 	
+	# Ensure global paths are current
+	init_global_paths
+	
 	# Select manifest and target based on mode (clean output)
 	case "${gmt_mode}" in
 		local)
@@ -1850,6 +2006,9 @@ get_manifest_and_target() {
 			;;
 		commit)
 			printf "%s\t%s\n" "${COMMIT_MANIFEST_FILE}" "${TARGET_DIR}/${SHARED_DIR}"
+			;;
+		global)
+			printf "%s\t%s\n" "${GLOBAL_MANIFEST_FILE}" "${GLOBAL_RULES_DIR}"
 			;;
 	esac
 	
@@ -2073,6 +2232,10 @@ cmd_init() {
 				ci_mode="commit"
 				shift
 				;;
+			--global|-g)
+				ci_mode="global"
+				shift
+				;;
 			--hook-based-ignore)
 				ci_hook_based=true
 				shift
@@ -2142,7 +2305,7 @@ cmd_init() {
 	
 	# Prompt for mode if not provided
 	if [ -z "${ci_mode}" ]; then
-		printf "Mode [local/commit]: "
+		printf "Mode [local/commit/global]: "
 		read -r ci_mode
 		if [ -z "${ci_mode}" ]; then
 			ci_mode="local"
@@ -2151,17 +2314,24 @@ cmd_init() {
 	
 	# Validate mode
 	case "${ci_mode}" in
-		local|commit)
+		local|commit|global)
 			;;
 		*)
-			error "Invalid mode: ${ci_mode}. Must be 'local' or 'commit'"
+			error "Invalid mode: ${ci_mode}. Must be 'local', 'commit', or 'global'"
 			;;
 	esac
 
-	# If one mode already exists, use its source_repo (no override allowed)
+	# If any mode already exists, use its source_repo (no override allowed)
+	# This enables `ai-rizz init --global` to inherit the source repo from an existing mode
 	if [ "$(is_mode_active commit)" = "true" ] || [ "$(is_mode_active local)" = "true" ]; then
-		# Use the unified SOURCE_REPO variable
+		# Use the unified SOURCE_REPO variable from repo modes
 		ci_source_repo="${SOURCE_REPO}"
+	elif [ "$(is_mode_active global)" = "true" ]; then
+		# If only global mode exists, use its source repo
+		ci_global_metadata=$(read_manifest_metadata "${GLOBAL_MANIFEST_FILE}" 2>/dev/null || echo "")
+		if [ -n "${ci_global_metadata}" ]; then
+			ci_source_repo=$(echo "${ci_global_metadata}" | cut -f1 -d"	")
+		fi
 	fi
 
 	# Check if repository is already initialized in the requested mode
@@ -2215,9 +2385,24 @@ EOF
 				fi
 			fi
 			;;
+		global)
+			if [ "$(is_mode_active global)" = "true" ]; then
+				# Check if parameters match existing global configuration
+				ci_global_meta=$(read_manifest_metadata "${GLOBAL_MANIFEST_FILE}" 2>/dev/null || echo "")
+				ci_global_source=$(echo "${ci_global_meta}" | cut -f1 -d"	")
+				if [ "${ci_global_source}" = "${ci_source_repo}" ]; then
+					printf "(already initialized; no changes needed)\n"
+					return 0  # Idempotent success
+				else
+					error "Global mode already initialized with different source repository. Use 'ai-rizz deinit --global' first."
+				fi
+			fi
+			;;
 	esac
 	
 	# Ensure git repository context for commit mode only
+	# Local mode can work without git (just won't have git exclude management)
+	# Global mode is user-wide and doesn't need git
 	if [ "${ci_mode}" = "commit" ] && [ ! -d ".git" ]; then
 		show_git_context_error
 	fi
@@ -2260,6 +2445,26 @@ EOF
 			# Update mode state and cache - set unified variables
 			SOURCE_REPO="${ci_source_repo}"
 			TARGET_DIR="${ci_target_dir}"
+			;;
+			
+		global)
+			# Ensure global paths are current
+			init_global_paths
+			
+			# Create global mode directory structure
+			mkdir -p "${GLOBAL_RULES_DIR}"
+			mkdir -p "${GLOBAL_COMMANDS_DIR}"
+			
+			# Write manifest to home directory
+			# Global mode uses its own target dir (the global dirs) but stores the source repo
+			echo "" | write_manifest_with_entries "${GLOBAL_MANIFEST_FILE}" "${ci_source_repo}" ".cursor/rules" "${ci_rule_path}" "${ci_ruleset_path}"
+			
+			# Update unified variables for global mode
+			SOURCE_REPO="${ci_source_repo}"
+			TARGET_DIR=".cursor/rules"
+			
+			printf "Initialized ai-rizz with\\n\\tsource: %s\\n\\ttarget: %s (global)\\n\\tmode: %s\\n" "${ci_source_repo}" "${GLOBAL_RULES_DIR}" "${ci_mode}"
+			return 0
 			;;
 	esac
 	
@@ -2346,6 +2551,10 @@ cmd_deinit() {
 				cd_mode="commit"
 				shift
 				;;
+			--global|-g)
+				cd_mode="global"
+				shift
+				;;
 			--all|-a)
 				cd_mode="all"
 				shift
@@ -2359,7 +2568,7 @@ cmd_deinit() {
 	# Check for environment variable fallback if no mode provided
 	if [ -z "${cd_mode}" ] && [ -n "${AI_RIZZ_MODE}" ]; then
 		case "${AI_RIZZ_MODE}" in
-			local|commit)
+			local|commit|global)
 				cd_mode="${AI_RIZZ_MODE}"
 				;;
 			all)
@@ -2377,14 +2586,28 @@ cmd_deinit() {
 	
 	# Prompt for mode if still not provided
 	if [ -z "${cd_mode}" ]; then
-		if [ "$(is_mode_active local)" = "true" ] && [ "$(is_mode_active commit)" = "true" ]; then
-			# Both modes active - prompt user
-			printf "Which mode to remove [local/commit/all]: "
+		# Count active modes
+		cd_active_count=0
+		cd_last_active=""
+		if [ "$(is_mode_active local)" = "true" ]; then
+			cd_active_count=$(expr ${cd_active_count} + 1)
+			cd_last_active="local"
+		fi
+		if [ "$(is_mode_active commit)" = "true" ]; then
+			cd_active_count=$(expr ${cd_active_count} + 1)
+			cd_last_active="commit"
+		fi
+		if [ "$(is_mode_active global)" = "true" ]; then
+			cd_active_count=$(expr ${cd_active_count} + 1)
+			cd_last_active="global"
+		fi
+		
+		if [ ${cd_active_count} -gt 1 ]; then
+			# Multiple modes active - prompt user
+			printf "Which mode to remove [local/commit/global/all]: "
 			read -r cd_mode
-		elif [ "$(is_mode_active local)" = "true" ]; then
-			cd_mode="local"
-		elif [ "$(is_mode_active commit)" = "true" ]; then
-			cd_mode="commit"
+		elif [ ${cd_active_count} -eq 1 ]; then
+			cd_mode="${cd_last_active}"
 		else
 			# No modes active, default to all for idempotence
 			cd_mode="all"
@@ -2393,16 +2616,17 @@ cmd_deinit() {
 	
 	# Validate mode
 	case "${cd_mode}" in
-		local|commit|all)
+		local|commit|global|all)
 			;;
 		*)
-			error "Invalid mode: ${cd_mode}. Must be 'local', 'commit', or 'all'"
+			error "Invalid mode: ${cd_mode}. Must be 'local', 'commit', 'global', or 'all'"
 			;;
 	esac
 	
 	# Determine what to remove
 	cd_remove_local=false
 	cd_remove_commit=false
+	cd_remove_global=false
 	
 	case "${cd_mode}" in
 		local)
@@ -2413,9 +2637,14 @@ cmd_deinit() {
 			# Just set removal flag without validation - allow deinit of non-existent modes
 			cd_remove_commit=true
 			;;
+		global)
+			# Just set removal flag without validation - allow deinit of non-existent modes
+			cd_remove_global=true
+			;;
 		all)
 			cd_remove_local=true
 			cd_remove_commit=true
+			cd_remove_global=true
 			;;
 	esac
 	
@@ -2426,6 +2655,9 @@ cmd_deinit() {
 	fi
 	if [ "${cd_remove_commit}" = "true" ] && [ "$(is_mode_active commit)" = "true" ]; then
 		cd_items_to_remove="${cd_items_to_remove} ${COMMIT_MANIFEST_FILE} ${TARGET_DIR}/${SHARED_DIR}"
+	fi
+	if [ "${cd_remove_global}" = "true" ] && [ "$(is_mode_active global)" = "true" ]; then
+		cd_items_to_remove="${cd_items_to_remove} ${GLOBAL_MANIFEST_FILE} ${GLOBAL_RULES_DIR} ${GLOBAL_COMMANDS_DIR}"
 	fi
 	
 	# Confirm deletion
@@ -2454,6 +2686,9 @@ cmd_deinit() {
 		rm -rf "${TARGET_DIR:?}/${LOCAL_DIR}"
 		rm -f "${LOCAL_MANIFEST_FILE}"
 		
+		# Also remove local commands directory
+		rm -rf ".cursor/commands/${LOCAL_DIR}"
+		
 		# Only clear unified variables if commit mode isn't active
 		if [ "$(is_mode_active commit)" = "false" ]; then
 			SOURCE_REPO=""
@@ -2469,6 +2704,9 @@ cmd_deinit() {
 		rm -rf "${TARGET_DIR:?}/${SHARED_DIR}"
 		rm -f "${COMMIT_MANIFEST_FILE}"
 		
+		# Also remove commit commands directory
+		rm -rf ".cursor/commands/${SHARED_DIR}"
+		
 		# Only clear unified variables if local mode isn't active
 		if [ "$(is_mode_active local)" = "false" ]; then
 			SOURCE_REPO=""
@@ -2476,6 +2714,16 @@ cmd_deinit() {
 		fi
 		
 		echo "Removed commit mode configuration"
+	fi
+	
+	# Remove global mode
+	if [ "${cd_remove_global}" = "true" ] && [ "$(is_mode_active global)" = "true" ]; then
+		# Remove files
+		rm -rf "${GLOBAL_RULES_DIR}"
+		rm -rf "${GLOBAL_COMMANDS_DIR}"
+		rm -f "${GLOBAL_MANIFEST_FILE}"
+		
+		echo "Removed global mode configuration"
 	fi
 	
 	# Clean up empty parent directories using saved value
@@ -2531,6 +2779,9 @@ cmd_list() {
 	fi
 	if [ "$(is_mode_active commit)" = "true" ]; then
 		validate_manifest_format "${COMMIT_MANIFEST_FILE}" || error "Corrupted commit manifest file"
+	fi
+	if [ "$(is_mode_active global)" = "true" ]; then
+		validate_manifest_format "${GLOBAL_MANIFEST_FILE}" || error "Corrupted global manifest file"
 	fi
 	
 	# Use the unified SOURCE_REPO variable
@@ -2597,7 +2848,17 @@ cmd_list() {
 			return 1  # Not found in any ruleset
 		}
 		
-		# Check local mode first (weaker glyph)
+		# Check global mode first (weakest glyph)
+		if [ "$(is_mode_active global)" = "true" ]; then
+			# Check if item is directly in manifest
+			if read_manifest_entries "${GLOBAL_MANIFEST_FILE}" 2>/dev/null | grep -q "^${cl_is_installed_item}$"; then
+				cl_is_installed_status="global"
+			elif check_rulesets_for_item "${GLOBAL_MANIFEST_FILE}"; then
+				cl_is_installed_status="global"
+			fi
+		fi
+		
+		# Check local mode (weaker glyph - overrides global)
 		if [ "$(is_mode_active local)" = "true" ]; then
 			# Check if item is directly in manifest
 			if read_manifest_entries "${LOCAL_MANIFEST_FILE}" 2>/dev/null | grep -q "^${cl_is_installed_item}$"; then
@@ -2607,7 +2868,7 @@ cmd_list() {
 			fi
 		fi
 		
-		# Check commit mode (stronger glyph - overrides local)
+		# Check commit mode (strongest glyph - overrides local and global)
 		if [ "$(is_mode_active commit)" = "true" ]; then
 			# Check if item is directly in manifest
 			if read_manifest_entries "${COMMIT_MANIFEST_FILE}" 2>/dev/null | grep -q "^${cl_is_installed_item}$"; then
@@ -2638,6 +2899,9 @@ cmd_list() {
 				local)
 					printf "  %s %s\n" "${LOCAL_GLYPH}" "${cl_rule_name}"
 					;;
+				global)
+					printf "  %s %s\n" "${GLOBAL_GLYPH}" "${cl_rule_name}"
+					;;
 				*)
 					printf "  %s %s\n" "${UNINSTALLED_GLYPH}" "${cl_rule_name}"
 					;;
@@ -2664,6 +2928,9 @@ cmd_list() {
 					;;
 				local)
 					printf "  %s %s\n" "${LOCAL_GLYPH}" "${cl_ruleset_name}"
+					;;
+				global)
+					printf "  %s %s\n" "${GLOBAL_GLYPH}" "${cl_ruleset_name}"
 					;;
 				*)
 					printf "  %s %s\n" "${UNINSTALLED_GLYPH}" "${cl_ruleset_name}"
@@ -2847,6 +3114,10 @@ cmd_add_rule() {
 				car_mode="commit"
 				shift
 				;;
+			--global|-g)
+				car_mode="global"
+				shift
+				;;
 			*)
 				if [ -z "${car_rules}" ]; then
 					car_rules="$1"
@@ -2874,9 +3145,10 @@ cmd_add_rule() {
 
 	# Process each rule
 	for car_rule in ${car_rules}; do
-		# Add .mdc extension if not present
+		# Handle extension: .mdc for rules, .md for commands
+		# If no extension, default to .mdc (rule)
 		case "${car_rule}" in
-			*".mdc") 
+			*".mdc"|*".md") 
 				car_item="${car_rule}"
 				;;  
 			*) 
@@ -2886,7 +3158,7 @@ cmd_add_rule() {
 		
 		car_rule_path="${RULES_PATH}/${car_item}"
 		
-		# Check if rule exists in source repo using helper function
+		# Check if rule/command exists in source repo using helper function
 		if ! check_repository_item "${car_rule_path}" "Rule"; then
 			continue
 		fi
@@ -2958,6 +3230,10 @@ cmd_add_ruleset() {
 				cars_mode="commit"
 				shift
 				;;
+			--global|-g)
+				cars_mode="global"
+				shift
+				;;
 			*)
 				if [ -z "${cars_rulesets}" ]; then
 					cars_rulesets="$1"
@@ -2974,32 +3250,6 @@ cmd_add_ruleset() {
 	
 	# Check if any mode is initialized and validate manifest integrity
 	ensure_initialized_and_valid
-
-	# Short-circuit: If adding a single ruleset with commands/, auto-use commit mode
-	# This improves UX since rulesets with commands can ONLY be added in commit mode
-	if [ -n "${cars_rulesets}" ]; then
-		# Count rulesets by counting spaces + 1
-		cars_ruleset_count=0
-		for _cars_count_ruleset in ${cars_rulesets}; do
-			cars_ruleset_count=$(expr ${cars_ruleset_count} + 1)
-		done
-		
-		# If exactly one ruleset, check if it has commands/
-		if [ ${cars_ruleset_count} -eq 1 ]; then
-			cars_single_ruleset="${cars_rulesets}"
-			cars_single_ruleset_path="${RULESETS_PATH}/${cars_single_ruleset}"
-			
-			# Check if ruleset exists and has commands/ subdirectory
-			if [ -d "${REPO_DIR}/${cars_single_ruleset_path}" ] && [ -d "${REPO_DIR}/${cars_single_ruleset_path}/commands" ]; then
-				# Ruleset has commands/ - must use commit mode
-				if [ "${cars_original_mode}" = "local" ]; then
-					# User explicitly provided --local, warn them
-					warn "Ruleset '${cars_single_ruleset}' contains a 'commands' directory. Switching to commit mode."
-				fi
-				cars_mode="commit"
-			fi
-		fi
-	fi
 
 	# Smart mode selection using helper function
 	cars_mode=$(select_mode "${cars_mode}")
@@ -3018,12 +3268,6 @@ cmd_add_ruleset() {
 		# Check if ruleset exists in source repo using helper function
 		if ! check_repository_item "${cars_ruleset_path}" "Ruleset" "dir"; then
 			continue
-		fi
-		
-		# Check if ruleset has commands/ subdirectory and reject local mode
-		if [ -d "${REPO_DIR}/${cars_ruleset_path}/commands" ] && [ "${cars_mode}" = "local" ]; then
-			show_ruleset_commands_error "${cars_ruleset}"
-			return 1
 		fi
 		
 		# Handle conflict resolution migration using helper function
@@ -3191,6 +3435,10 @@ cmd_remove_ruleset() {
 		# Remove from whichever mode contains it
 		if [ "$(is_mode_active local)" = "true" ]; then
 			if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+				# Remove commands from local mode
+				crr_commands_dir=$(get_commands_target_dir "local")
+				remove_ruleset_commands "${ruleset_path}" "${crr_commands_dir}"
+				
 				remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
 				echo "Removed ruleset: $ruleset_path"
 				removed=true
@@ -3199,13 +3447,23 @@ cmd_remove_ruleset() {
 		
 		if [ "$(is_mode_active commit)" = "true" ]; then
 			if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-				# Remove commands before removing from manifest (only in commit mode)
-				# Calculate commands directory: parent of TARGET_DIR + /commands
-				crr_target_base=$(get_target_directory)
-				crr_commands_dir="$(dirname "${crr_target_base}")/commands"
+				# Remove commands from commit mode
+				crr_commands_dir=$(get_commands_target_dir "commit")
 				remove_ruleset_commands "${ruleset_path}" "${crr_commands_dir}"
 				
 				remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
+				echo "Removed ruleset: $ruleset_path"
+				removed=true
+			fi
+		fi
+		
+		if [ "$(is_mode_active global)" = "true" ]; then
+			if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
+				# Remove commands from global mode
+				crr_commands_dir=$(get_commands_target_dir "global")
+				remove_ruleset_commands "${ruleset_path}" "${crr_commands_dir}"
+				
+				remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$ruleset_path"
 				echo "Removed ruleset: $ruleset_path"
 				removed=true
 			fi
@@ -3257,7 +3515,7 @@ sync_all_modes() {
 		commit_manifest_file=$(echo "${commit_manifest_and_target}" | cut -f1 -d"	")
 		commit_target_dir=$(echo "${commit_manifest_and_target}" | cut -f2 -d"	")
 		
-		sync_manifest_to_directory "${commit_manifest_file}" "${commit_target_dir}" || sync_success=false
+		sync_manifest_to_directory "${commit_manifest_file}" "${commit_target_dir}" "commit" || sync_success=false
 	fi
 	
 	# Sync local mode if initialized  
@@ -3267,7 +3525,17 @@ sync_all_modes() {
 		local_manifest_file=$(echo "${local_manifest_and_target}" | cut -f1 -d"	")
 		local_target_dir=$(echo "${local_manifest_and_target}" | cut -f2 -d"	")
 		
-		sync_manifest_to_directory "${local_manifest_file}" "${local_target_dir}" || sync_success=false
+		sync_manifest_to_directory "${local_manifest_file}" "${local_target_dir}" "local" || sync_success=false
+	fi
+	
+	# Sync global mode if initialized
+	if [ "$(is_mode_active global)" = "true" ]; then
+		# Get manifest file and target directory using helper
+		global_manifest_and_target=$(get_manifest_and_target "global")
+		global_manifest_file=$(echo "${global_manifest_and_target}" | cut -f1 -d"	")
+		global_target_dir=$(echo "${global_manifest_and_target}" | cut -f2 -d"	")
+		
+		sync_manifest_to_directory "${global_manifest_file}" "${global_target_dir}" "global" || sync_success=false
 	fi
 	
 	# Handle any cleanup needed
@@ -3300,22 +3568,41 @@ sync_all_modes() {
 sync_manifest_to_directory() {
 	smtd_manifest_file="${1}"
 	smtd_target_directory="${2}"
+	smtd_mode="${3:-}"  # Optional mode parameter
 	
 	if [ ! -f "${smtd_manifest_file}" ]; then
 		return 0  # No manifest to sync
 	fi
 	
+	# Ensure global paths are current
+	init_global_paths
+	
 	# Create target directory if needed
 	mkdir -p "${smtd_target_directory}"
 	
-		# Safety check: Only operate in our managed directories (local or shared)
+	# Determine mode from target directory if not provided
+	if [ -z "${smtd_mode}" ]; then
 		case "${smtd_target_directory}" in
-			*/"${LOCAL_DIR}"|*/"${SHARED_DIR}")
-				# Clear existing .mdc files to ensure removed rules are deleted
-				# Only delete regular .mdc files, never directories or other files
-				# Even if symlinks were used in a ruleset, we only EVER get regular files in the rules dir
-				find "${smtd_target_directory}" -name "*.mdc" -type f -delete 2>/dev/null || true
+			*/"${LOCAL_DIR}"|*/"${LOCAL_DIR}/"*)
+				smtd_mode="local"
 				;;
+			*/"${SHARED_DIR}"|*/"${SHARED_DIR}/"*)
+				smtd_mode="commit"
+				;;
+			"${GLOBAL_RULES_DIR}"|"${GLOBAL_RULES_DIR}/"*)
+				smtd_mode="global"
+				;;
+		esac
+	fi
+	
+	# Safety check: Only operate in our managed directories (local, shared, or global)
+	case "${smtd_target_directory}" in
+		*/"${LOCAL_DIR}"|*/"${SHARED_DIR}"|"${GLOBAL_RULES_DIR}")
+			# Clear existing .mdc files to ensure removed rules are deleted
+			# Only delete regular .mdc files, never directories or other files
+			# Even if symlinks were used in a ruleset, we only EVER get regular files in the rules dir
+			find "${smtd_target_directory}" -name "*.mdc" -type f -delete 2>/dev/null || true
+			;;
 		*)
 			warn "Refusing to clear unrecognized target directory: ${smtd_target_directory}"
 			return 1
@@ -3337,7 +3624,7 @@ sync_manifest_to_directory() {
 		while IFS= read -r smtd_entry; do
 			if [ -n "${smtd_entry}" ]; then
 				# Continue with other entries even if one fails (resilient to external modifications)
-				copy_entry_to_target "${smtd_entry}" "${smtd_target_directory}" || true
+				copy_entry_to_target "${smtd_entry}" "${smtd_target_directory}" "${smtd_mode}" || true
 			fi
 		done < "${smtd_temp_file}"
 		
@@ -3554,8 +3841,9 @@ remove_ruleset_commands() {
 # Copy a single entry (rule or ruleset) to target directory
 #
 # Handles both individual rules (single file copy) and rulesets (copy all
-# .mdc files from directory). Implements conflict resolution by skipping
-# files that would conflict with commit mode when syncing to local directory.
+# .mdc files from directory). Routes commands (*.md) to commands directory.
+# Implements conflict resolution by skipping files that would conflict with
+# commit mode when syncing to local directory.
 # Follows symlinks to copy actual content, not the links themselves.
 #
 # Globals:
@@ -3564,7 +3852,8 @@ remove_ruleset_commands() {
 #
 # Arguments:
 #   $1 - Entry path (relative to repository root)
-#   $2 - Target directory path
+#   $2 - Target directory path (rules directory)
+#   $3 - Mode (optional: "local", "commit", or "global" for command routing)
 #
 # Outputs:
 #   Stderr: Warning messages for missing entries
@@ -3576,8 +3865,24 @@ remove_ruleset_commands() {
 copy_entry_to_target() {
 	cett_entry="${1}"
 	cett_target_directory="${2}"
+	cett_mode="${3:-}"
 	
 	cett_source_path="${REPO_DIR}/${cett_entry}"
+	
+	# Determine mode from target directory if not provided
+	if [ -z "${cett_mode}" ]; then
+		case "${cett_target_directory}" in
+			*/"${LOCAL_DIR}"|*/"${LOCAL_DIR}/"*)
+				cett_mode="local"
+				;;
+			*/"${SHARED_DIR}"|*/"${SHARED_DIR}/"*)
+				cett_mode="commit"
+				;;
+			"${GLOBAL_RULES_DIR}"|"${GLOBAL_RULES_DIR}/"*)
+				cett_mode="global"
+				;;
+		esac
+	fi
 	
 	# Check if we're syncing to local directory and need to avoid commit conflicts
 	cett_is_local_sync=false
@@ -3588,7 +3893,7 @@ copy_entry_to_target() {
 	esac
 	
 	if [ -f "${cett_source_path}" ]; then
-		# Single file (rule)
+		# Single file (rule or command)
 		cett_filename=$(basename "${cett_source_path}")
 		
 		# Skip if file would conflict with commit mode (commit wins)
@@ -3596,7 +3901,14 @@ copy_entry_to_target() {
 			return 0  # Skip this file
 		fi
 		
-		cp "${cett_source_path}" "${cett_target_directory}/"
+		# Check if this is a command (*.md) and route to commands directory
+		if [ "$(is_command "${cett_filename}")" = "true" ] && [ -n "${cett_mode}" ]; then
+			cett_commands_target=$(get_commands_target_dir "${cett_mode}")
+			mkdir -p "${cett_commands_target}"
+			cp "${cett_source_path}" "${cett_commands_target}/"
+		else
+			cp "${cett_source_path}" "${cett_target_directory}/"
+		fi
 	elif [ -d "${cett_source_path}" ]; then
 		# Directory (ruleset) - copy individual .mdc files from ruleset to target directory
 		# Handle symlinks and files differently:
@@ -3665,17 +3977,11 @@ copy_entry_to_target() {
 		
 		rm -f "${cett_temp_file}"
 		
-		# Copy commands/ subdirectory if exists and in commit mode
-		# Check if target is commit mode (contains SHARED_DIR)
-		case "${cett_target_directory}" in
-			*/"${SHARED_DIR}")
-				# In commit mode, copy commands to commands/ directory
-				# Calculate commands directory: parent of TARGET_DIR + /commands
-				cett_target_base=$(get_target_directory)
-				cett_commands_dir="$(dirname "${cett_target_base}")/commands"
-				copy_ruleset_commands "${cett_entry}" "${cett_commands_dir}"
-				;;
-		esac
+		# Copy commands/ subdirectory if exists - works in all modes now
+		if [ -n "${cett_mode}" ]; then
+			cett_commands_dir=$(get_commands_target_dir "${cett_mode}")
+			copy_ruleset_commands "${cett_entry}" "${cett_commands_dir}"
+		fi
 	else
 		warn "Entry not found in repository: ${cett_entry}"
 		return 1

@@ -295,7 +295,7 @@ test_remove_ruleset_global_flag_after_name() {
 	
 	# BUG CHECK: --global should NOT be treated as a ruleset name
 	# If flag parsing is broken, output will contain "Ruleset not found" warning for "--global"
-	echo "$output" | grep -q "Ruleset not found.*--global\|not found.*-g" && \
+	echo "$output" | grep -Eq "Ruleset not found.*--global|not found.*-g" && \
 		fail "Flag --global should be parsed as mode flag, not treated as ruleset name. Output: $output"
 	
 	# Cleanup global mode
@@ -331,7 +331,7 @@ test_remove_ruleset_global_flag_before_name() {
 	fi
 	
 	# BUG CHECK: --global should NOT be treated as a ruleset name
-	echo "$output" | grep -q "Ruleset not found.*--global\|not found.*-g" && \
+	echo "$output" | grep -Eq "Ruleset not found.*--global|not found.*-g" && \
 		fail "Flag --global should be parsed as mode flag, not treated as ruleset name. Output: $output"
 	
 	# Cleanup global mode
@@ -367,7 +367,7 @@ test_remove_ruleset_global_short_flag() {
 	fi
 	
 	# BUG CHECK: -g should NOT be treated as a ruleset name
-	echo "$output" | grep -q "Ruleset not found.*-g" && \
+	echo "$output" | grep -Eq "Ruleset not found.*-g" && \
 		fail "Flag -g should be parsed as mode flag, not treated as ruleset name. Output: $output"
 	
 	# Cleanup global mode

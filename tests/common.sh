@@ -809,12 +809,12 @@ assert_rule_not_deployed() {
 #   1 if command is not deployed (via assertion failure)
 #
 assert_command_deployed() {
-    target_dir="$1"
-    command_name="$2"
-    command_file="$target_dir/$command_name.md"
+    acd_target_dir="$1"
+    acd_command_name="$2"
+    acd_command_file="$acd_target_dir/$acd_command_name.md"
     
-    assertTrue "Target directory should exist: $target_dir" "[ -d '$target_dir' ]"
-    assertTrue "Command should be deployed: $command_file" "[ -f '$command_file' ]"
+    assertTrue "Target directory should exist: $acd_target_dir" "[ -d '$acd_target_dir' ]"
+    assertTrue "Command should be deployed: $acd_command_file" "[ -f '$acd_command_file' ]"
 }
 
 # Verify command is not deployed to target directory
@@ -834,11 +834,11 @@ assert_command_deployed() {
 #   1 if command is deployed (via assertion failure)
 #
 assert_command_not_deployed() {
-    target_dir="$1"
-    command_name="$2"
-    command_file="$target_dir/$command_name.md"
+    acnd_target_dir="$1"
+    acnd_command_name="$2"
+    acnd_command_file="$acnd_target_dir/$acnd_command_name.md"
     
-    assertFalse "Command should not be deployed: $command_file" "[ -f '$command_file' ]"
+    assertFalse "Command should not be deployed: $acnd_command_file" "[ -f '$acnd_command_file' ]"
 }
 
 # Verify directory is empty or does not exist
@@ -961,21 +961,21 @@ EOF
 
 # Create a test command file with specified content
 create_test_command() {
-    target_dir="$1"
-    command_name="$2"
-    command_file="$target_dir/$command_name.md"
+    ctc_target_dir="$1"
+    ctc_command_name="$2"
+    ctc_command_file="$ctc_target_dir/$ctc_command_name.md"
     
     # Ensure target directory exists
-    mkdir -p "$target_dir"
+    mkdir -p "$ctc_target_dir"
     
     # Create command with simple content
-    cat > "$command_file" << EOF
-# $command_name
-Test command content for $command_name
+    cat > "$ctc_command_file" << EOF
+# $ctc_command_name
+Test command content for $ctc_command_name
 EOF
     
     # Make it readable
-    chmod 644 "$command_file"
+    chmod 644 "$ctc_command_file"
 }
 
 # Remove a test rule file

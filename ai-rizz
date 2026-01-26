@@ -4305,6 +4305,24 @@ copy_entry_to_target() {
 		# Single file (rule or command)
 		cett_filename=$(basename "${cett_source_path}")
 		
+		# Security: Validate symlink target before copying single files
+		if [ -L "${cett_source_path}" ]; then
+			cett_resolved_target=$(_readlink_f "${cett_source_path}")
+			if [ -z "${cett_resolved_target}" ]; then
+				warn "Failed to resolve symlink: ${cett_filename}"
+				return 0
+			fi
+			case "${cett_resolved_target}" in
+				"${cett_repo_dir}"/*)
+					# OK - symlink points within repository
+					;;
+				*)
+					warn "Skipping symlink pointing outside repository: ${cett_filename} -> ${cett_resolved_target}"
+					return 0
+					;;
+			esac
+		fi
+		
 		# Skip if file would conflict with commit mode (commit wins)
 		if [ "${cett_is_local_sync}" = "true" ] && file_exists_in_commit_mode "${cett_filename}"; then
 			return 0  # Skip this file
@@ -4314,9 +4332,9 @@ copy_entry_to_target() {
 		if [ "$(is_command "${cett_filename}")" = "true" ] && [ -n "${cett_mode}" ]; then
 			cett_commands_target=$(get_commands_target_dir "${cett_mode}")
 			mkdir -p "${cett_commands_target}"
-			cp "${cett_source_path}" "${cett_commands_target}/"
+			cp -L "${cett_source_path}" "${cett_commands_target}/"
 		else
-			cp "${cett_source_path}" "${cett_target_directory}/"
+			cp -L "${cett_source_path}" "${cett_target_directory}/"
 		fi
 	elif [ -d "${cett_source_path}" ]; then
 		# Directory (ruleset) - copy .mdc files to rules dir, .md files to commands dir

@@ -79,7 +79,7 @@ _ai_rizz_completion() {
 			local repo_dir
 			repo_dir="$(_get_repo_dir)"
 			if [[ -d "${repo_dir}/rules" ]]; then
-				COMPREPLY=( $(compgen -W "$(find "${repo_dir}/rules" \( -name "*.mdc" -o -name "*.md" \) -printf "%f\n" | sed 's/\.\(mdc\|md\)$//')" -- "${cur}") )
+				COMPREPLY=( $(compgen -W "$(find "${repo_dir}/rules" -type f \( -name "*.mdc" -o -name "*.md" \) -printf "%f\n" | grep -v '^[A-Z]' | sed 's/\.\(mdc\|md\)$//')" -- "${cur}") )
 			fi
 			;;
 		ruleset)

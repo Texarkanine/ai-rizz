@@ -288,21 +288,28 @@ test_sync_cleans_flat_command_structure_for_managed_rulesets() {
 }
 
 test_sync_preserves_managed_subdirs() {
-    # Test: Sync should NOT remove managed subdirs (local, shared)
-    # Expected: local/ and shared/ subdirs are preserved
+    # Test: Sync should NOT remove managed subdirs (local, shared) with user content
+    # Expected: local/ and shared/ subdirs with user commands are preserved
     
-    # Setup: Create managed subdirs with content
-    mkdir -p ".cursor/commands/local"
-    mkdir -p ".cursor/commands/shared"
-    echo "local cmd" > ".cursor/commands/local/test-cmd.md"
-    echo "shared cmd" > ".cursor/commands/shared/test-cmd.md"
+    # Initialize both modes with commands
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    cmd_add_rule "command1.md" --local
     
-    # Initialize commit mode
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
+    cmd_add_rule "command2.md" --commit
     
-    # Sync will clear and repopulate managed dirs, but they should exist
-    assertTrue "Local subdir should exist" "[ -d '.cursor/commands/local' ]"
-    assertTrue "Shared subdir should exist" "[ -d '.cursor/commands/shared' ]"
+    # Verify commands were deployed to managed subdirs
+    assertTrue "Local commands directory should exist" "[ -d '.cursor/commands/local' ]"
+    assertTrue "Shared commands directory should exist" "[ -d '.cursor/commands/shared' ]"
+    
+    # Run sync to exercise cleanup/preservation behavior
+    sync_all_modes
+    
+    # After sync, managed dirs should still exist with their commands
+    assertTrue "Local subdir should exist after sync" "[ -d '.cursor/commands/local' ]"
+    assertTrue "Shared subdir should exist after sync" "[ -d '.cursor/commands/shared' ]"
+    assertTrue "Local command should exist after sync" "[ -f '.cursor/commands/local/command1.md' ]"
+    assertTrue "Shared command should exist after sync" "[ -f '.cursor/commands/shared/command2.md' ]"
     
     return 0
 }

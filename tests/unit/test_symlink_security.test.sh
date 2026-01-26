@@ -149,6 +149,10 @@ test_commands_relative_symlink_works() {
 	test -f "$commands_dir/root-source.md" || fail "root-source.md should be copied"
 	test -f "$commands_dir/root-symlink.md" || fail "root-symlink.md should be copied"
 	
+	# Verify copied files are regular files, not symlinks (security hardening)
+	test ! -L "$commands_dir/relative-symlink.md" || fail "relative-symlink.md should be a file, not a symlink"
+	test ! -L "$commands_dir/root-symlink.md" || fail "root-symlink.md should be a file, not a symlink"
+	
 	# Verify content matches
 	assertEquals "relative-symlink.md content should match source" "source command content" "$(cat "$commands_dir/relative-symlink.md")"
 	assertEquals "root-symlink.md content should match root-source" "root source content" "$(cat "$commands_dir/root-symlink.md")"

@@ -492,7 +492,7 @@ Commands are copied **flat** (no directory structure preserved) to make them acc
 
 Both structures are supported:
 
-```
+```text
 rulesets/
 └── memory-bank/
     ├── van.md           # command (at root)

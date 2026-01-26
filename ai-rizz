@@ -4142,6 +4142,32 @@ sync_manifest_to_directory() {
 					find "${smtd_commands_dir}" -name "*.md" -type f -delete 2>/dev/null || true
 				fi
 			fi
+			
+			# Migration: Clean up flat command structure from pre-subdir versions
+			# Prior versions stored commands in .cursor/commands/<ruleset>/ directly (flat)
+			# Now we use subdirs: .cursor/commands/{local,shared}/<ruleset>/
+			# ONLY remove flat commands that correspond to rulesets WE manage (in manifest)
+			if [ -d ".cursor/commands" ] && [ -f "${smtd_manifest_file}" ]; then
+				# Get ruleset entries from manifest to know what WE manage
+				smtd_migration_entries=$(read_manifest_entries "${smtd_manifest_file}" 2>/dev/null) || true
+				if [ -n "${smtd_migration_entries}" ]; then
+					echo "${smtd_migration_entries}" | while IFS= read -r smtd_mig_entry; do
+						# Only process ruleset entries (directories under rulesets/)
+						case "${smtd_mig_entry}" in
+							rulesets/*)
+								# Extract ruleset name (e.g., "niko" from "rulesets/niko")
+								smtd_ruleset_name=$(basename "${smtd_mig_entry}")
+								# Check for flat command directory with this name
+								smtd_flat_cmd_dir=".cursor/commands/${smtd_ruleset_name}"
+								if [ -d "${smtd_flat_cmd_dir}" ]; then
+									# This is a flat structure leftover for a managed ruleset
+									rm -rf "${smtd_flat_cmd_dir}" 2>/dev/null || true
+								fi
+								;;
+						esac
+					done
+				fi
+			fi
 			;;
 		*)
 			warn "Refusing to clear unrecognized target directory: ${smtd_target_directory}"

@@ -16,6 +16,7 @@
 # - Hook preserves user's existing hooks
 # - validate_git_exclude_state recognizes hook-based mode
 # - Git exclude protects local commands directory
+# - Migration: cleans up flat command structure from pre-subdir versions
 # - Works with custom manifest names and target directories
 #
 # Dependencies: shunit2, common test utilities
@@ -246,6 +247,62 @@ test_git_exclude_removes_local_commands_on_deinit() {
     
     # Expected: Commands directory removed from git exclude
     assert_git_exclude_not_contains ".cursor/commands/local"
+    
+    return 0
+}
+
+# ============================================================================
+# COMMAND MIGRATION TESTS
+# ============================================================================
+
+test_sync_cleans_flat_command_structure_for_managed_rulesets() {
+    # Test: Sync should clean up flat command dirs ONLY for rulesets in manifest
+    # Expected: Flat commands for managed rulesets are removed, others preserved
+    
+    # Setup: Create flat command structure (simulating old version)
+    # Create flat dir for ruleset1 (which IS in our test repo)
+    mkdir -p ".cursor/commands/ruleset1"
+    echo "old ruleset1 command" > ".cursor/commands/ruleset1/cmd"
+    
+    # Create flat dir for user-managed command (NOT in manifest)
+    mkdir -p ".cursor/commands/my-custom-commands"
+    echo "user custom command" > ".cursor/commands/my-custom-commands/custom"
+    
+    # Initialize commit mode
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
+    
+    # Add ruleset1 to manifest (so it becomes "managed")
+    cmd_add_ruleset "ruleset1" --commit
+    
+    # Run sync
+    sync_all_modes
+    
+    # Verify flat dir for MANAGED ruleset is cleaned up
+    assertFalse "Flat ruleset1 directory should be removed" "[ -d '.cursor/commands/ruleset1' ]"
+    
+    # Verify user-managed directory is PRESERVED
+    assertTrue "User custom commands should be preserved" "[ -d '.cursor/commands/my-custom-commands' ]"
+    assertTrue "User custom command file should be preserved" "[ -f '.cursor/commands/my-custom-commands/custom' ]"
+    
+    return 0
+}
+
+test_sync_preserves_managed_subdirs() {
+    # Test: Sync should NOT remove managed subdirs (local, shared)
+    # Expected: local/ and shared/ subdirs are preserved
+    
+    # Setup: Create managed subdirs with content
+    mkdir -p ".cursor/commands/local"
+    mkdir -p ".cursor/commands/shared"
+    echo "local cmd" > ".cursor/commands/local/test-cmd.md"
+    echo "shared cmd" > ".cursor/commands/shared/test-cmd.md"
+    
+    # Initialize commit mode
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
+    
+    # Sync will clear and repopulate managed dirs, but they should exist
+    assertTrue "Local subdir should exist" "[ -d '.cursor/commands/local' ]"
+    assertTrue "Shared subdir should exist" "[ -d '.cursor/commands/shared' ]"
     
     return 0
 }

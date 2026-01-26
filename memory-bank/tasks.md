@@ -35,6 +35,12 @@ git reset HEAD -- "$TARGET_DIR/local/" "$LOCAL_MANIFEST" 2>/dev/null || true
 # MISSING: ".cursor/commands/local/"
 ```
 
+### Issue 3: Flat Command Structure Migration
+Prior versions stored commands flat in `.cursor/commands/`. New subdirectory structure
+(`.cursor/commands/{local,shared}/`) causes duplicates (e.g., two "niko" commands).
+
+**Root Cause**: `sync_manifest_to_directory()` only clears subdir commands, not flat ones.
+
 ## Implementation Plan
 
 ### Test Planning (TDD)
@@ -48,13 +54,14 @@ git reset HEAD -- "$TARGET_DIR/local/" "$LOCAL_MANIFEST" 2>/dev/null || true
 2. **ai-rizz `setup_local_mode_excludes`**: Add `.cursor/commands/local/` to git exclude
 3. **ai-rizz `remove_local_mode_excludes`**: Remove `.cursor/commands/local/` from git exclude  
 4. **ai-rizz `setup_pre_commit_hook`**: Include `.cursor/commands/local/` in hook
-5. **ai-rizz `validate_git_exclude_state`**: Validate commands dir is excluded
+5. **ai-rizz `sync_manifest_to_directory`**: Add migration to clean flat command structure
 
 ## Definition of Done
 
 - [x] Tab completion includes both `.mdc` and `.md` files
 - [x] Git exclude mode protects `.cursor/commands/local/` 
 - [x] Hook-based mode unstages `.cursor/commands/local/`
+- [x] Sync cleans up flat command structure (migration)
 - [x] All new behaviors have tests
 - [x] All existing tests pass (30/30)
 

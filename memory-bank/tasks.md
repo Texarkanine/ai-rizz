@@ -5,7 +5,7 @@
 **Task ID**: unify-ruleset-command-handling
 **Title**: Unify ruleset command handling - remove magic commands/ subdirectory
 **Complexity**: Level 2
-**Status**: Planning
+**Status**: Complete (Reflected)
 **Branch**: `global-and-command-tab-completion`
 
 ## Description
@@ -59,15 +59,15 @@ This aligns behavior and removes the special-case `commands/` subdirectory handl
 
 ## Definition of Done
 
-- [ ] `.md` files in ruleset root are treated as commands
-- [ ] Uppercase `.md` files (README.md) are ignored
-- [ ] `commands/` subdir still works (not special, just contains .md files)
-- [ ] Old `copy_ruleset_commands`/`remove_ruleset_commands` removed
-- [ ] Migration cleans up old `<commands_dir>/<ruleset>/` subdirs
-- [ ] Migration cleans up old flat standalone commands (`.cursor/commands/<name>.md`)
-- [ ] Migration does NOT touch user-created commands
-- [ ] All tests pass
-- [ ] README updated
+- [x] `.md` files in ruleset root are treated as commands
+- [x] Uppercase `.md` files (README.md) are ignored
+- [x] `commands/` subdir still works (not special, just contains .md files)
+- [x] Old `copy_ruleset_commands`/`remove_ruleset_commands` removed
+- [x] Migration cleans up old `<commands_dir>/<ruleset>/` subdirs
+- [x] Migration cleans up old flat standalone commands (`.cursor/commands/<name>.md`)
+- [x] Migration does NOT touch user-created commands
+- [x] All tests pass (30/30)
+- [x] README updated
 
 ---
 

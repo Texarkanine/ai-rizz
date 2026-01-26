@@ -30,10 +30,11 @@ source_ai_rizz
 # Test that commands are removed when ruleset is removed
 # Expected: Commands should be removed from .cursor/commands/ when their ruleset is removed
 test_commands_removed_when_ruleset_removed() {
-	# Setup: Create ruleset with commands (including nested commands)
+	# Setup: Create ruleset with commands (in various locations - unified handling copies flat)
 	mkdir -p "$REPO_DIR/rulesets/test-remove-cmd/commands/subdir"
 	echo "command1" > "$REPO_DIR/rulesets/test-remove-cmd/commands/cmd1.md"
 	echo "nested" > "$REPO_DIR/rulesets/test-remove-cmd/commands/subdir/nested.md"
+	echo "root cmd" > "$REPO_DIR/rulesets/test-remove-cmd/root-cmd.md"
 	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-remove-cmd/rule1.mdc"
 	
 	# Commit and initialize
@@ -44,18 +45,19 @@ test_commands_removed_when_ruleset_removed() {
 	cmd_add_ruleset "test-remove-cmd" --commit
 	assertTrue "Should add ruleset successfully" $?
 	
-	# Verify commands copied
+	# Verify commands copied (FLAT - unified handling)
 	test -f ".cursor/commands/shared/cmd1.md" || fail "cmd1.md should be copied"
-	test -f ".cursor/commands/shared/subdir/nested.md" || fail "Nested command should be copied"
+	test -f ".cursor/commands/shared/nested.md" || fail "Nested command should be copied (FLAT)"
+	test -f ".cursor/commands/shared/root-cmd.md" || fail "Root command should be copied"
 	
 	# Remove ruleset
 	cmd_remove_ruleset "test-remove-cmd"
 	assertTrue "Should remove ruleset successfully" $?
 	
-	# Expected: Commands should be removed
+	# Expected: Commands should be removed (sync clears and re-copies)
 	test ! -f ".cursor/commands/shared/cmd1.md" || fail "cmd1.md should be removed"
-	test ! -f ".cursor/commands/shared/subdir/nested.md" || fail "Nested command should be removed"
-	# CURRENTLY FAILS: Commands remain after ruleset removal
+	test ! -f ".cursor/commands/shared/nested.md" || fail "Nested command should be removed"
+	test ! -f ".cursor/commands/shared/root-cmd.md" || fail "Root command should be removed"
 }
 
 # Test that commands are removed even if multiple rulesets have same path (error condition)
@@ -165,13 +167,14 @@ test_symlinked_rules_in_subdirectories_copied_flat() {
 }
 
 # Test complex ruleset with commands, file rules, and symlinked rules
-# Expected: Commands preserved, file rules preserve structure, symlinked rules flat, all removed correctly
+# Expected: Commands FLAT, file rules preserve structure, symlinked rules flat, all removed correctly
 test_complex_ruleset_structure_preserved() {
 	# Setup: Ruleset with commands, file rules in subdirs, and symlinked rules
 	mkdir -p "$REPO_DIR/rulesets/test-complex/commands/subs"
 	mkdir -p "$REPO_DIR/rulesets/test-complex/Core"
 	echo "command" > "$REPO_DIR/rulesets/test-complex/commands/top.md"
 	echo "nested" > "$REPO_DIR/rulesets/test-complex/commands/subs/nested.md"
+	echo "root cmd" > "$REPO_DIR/rulesets/test-complex/root-cmd.md"
 	echo "file rule" > "$REPO_DIR/rulesets/test-complex/Core/core-rule.mdc"
 	echo "rootrule" > "$REPO_DIR/rulesets/test-complex/rootrule.mdc"
 	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-complex/symlinked-rule.mdc"
@@ -184,9 +187,10 @@ test_complex_ruleset_structure_preserved() {
 	cmd_add_ruleset "test-complex" --commit
 	assertTrue "Should add ruleset successfully" $?
 	
-	# Expected: Commands preserved, file rules preserve structure, symlinked rules flat
+	# Expected: Commands FLAT (unified handling), file rules preserve structure, symlinked rules flat
 	test -f ".cursor/commands/shared/top.md" || fail "Top command should be copied"
-	test -f ".cursor/commands/shared/subs/nested.md" || fail "Nested command should be copied"
+	test -f ".cursor/commands/shared/nested.md" || fail "Nested command should be copied (FLAT)"
+	test -f ".cursor/commands/shared/root-cmd.md" || fail "Root command should be copied"
 	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rootrule.mdc" || fail "Root file rule should be copied"
 	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/Core/core-rule.mdc" || fail "Subdirectory file rule should preserve structure"
 	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/symlinked-rule.mdc" || fail "Symlinked rule should be copied (flat)"
@@ -195,9 +199,10 @@ test_complex_ruleset_structure_preserved() {
 	# Remove ruleset
 	cmd_remove_ruleset "test-complex"
 	
-	# Expected: Commands removed, rules removed
+	# Expected: Commands removed (sync clears and re-copies), rules removed
 	test ! -f ".cursor/commands/shared/top.md" || fail "Commands should be removed"
-	test ! -f ".cursor/commands/shared/subs/nested.md" || fail "Nested commands should be removed"
+	test ! -f ".cursor/commands/shared/nested.md" || fail "Nested commands should be removed"
+	test ! -f ".cursor/commands/shared/root-cmd.md" || fail "Root commands should be removed"
 	test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rootrule.mdc" || fail "Rules should be removed"
 	test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/Core/core-rule.mdc" || fail "Structured rules should be removed"
 }

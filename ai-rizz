@@ -3915,10 +3915,6 @@ cmd_remove_ruleset() {
 				local)
 					if [ "$(is_mode_active local)" = "true" ]; then
 						if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-							crrs_commands_dir=$(get_commands_target_dir "local")
-							crrs_repo_dir=$(get_repo_dir_for_mode "local")
-							remove_ruleset_commands "${ruleset_path}" "${crrs_commands_dir}" "${crrs_repo_dir}"
-							
 							remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
 							echo "Removed ruleset: $ruleset_path"
 							removed=true
@@ -3930,10 +3926,6 @@ cmd_remove_ruleset() {
 				commit)
 					if [ "$(is_mode_active commit)" = "true" ]; then
 						if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-							crrs_commands_dir=$(get_commands_target_dir "commit")
-							crrs_repo_dir=$(get_repo_dir_for_mode "commit")
-							remove_ruleset_commands "${ruleset_path}" "${crrs_commands_dir}" "${crrs_repo_dir}"
-							
 							remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
 							echo "Removed ruleset: $ruleset_path"
 							removed=true
@@ -3945,10 +3937,6 @@ cmd_remove_ruleset() {
 				global)
 					if [ "$(is_mode_active global)" = "true" ]; then
 						if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-							crrs_commands_dir=$(get_commands_target_dir "global")
-							crrs_repo_dir=$(get_repo_dir_for_mode "global")
-							remove_ruleset_commands "${ruleset_path}" "${crrs_commands_dir}" "${crrs_repo_dir}"
-							
 							remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$ruleset_path"
 							echo "Removed ruleset: $ruleset_path"
 							removed=true
@@ -3962,11 +3950,6 @@ cmd_remove_ruleset() {
 			# No specific mode - remove from whichever mode contains it
 			if [ "$(is_mode_active local)" = "true" ]; then
 				if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-					# Remove commands from local mode
-					crrs_commands_dir=$(get_commands_target_dir "local")
-					crrs_repo_dir=$(get_repo_dir_for_mode "local")
-					remove_ruleset_commands "${ruleset_path}" "${crrs_commands_dir}" "${crrs_repo_dir}"
-					
 					remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$ruleset_path"
 					echo "Removed ruleset: $ruleset_path"
 					removed=true
@@ -3975,11 +3958,6 @@ cmd_remove_ruleset() {
 			
 			if [ "$(is_mode_active commit)" = "true" ]; then
 				if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-					# Remove commands from commit mode
-					crrs_commands_dir=$(get_commands_target_dir "commit")
-					crrs_repo_dir=$(get_repo_dir_for_mode "commit")
-					remove_ruleset_commands "${ruleset_path}" "${crrs_commands_dir}" "${crrs_repo_dir}"
-					
 					remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$ruleset_path"
 					echo "Removed ruleset: $ruleset_path"
 					removed=true
@@ -3988,11 +3966,6 @@ cmd_remove_ruleset() {
 			
 			if [ "$(is_mode_active global)" = "true" ]; then
 				if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$ruleset_path$"; then
-					# Remove commands from global mode
-					crrs_commands_dir=$(get_commands_target_dir "global")
-					crrs_repo_dir=$(get_repo_dir_for_mode "global")
-					remove_ruleset_commands "${ruleset_path}" "${crrs_commands_dir}" "${crrs_repo_dir}"
-					
 					remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$ruleset_path"
 					echo "Removed ruleset: $ruleset_path"
 					removed=true
@@ -4005,7 +3978,7 @@ cmd_remove_ruleset() {
 		fi
 	done
 	
-	# Sync to ensure proper cleanup
+	# Sync to ensure proper cleanup (handles command removal via find -delete + re-copy)
 	sync_all_modes
 	
 	return 0
@@ -4140,29 +4113,67 @@ sync_manifest_to_directory() {
 				smtd_commands_dir=$(get_commands_target_dir "${smtd_mode}")
 				if [ -d "${smtd_commands_dir}" ]; then
 					find "${smtd_commands_dir}" -name "*.md" -type f -delete 2>/dev/null || true
+					# Clean up any empty directories left behind (e.g., from old ruleset subdirs)
+					find "${smtd_commands_dir}" -type d -empty -delete 2>/dev/null || true
 				fi
 			fi
 			
-			# Migration: Clean up flat command structure from pre-subdir versions
-			# Prior versions stored commands in .cursor/commands/<ruleset>/ directly (flat)
-			# Now we use subdirs: .cursor/commands/{local,shared}/<ruleset>/
-			# ONLY remove flat commands that correspond to rulesets WE manage (in manifest)
+			# Migration: Clean up old command structures from prior versions
+			# This handles multiple migration scenarios:
+			# 1. Flat ruleset dirs at root: .cursor/commands/<ruleset>/ (pre-subdir era)
+			# 2. Flat standalone commands at root: .cursor/commands/<name>.md (pre-subdir era)
+			# 3. Ruleset subdirs inside mode dirs: .cursor/commands/shared/<ruleset>/ (old magic commands/ handling)
+			# ONLY remove items that correspond to entries WE manage (in manifest)
 			if [ -d ".cursor/commands" ] && [ -f "${smtd_manifest_file}" ]; then
-				# Get ruleset entries from manifest to know what WE manage
+				# Get repo dir for this mode to check if entries are commands
+				smtd_repo_dir=$(get_repo_dir_for_mode "${smtd_mode}")
+				
+				# Get entries from manifest to know what WE manage
 				smtd_migration_entries=$(read_manifest_entries "${smtd_manifest_file}" 2>/dev/null) || true
 				if [ -n "${smtd_migration_entries}" ]; then
 					echo "${smtd_migration_entries}" | while IFS= read -r smtd_mig_entry; do
-						# Only process ruleset entries (directories under rulesets/)
 						case "${smtd_mig_entry}" in
 							rulesets/*)
-								# Extract ruleset name (e.g., "niko" from "rulesets/niko")
+								# Ruleset entry - clean up old command structures
 								smtd_ruleset_name=$(basename "${smtd_mig_entry}")
-								# Check for flat command directory with this name
+								
+								# 1. Clean up flat command directory at root: .cursor/commands/<ruleset>/
 								smtd_flat_cmd_dir=".cursor/commands/${smtd_ruleset_name}"
 								if [ -d "${smtd_flat_cmd_dir}" ]; then
-									# This is a flat structure leftover for a managed ruleset
 									rm -rf "${smtd_flat_cmd_dir}" 2>/dev/null || true
 								fi
+								
+								# 2. Clean up ruleset subdir inside mode dir: .cursor/commands/shared/<ruleset>/
+								if [ -n "${smtd_commands_dir}" ] && [ -d "${smtd_commands_dir}/${smtd_ruleset_name}" ]; then
+									rm -rf "${smtd_commands_dir}/${smtd_ruleset_name}" 2>/dev/null || true
+								fi
+								
+								# 3. Clean up flat .md files from old commands/ handling
+								# Old copy_ruleset_commands copied rulesets/<name>/commands/*.md to .cursor/commands/*.md
+								smtd_old_cmds_dir="${smtd_repo_dir}/${smtd_mig_entry}/commands"
+								if [ -d "${smtd_old_cmds_dir}" ]; then
+									# Find .md files at commands/ root (not in subdirs) and clean up flat copies
+									for smtd_old_cmd_file in "${smtd_old_cmds_dir}"/*.md; do
+										if [ -f "${smtd_old_cmd_file}" ]; then
+											smtd_old_cmd_basename=$(basename "${smtd_old_cmd_file}")
+											smtd_flat_cmd_file=".cursor/commands/${smtd_old_cmd_basename}"
+											rm -f "${smtd_flat_cmd_file}" 2>/dev/null || true
+										fi
+									done
+								fi
+								;;
+							rules/*)
+								# Standalone rule/command entry - check if it's a command
+								# Manifest entries for commands include the .md extension
+								smtd_entry_basename=$(basename "${smtd_mig_entry}")
+								case "${smtd_entry_basename}" in
+									*.md)
+										# It's a command - clean up old flat location at .cursor/commands/ ROOT
+										# (not inside mode subdir - old versions had no mode subdirs)
+										smtd_flat_cmd_file=".cursor/commands/${smtd_entry_basename}"
+										rm -f "${smtd_flat_cmd_file}" 2>/dev/null || true
+										;;
+								esac
 								;;
 						esac
 					done
@@ -4232,180 +4243,6 @@ file_exists_in_commit_mode() {
 	fi
 	
 	return 1  # Not found in commit mode
-}
-
-# Copy command files from ruleset to target commands directory
-#
-# Copies all files from a ruleset's `commands/` subdirectory to the target
-# `.cursor/commands/` directory. Follows symlinks to copy actual source content,
-# not the symlink itself. Creates target directory if it doesn't exist.
-#
-# Globals:
-#   REPO_DIR - Default source repository directory (used if $3 not provided)
-#
-# Arguments:
-#   $1 - Ruleset path in source repo (e.g., `rulesets/memory-bank`) (required)
-#   $2 - Target commands directory (e.g., `.cursor/commands`) (required)
-#   $3 - Source repository directory (optional, defaults to REPO_DIR)
-#
-# Outputs:
-#   Stderr: Warning messages on failure
-#
-# Returns:
-#   0 on success
-#   1 on failure (source doesn't exist, copy failed)
-#
-copy_ruleset_commands() {
-	crc_ruleset_path="${1}"
-	crc_target_commands_dir="${2}"
-	crc_repo_dir="${3:-${REPO_DIR}}"
-	
-	crc_source_commands_dir="${crc_repo_dir}/${crc_ruleset_path}/commands"
-	
-	# Check if source commands directory exists
-	if [ ! -d "${crc_source_commands_dir}" ]; then
-		return 0  # No commands to copy, not an error
-	fi
-	
-	# Create target directory if it doesn't exist
-	mkdir -p "${crc_target_commands_dir}" || {
-		warn "Failed to create commands directory: ${crc_target_commands_dir}"
-		return 1
-	}
-	
-	# Copy all files from commands directory recursively, following symlinks
-	# Use find to get all files (not directories) at any depth and copy them
-	# Preserve directory structure when copying
-	# Use temporary file to avoid subshell exit code issues (per POSIX style guide)
-	crc_temp_file=$(mktemp)
-	find "${crc_source_commands_dir}" -mindepth 1 \( -type f -o -type l \) > "${crc_temp_file}" 2>/dev/null
-	crc_find_status=$?
-	
-	if [ ${crc_find_status} -eq 0 ]; then
-		while IFS= read -r crc_source_file; do
-			if [ -n "${crc_source_file}" ] && ([ -f "${crc_source_file}" ] || [ -L "${crc_source_file}" ]); then
-				# Calculate relative path from commands directory to preserve structure
-				crc_rel_path="${crc_source_file#${crc_source_commands_dir}/}"
-				crc_target_file="${crc_target_commands_dir}/${crc_rel_path}"
-				
-				# Create target directory structure if needed
-				crc_target_dir=$(dirname "${crc_target_file}")
-				if [ ! -d "${crc_target_dir}" ]; then
-					if ! mkdir -p "${crc_target_dir}"; then
-						warn "Failed to create directory for: ${crc_rel_path}"
-						continue
-					fi
-				fi
-				
-				# Security: Validate symlink targets before copying
-				if [ -L "${crc_source_file}" ]; then
-					crc_resolved_target=$(_readlink_f "${crc_source_file}")
-					if [ -z "${crc_resolved_target}" ]; then
-						warn "Failed to resolve symlink: ${crc_rel_path}"
-						continue
-					fi
-					# Check if resolved target is within the source repo directory
-					case "${crc_resolved_target}" in
-						"${crc_repo_dir}"/*)
-							# Symlink points within repository, safe to copy
-							;;
-						*)
-							# Symlink points outside repository, skip for security
-							warn "Skipping symlink pointing outside repository: ${crc_rel_path} -> ${crc_resolved_target}"
-							continue
-							;;
-					esac
-				fi
-				
-				# Use cp -L to follow symlinks and copy actual source content
-				if ! cp -L "${crc_source_file}" "${crc_target_file}"; then
-					warn "Failed to copy command file: ${crc_rel_path}"
-					# Continue with other files
-				fi
-			fi
-		done < "${crc_temp_file}"
-	fi
-	
-	rm -f "${crc_temp_file}"
-	return 0
-}
-
-# Remove commands from a ruleset when the ruleset is removed
-#
-# Removes all command files that were copied from the specified ruleset's
-# commands/ subdirectory. Preserves directory structure when removing nested
-# commands. Cleans up empty directories after file removal.
-#
-# Globals:
-#   REPO_DIR - Default source repository directory (used if $3 not provided)
-#
-# Arguments:
-#   $1 - Ruleset path (e.g., "rulesets/test-ruleset")
-#   $2 - Target commands directory (e.g., "/path/to/commands")
-#   $3 - Source repository directory (optional, defaults to REPO_DIR)
-#
-# Outputs:
-#   Stderr: Warning messages for failures
-#
-# Returns:
-#   0 on success
-#   1 on failure (source doesn't exist, removal failed)
-#
-remove_ruleset_commands() {
-	rrc_ruleset_path="${1}"
-	rrc_target_commands_dir="${2}"
-	rrc_repo_dir="${3:-${REPO_DIR}}"
-	
-	rrc_source_commands_dir="${rrc_repo_dir}/${rrc_ruleset_path}/commands"
-	
-	# Check if source commands directory exists
-	if [ ! -d "${rrc_source_commands_dir}" ]; then
-		return 0  # No commands to remove, not an error
-	fi
-	
-	# Check if target commands directory exists
-	if [ ! -d "${rrc_target_commands_dir}" ]; then
-		return 0  # No commands directory, nothing to remove
-	fi
-	
-	# Get all command paths from the ruleset's commands directory
-	# Use temporary file to avoid subshell exit code issues (per POSIX style guide)
-	rrc_temp_file=$(mktemp)
-	find "${rrc_source_commands_dir}" -mindepth 1 \( -type f -o -type l \) > "${rrc_temp_file}" 2>/dev/null
-	rrc_find_status=$?
-	
-	if [ ${rrc_find_status} -eq 0 ]; then
-		while IFS= read -r rrc_source_file; do
-			if [ -n "${rrc_source_file}" ] && ([ -f "${rrc_source_file}" ] || [ -L "${rrc_source_file}" ]); then
-				# Calculate relative path from commands directory to match target structure
-				rrc_rel_path="${rrc_source_file#${rrc_source_commands_dir}/}"
-				rrc_target_file="${rrc_target_commands_dir}/${rrc_rel_path}"
-				
-				# Remove the target file if it exists
-				if [ -f "${rrc_target_file}" ] || [ -L "${rrc_target_file}" ]; then
-					if ! rm -f "${rrc_target_file}"; then
-						warn "Failed to remove command file: ${rrc_rel_path}"
-						# Continue with other files
-					fi
-					
-					# Clean up empty parent directories
-					rrc_target_dir=$(dirname "${rrc_target_file}")
-					while [ "${rrc_target_dir}" != "${rrc_target_commands_dir}" ] && [ -d "${rrc_target_dir}" ]; do
-						# Check if directory is empty (only . and .. entries)
-						if [ -z "$(find "${rrc_target_dir}" -mindepth 1 -maxdepth 1 2>/dev/null)" ]; then
-							rmdir "${rrc_target_dir}" 2>/dev/null || break
-							rrc_target_dir=$(dirname "${rrc_target_dir}")
-						else
-							break
-						fi
-					done
-				fi
-			fi
-		done < "${rrc_temp_file}"
-	fi
-	
-	rm -f "${rrc_temp_file}"
-	return 0
 }
 
 # Copy a single entry (rule or ruleset) to target directory
@@ -4482,7 +4319,7 @@ copy_entry_to_target() {
 			cp "${cett_source_path}" "${cett_target_directory}/"
 		fi
 	elif [ -d "${cett_source_path}" ]; then
-		# Directory (ruleset) - copy individual .mdc files from ruleset to target directory
+		# Directory (ruleset) - copy .mdc files to rules dir, .md files to commands dir
 		# Handle symlinks and files differently:
 		# - Symlinks: Copy flat (all instances are the same rule)
 		# - Files: Preserve directory structure (URI is ruleset/path/to/rule.mdc)
@@ -4549,10 +4386,54 @@ copy_entry_to_target() {
 		
 		rm -f "${cett_temp_file}"
 		
-		# Copy commands/ subdirectory if exists - works in all modes now
+		# Copy .md files from ruleset to commands directory (unified handling)
+		# All .md files in ruleset are commands, except uppercase ones (README.md, etc.)
 		if [ -n "${cett_mode}" ]; then
 			cett_commands_dir=$(get_commands_target_dir "${cett_mode}")
-			copy_ruleset_commands "${cett_entry}" "${cett_commands_dir}" "${cett_repo_dir}"
+			mkdir -p "${cett_commands_dir}"
+			
+			# Find all .md files in ruleset
+			cett_cmd_temp_file=$(mktemp)
+			find "${cett_source_path}" -name "*.md" \( -type f -o -type l \) > "${cett_cmd_temp_file}" 2>/dev/null
+			
+			while IFS= read -r cett_cmd_file; do
+				if [ -n "${cett_cmd_file}" ] && ([ -f "${cett_cmd_file}" ] || [ -L "${cett_cmd_file}" ]); then
+					cett_cmd_filename=$(basename "${cett_cmd_file}")
+					
+					# Skip uppercase .md files (README.md, CHANGELOG.md, etc.) - these are documentation
+					# Check if first character is uppercase
+					cett_first_char=$(echo "${cett_cmd_filename}" | cut -c1)
+					case "${cett_first_char}" in
+						[A-Z])
+							# Uppercase filename - skip (documentation)
+							continue
+							;;
+					esac
+					
+					# Copy flat to commands directory (don't preserve directory structure)
+					if [ -L "${cett_cmd_file}" ]; then
+						# Symlink: Follow and copy content (with security check)
+						cett_resolved=$(_readlink_f "${cett_cmd_file}")
+						if [ -n "${cett_resolved}" ]; then
+							case "${cett_resolved}" in
+								"${cett_repo_dir}"/*)
+									# Symlink points within repository, safe to copy
+									cp -L "${cett_cmd_file}" "${cett_commands_dir}/" 2>/dev/null || true
+									;;
+								*)
+									# Symlink points outside repository, skip for security
+									warn "Skipping symlink pointing outside repository: ${cett_cmd_filename} -> ${cett_resolved}"
+									;;
+							esac
+						fi
+					else
+						# Regular file: Copy directly
+						cp "${cett_cmd_file}" "${cett_commands_dir}/" 2>/dev/null || true
+					fi
+				fi
+			done < "${cett_cmd_temp_file}"
+			
+			rm -f "${cett_cmd_temp_file}"
 		fi
 	else
 		warn "Entry not found in repository: ${cett_entry}"

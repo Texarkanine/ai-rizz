@@ -111,13 +111,19 @@ test_commands_valid_symlink_works() {
 # Test that relative symlink within repo in commands directory works normally
 # Expected: Relative symlink resolved and followed, content copied
 test_commands_relative_symlink_works() {
-	# Setup: Create ruleset with commands/ containing relative symlink within repo
+	# Setup: Create ruleset with .md symlink files
 	mkdir -p "$REPO_DIR/rulesets/test-relative-commands"
 	mkdir -p "$REPO_DIR/rulesets/test-relative-commands/commands"
 	
-	# Create relative symlink within repo (rule1.mdc already exists from setUp)
-	# From rulesets/test-relative-commands/commands/, need ../../../rules/rule1.mdc to reach rules/
-	ln -sf "../../../rules/rule1.mdc" "$REPO_DIR/rulesets/test-relative-commands/commands/rule-symlink.mdc"
+	# Create a source .md file to symlink to
+	echo "source command content" > "$REPO_DIR/rulesets/test-relative-commands/commands/source.md"
+	
+	# Create relative symlink to the .md file
+	ln -sf "source.md" "$REPO_DIR/rulesets/test-relative-commands/commands/relative-symlink.md"
+	
+	# Also create a root-level command with relative symlink
+	echo "root source content" > "$REPO_DIR/rulesets/test-relative-commands/root-source.md"
+	ln -sf "root-source.md" "$REPO_DIR/rulesets/test-relative-commands/root-symlink.md"
 	
 	# Create valid rule symlink
 	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-relative-commands/rule1.mdc"
@@ -135,12 +141,17 @@ test_commands_relative_symlink_works() {
 	cmd_add_ruleset "test-relative-commands" --commit
 	assertTrue "Should add ruleset successfully" $?
 	
-	# Expected: Relative symlink resolved and followed, content copied
+	# Expected: Relative symlinks resolved and followed, content copied (FLAT)
 	# Commands now go to .cursor/commands/shared/ for commit mode
 	commands_dir=".cursor/commands/shared"
-	test -f "$commands_dir/rule-symlink.mdc" || fail "rule-symlink.mdc should be copied"
-	test ! -L "$commands_dir/rule-symlink.mdc" || fail "rule-symlink.mdc should be a file, not a symlink"
-	assertEquals "rule-symlink.mdc content should match rule1" "Rule 1 content" "$(cat "$commands_dir/rule-symlink.mdc")"
+	test -f "$commands_dir/source.md" || fail "source.md should be copied"
+	test -f "$commands_dir/relative-symlink.md" || fail "relative-symlink.md should be copied"
+	test -f "$commands_dir/root-source.md" || fail "root-source.md should be copied"
+	test -f "$commands_dir/root-symlink.md" || fail "root-symlink.md should be copied"
+	
+	# Verify content matches
+	assertEquals "relative-symlink.md content should match source" "source command content" "$(cat "$commands_dir/relative-symlink.md")"
+	assertEquals "root-symlink.md content should match root-source" "root source content" "$(cat "$commands_dir/root-symlink.md")"
 }
 
 # ============================================================================

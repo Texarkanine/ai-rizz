@@ -477,63 +477,57 @@ Such "ruleset-local rules" will
 
 ### Rulesets with Commands
 
-Rulesets can include a special `commands/` subdirectory that contains [Cursor Command](https://cursor.com/docs/agent/chat/commands) files. These commands are automatically copied to `.cursor/commands/` when the ruleset is added in commit mode.
+Rulesets can include [Cursor Command](https://cursor.com/docs/agent/chat/commands) files (`.md` files). These commands are automatically copied to the mode-specific `.cursor/commands/` directory when the ruleset is added.
 
-**Commands must be committed**: Rulesets containing a `commands/` subdirectory can only be added in commit mode. Attempting to add them in local mode will result in an error.
-#### Example Workflow
+**Commands work in all modes**: Local, commit, and global modes all support commands.
 
-```bash
-# Attempting to add a ruleset with commands in local mode
-ai-rizz init https://github.com/example/rules.git --local
-ai-rizz add ruleset memory-bank
-# Error: Ruleset 'memory-bank' contains a 'commands' subdirectory 
-# and must be added in commit mode.
+#### How Commands are Detected
 
-# Correct approach: use commit mode
-ai-rizz init https://github.com/example/rules.git --commit
-ai-rizz add ruleset memory-bank --commit
-# Success! Commands from rulesets/memory-bank/commands/* 
-# are now in .cursor/commands/
-```
+All `.md` files anywhere in a ruleset are treated as commands, except:
+- **Uppercase `.md` files** like `README.md`, `CHANGELOG.md`, `LICENSE.md` (these are documentation)
+
+Commands are copied **flat** (no directory structure preserved) to make them accessible as `/command-name` in Cursor.
 
 #### Source Repository Structure
 
-For a ruleset with commands, your source repository would have this structure:
+Both structures are supported:
 
 ```
 rulesets/
 └── memory-bank/
-    ├── commands/
-    │   ├── van.md
-    │   ├── plan.md
-    │   └── build.md
-    ├── rule1.mdc
-    └── rule2.mdc
+    ├── van.md           # command (at root)
+    ├── plan.md          # command (at root)
+    ├── commands/        # optional subdirectory
+    │   └── build.md     # command (in subdir, still copied flat)
+    ├── rule1.mdc        # rule
+    └── README.md        # ignored (uppercase)
 ```
 
-When added in commit mode:
-- Rules (`rule1.mdc`, `rule2.mdc`) are copied to `.cursor/rules/shared/`
-- Commands (`van.md`, `plan.md`, `build.md`) are copied to `.cursor/commands/`
+#### Example Workflow
 
-#### Error Message and Resolution
+```bash
+# Commands work in any mode
+ai-rizz init https://github.com/example/rules.git --local
+ai-rizz add ruleset memory-bank --local
+# Commands from rulesets/memory-bank/*.md 
+# are now in .cursor/commands/local/
 
-If you attempt to add a ruleset with commands in local mode, you'll see:
+# Or in commit mode
+ai-rizz init https://github.com/example/rules.git --commit
+ai-rizz add ruleset memory-bank --commit
+# Commands are now in .cursor/commands/shared/
 
+# Or in global mode
+ai-rizz init https://github.com/example/rules.git --global
+ai-rizz add ruleset memory-bank --global
+# Commands are now in ~/.cursor/commands/ai-rizz/
 ```
-Error: Ruleset 'memory-bank' contains a 'commands' subdirectory and must be added in commit mode.
 
-Rulesets with commands must be committed to the repository to ensure commands are version-controlled.
+#### Installed Structure
 
-To fix this:
-  1. If you haven't initialized commit mode yet:
-     ai-rizz init <repository-url> --commit
-  
-  2. If you already have local mode initialized:
-     ai-rizz init <repository-url> --commit
-  
-Then add the ruleset:
-  ai-rizz add ruleset memory-bank --commit
-```
+When a ruleset is added:
+- Rules (`.mdc` files) → `.cursor/rules/<mode>/`
+- Commands (`.md` files) → `.cursor/commands/<mode>/` (flat)
 
 ### Repository Integrity
 

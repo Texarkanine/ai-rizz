@@ -118,6 +118,34 @@ test_init_twice_same_mode_idempotent() {
     assertFalse "Should not create commit mode" "[ \"$(is_mode_active commit)\" = \"true\" ]"
 }
 
+test_reinit_local_fixes_missing_commands_exclude() {
+    # Test: Re-init on repo missing .cursor/commands/local exclude should fix it
+    # This simulates repos initialized before commands exclude was added
+    
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    assert_local_mode_exists
+    
+    # Verify all excludes are set initially
+    assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
+    assert_git_exclude_contains "$TEST_TARGET_DIR/$TEST_LOCAL_DIR"
+    assert_git_exclude_contains ".cursor/commands/$TEST_LOCAL_DIR"
+    
+    # Simulate old repo by removing .cursor/commands/local exclude
+    grep -v "^\.cursor/commands/$TEST_LOCAL_DIR$" .git/info/exclude > .git/info/exclude.tmp
+    mv .git/info/exclude.tmp .git/info/exclude
+    
+    # Verify it's actually removed
+    assert_git_exclude_not_contains ".cursor/commands/$TEST_LOCAL_DIR"
+    
+    # Re-init should fix the missing exclude
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    
+    # Verify all excludes are restored
+    assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
+    assert_git_exclude_contains "$TEST_TARGET_DIR/$TEST_LOCAL_DIR"
+    assert_git_exclude_contains ".cursor/commands/$TEST_LOCAL_DIR"
+}
+
 test_init_different_modes_creates_dual_mode() {
     # Test: First init with local, then commit → creates dual mode
     

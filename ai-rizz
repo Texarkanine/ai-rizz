@@ -1332,6 +1332,9 @@ validate_git_exclude_state() {
 		if [ ! -f ".git/info/exclude" ] || ! grep -q "^${vges_target_dir}/${LOCAL_DIR}$" ".git/info/exclude"; then
 			warn "Local directory not in git exclude (should be git-ignored)"
 		fi
+		if [ ! -f ".git/info/exclude" ] || ! grep -q "^.cursor/commands/${LOCAL_DIR}$" ".git/info/exclude"; then
+			warn "Local commands directory not in git exclude (should be git-ignored)"
+		fi
 	fi
 	
 	if [ "$(is_mode_active commit)" = "true" ]; then
@@ -4112,7 +4115,7 @@ sync_manifest_to_directory() {
 			if [ -n "${smtd_mode}" ]; then
 				smtd_commands_dir=$(get_commands_target_dir "${smtd_mode}")
 				if [ -d "${smtd_commands_dir}" ]; then
-					find "${smtd_commands_dir}" -name "*.md" -type f -delete 2>/dev/null || true
+					find "${smtd_commands_dir}" -name "*.md" \( -type f -o -type l \) -delete 2>/dev/null || true
 					# Clean up any empty directories left behind (e.g., from old ruleset subdirs)
 					find "${smtd_commands_dir}" -type d -empty -delete 2>/dev/null || true
 				fi
@@ -4124,7 +4127,8 @@ sync_manifest_to_directory() {
 			# 2. Flat standalone commands at root: .cursor/commands/<name>.md (pre-subdir era)
 			# 3. Ruleset subdirs inside mode dirs: .cursor/commands/shared/<ruleset>/ (old magic commands/ handling)
 			# ONLY remove items that correspond to entries WE manage (in manifest)
-			if [ -d ".cursor/commands" ] && [ -f "${smtd_manifest_file}" ]; then
+			# NOTE: Skip migration for global mode - it doesn't manage repo-level .cursor/commands
+			if [ "${smtd_mode}" != "global" ] && [ -d ".cursor/commands" ] && [ -f "${smtd_manifest_file}" ]; then
 				# Get repo dir for this mode to check if entries are commands
 				smtd_repo_dir=$(get_repo_dir_for_mode "${smtd_mode}")
 				
@@ -4330,6 +4334,12 @@ copy_entry_to_target() {
 		
 		# Check if this is a command (*.md) and route to commands directory
 		if [ "$(is_command "${cett_filename}")" = "true" ] && [ -n "${cett_mode}" ]; then
+			# Skip uppercase .md files (documentation like README.md, CHANGELOG.md)
+			case "${cett_filename}" in
+				[A-Z]*.md)
+					return 0
+					;;
+			esac
 			cett_commands_target=$(get_commands_target_dir "${cett_mode}")
 			mkdir -p "${cett_commands_target}"
 			cp -L "${cett_source_path}" "${cett_commands_target}/"

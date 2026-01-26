@@ -75,11 +75,16 @@ _ai_rizz_completion() {
 			;;
 		rule)
 			# Get available rules and commands from the current project's repo
-			# Rules are .mdc files, commands are .md files
-			local repo_dir
+			# Rules are .mdc files (include all), commands are .md files (exclude uppercase docs)
+			local repo_dir rules_list
 			repo_dir="$(_get_repo_dir)"
 			if [[ -d "${repo_dir}/rules" ]]; then
-				COMPREPLY=( $(compgen -W "$(find "${repo_dir}/rules" -type f \( -name "*.mdc" -o -name "*.md" \) -printf "%f\n" | grep -v '^[A-Z]' | sed 's/\.\(mdc\|md\)$//')" -- "${cur}") )
+				# Combine .mdc files (all) and .md files (excluding uppercase docs like README.md)
+				rules_list=$(
+					find "${repo_dir}/rules" -type f -name "*.mdc" -printf "%f\n" | sed 's/\.mdc$//'
+					find "${repo_dir}/rules" -type f -name "*.md" -printf "%f\n" | grep -v '^[A-Z]' | sed 's/\.md$//'
+				)
+				COMPREPLY=( $(compgen -W "${rules_list}" -- "${cur}") )
 			fi
 			;;
 		ruleset)

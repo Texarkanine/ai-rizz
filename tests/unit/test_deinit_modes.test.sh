@@ -245,6 +245,23 @@ test_deinit_interactive_mode_selection() {
     echo "$output" | grep -q "mode\|local\|commit\|choose\|select" || fail "Should prompt for mode selection"
 }
 
+test_deinit_local_message_includes_commands_dir() {
+    # Test: deinit --local confirmation message should mention .cursor/commands/local
+    
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    cmd_add_rule "rule1.mdc" --local
+    
+    # Create a local command to ensure commands dir exists
+    mkdir -p ".cursor/commands/$TEST_LOCAL_DIR"
+    touch ".cursor/commands/$TEST_LOCAL_DIR/test-cmd.md"
+    
+    # Capture the confirmation prompt (say 'n' to cancel)
+    output=$(echo "n" | cmd_deinit --local 2>&1 || true)
+    
+    # Expected: Message should include .cursor/commands/local
+    echo "$output" | grep -q ".cursor/commands/$TEST_LOCAL_DIR" || fail "Deinit message should include .cursor/commands/$TEST_LOCAL_DIR, got: $output"
+}
+
 # Load and run shunit2
 # shellcheck disable=SC1090
 . "$(dirname "$0")/../../shunit2" 

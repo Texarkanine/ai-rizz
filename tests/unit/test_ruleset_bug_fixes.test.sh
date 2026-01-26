@@ -29,17 +29,17 @@
 source_ai_rizz
 
 # ============================================================================
-# BUG 2: RECURSIVE COMMAND COPYING TESTS
+# UNIFIED COMMAND HANDLING TESTS
 # ============================================================================
 
-# Test that commands in subdirectories are copied recursively
-# Expected: Commands at any depth are copied, preserving directory structure
-# Currently: FAILS - only top-level commands are copied
+# Test that all .md commands in ruleset are copied FLAT (unified handling)
+# Expected: All .md files copied to commands dir without preserving structure
 test_commands_copied_recursively() {
-	# Setup: Create ruleset with nested commands structure
+	# Setup: Create ruleset with .md files in various locations
 	mkdir -p "$REPO_DIR/rulesets/test-recursive/commands/subdir"
 	echo "nested command content" > "$REPO_DIR/rulesets/test-recursive/commands/subdir/nested.md"
 	echo "top command content" > "$REPO_DIR/rulesets/test-recursive/commands/top.md"
+	echo "root command content" > "$REPO_DIR/rulesets/test-recursive/root-cmd.md"
 	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-recursive/rule1.mdc"
 	
 	# Commit the new structure
@@ -55,13 +55,15 @@ test_commands_copied_recursively() {
 	cmd_add_ruleset "test-recursive" --commit
 	assertTrue "Should add ruleset successfully" $?
 	
-	# Expected: Both top-level and nested commands copied with directory structure
+	# Expected: All .md files copied FLAT (unified handling - no directory structure)
 	test -f ".cursor/commands/shared/top.md" || fail "Top-level command should be copied"
-	test -f ".cursor/commands/shared/subdir/nested.md" || fail "Nested command should be copied recursively"
+	test -f ".cursor/commands/shared/nested.md" || fail "Nested command should be copied (FLAT, not in subdir)"
+	test -f ".cursor/commands/shared/root-cmd.md" || fail "Root command should be copied"
 	
 	# Verify content matches
 	assertEquals "Top command content should match" "top command content" "$(cat ".cursor/commands/shared/top.md")"
-	assertEquals "Nested command content should match" "nested command content" "$(cat ".cursor/commands/shared/subdir/nested.md")"
+	assertEquals "Nested command content should match" "nested command content" "$(cat ".cursor/commands/shared/nested.md")"
+	assertEquals "Root command content should match" "root command content" "$(cat ".cursor/commands/shared/root-cmd.md")"
 }
 
 # ============================================================================
@@ -184,14 +186,14 @@ test_mdc_files_visible_in_list() {
 # ============================================================================
 
 # Test complex ruleset with commands, subdirs, and .mdc files
-# Expected: All components visible and commands copied recursively
-# Currently: FAILS - Multiple issues (commands not recursive, .mdc files not shown)
+# Expected: All components visible and commands copied FLAT
 test_complex_ruleset_display() {
 	# Setup: Create ruleset matching temp-test structure
 	mkdir -p "$REPO_DIR/rulesets/test-complex/commands/subs"
 	mkdir -p "$REPO_DIR/rulesets/test-complex/supporting"
 	echo "top command" > "$REPO_DIR/rulesets/test-complex/commands/top.md"
 	echo "nested command" > "$REPO_DIR/rulesets/test-complex/commands/subs/nested.md"
+	echo "root command" > "$REPO_DIR/rulesets/test-complex/root-cmd.md"
 	echo "root rule" > "$REPO_DIR/rulesets/test-complex/test-complex.mdc"
 	echo "subrule" > "$REPO_DIR/rulesets/test-complex/supporting/subrule.mdc"
 	
@@ -219,9 +221,10 @@ test_complex_ruleset_display() {
 		fail "Subdirectory .mdc should NOT appear in list (subdir contents are not shown)"
 	fi
 	
-	# Verify commands copied recursively
+	# Verify commands copied FLAT (unified handling - no directory structure)
 	test -f ".cursor/commands/shared/top.md" || fail "Top command should be copied"
-	test -f ".cursor/commands/shared/subs/nested.md" || fail "Nested command should be copied recursively"
+	test -f ".cursor/commands/shared/nested.md" || fail "Nested command should be copied (FLAT)"
+	test -f ".cursor/commands/shared/root-cmd.md" || fail "Root command should be copied"
 }
 
 # Load shunit2

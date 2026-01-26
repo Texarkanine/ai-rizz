@@ -164,57 +164,6 @@ test_add_rule_global_uses_global_repo_dir() {
 }
 
 # ============================================================================
-# Test copy_ruleset_commands uses repo_dir parameter
-# ============================================================================
-
-# Test copy_ruleset_commands uses provided repo_dir, not global REPO_DIR
-test_copy_ruleset_commands_uses_repo_dir_parameter() {
-	# Create a separate "different repo" with commands to prove repo_dir param is used
-	crc_different_repo="${TEST_DIR}/different_repo"
-	mkdir -p "${crc_different_repo}/rulesets/test-ruleset/commands"
-	echo "# Different repo command" > "${crc_different_repo}/rulesets/test-ruleset/commands/cmd.md"
-	
-	# Set REPO_DIR to original test repo (which has NO commands)
-	# This proves if copy_ruleset_commands uses the passed repo_dir, it will find commands
-	# But if it uses global REPO_DIR, it won't find any commands
-	
-	# Create target directory
-	crc_target_dir="${TEST_DIR}/target_commands"
-	mkdir -p "${crc_target_dir}"
-	
-	# Call copy_ruleset_commands with explicit repo_dir parameter
-	copy_ruleset_commands "rulesets/test-ruleset" "${crc_target_dir}" "${crc_different_repo}"
-	
-	# Verify command was copied - this proves the repo_dir parameter was used
-	assertTrue "Command should be copied from provided repo_dir" \
-		"[ -f '${crc_target_dir}/cmd.md' ]"
-}
-
-# Test remove_ruleset_commands uses provided repo_dir, not global REPO_DIR
-test_remove_ruleset_commands_uses_repo_dir_parameter() {
-	# Create a separate "different repo" that defines which commands exist
-	rrc_different_repo="${TEST_DIR}/different_repo"
-	mkdir -p "${rrc_different_repo}/rulesets/test-ruleset/commands"
-	echo "# Different repo command" > "${rrc_different_repo}/rulesets/test-ruleset/commands/remove-me.md"
-	
-	# Create target directory with the command file pre-installed
-	rrc_target_dir="${TEST_DIR}/target_commands"
-	mkdir -p "${rrc_target_dir}"
-	echo "# Command to remove" > "${rrc_target_dir}/remove-me.md"
-	
-	# Verify file exists before removal
-	assertTrue "Target command should exist before removal" \
-		"[ -f '${rrc_target_dir}/remove-me.md' ]"
-	
-	# Call remove_ruleset_commands with explicit repo_dir parameter
-	remove_ruleset_commands "rulesets/test-ruleset" "${rrc_target_dir}" "${rrc_different_repo}"
-	
-	# Verify command was removed - this proves the repo_dir parameter was used
-	assertFalse "Command should be removed using provided repo_dir" \
-		"[ -f '${rrc_target_dir}/remove-me.md' ]"
-}
-
-# ============================================================================
 # Load shunit2
 # ============================================================================
 

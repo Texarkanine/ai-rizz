@@ -33,14 +33,21 @@ source_ai_rizz
 
 test_init_local_mode_only() {
     # Test: ai-rizz init $REPO -d $TEST_TARGET_DIR --local
-    # Expected: Creates local manifest and directory only
+    # Expected: Creates local manifest and directory, uses hook-based mode by default
     
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     
     assert_local_mode_exists
     assert_file_not_exists "$TEST_COMMIT_MANIFEST_FILE"
-    assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
-    assert_git_exclude_contains "$TEST_TARGET_DIR/$TEST_LOCAL_DIR"
+    
+    # TODO: Update assertions - hook-based is now default
+    # Verify hook created (new default behavior)
+    assertTrue "Pre-commit hook should exist" "[ -f '.git/hooks/pre-commit' ]"
+    assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
+    
+    # Verify git exclude NOT used (hook handles it)
+    assert_git_exclude_not_contains "$TEST_LOCAL_MANIFEST_FILE"
+    assert_git_exclude_not_contains "$TEST_TARGET_DIR/$TEST_LOCAL_DIR"
     
     # Verify mode detection
     assertTrue "Should detect local mode" "[ \"$(is_mode_active local)\" = \"true\" ]"
@@ -75,13 +82,16 @@ test_init_requires_mode_flag() {
 
 test_init_custom_target_dir() {
     # Test: ai-rizz init $REPO -d .custom/rules --local
-    # Expected: Uses custom target directory
+    # Expected: Uses custom target directory with hook-based mode (default)
     
     custom_dir=".custom/rules"
     cmd_init "$TEST_SOURCE_REPO" -d "$custom_dir" --local
     
     assertTrue "Custom directory should exist" "[ -d '$custom_dir/$TEST_LOCAL_DIR' ]"
-    assert_git_exclude_contains "$custom_dir/$TEST_LOCAL_DIR"
+    
+    # With hook-based mode (default), git-exclude should NOT contain the directory
+    assertTrue "Hook should be created" "[ -f '.git/hooks/pre-commit' ]"
+    assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
     
     # Verify mode detection works with custom paths
     assertTrue "Should detect local mode with custom dir" "[ \"$(is_mode_active local)\" = \"true\" ]"
@@ -121,8 +131,10 @@ test_init_twice_same_mode_idempotent() {
 test_reinit_local_fixes_missing_commands_exclude() {
     # Test: Re-init on repo missing .cursor/commands/local exclude should fix it
     # This simulates repos initialized before commands exclude was added
+    # NOTE: This test uses --git-exclude-ignore flag since we're testing git-exclude behavior
     
-    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    # TODO: Update to use --git-exclude-ignore flag (git-exclude is no longer default)
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
     assert_local_mode_exists
     
     # Verify all excludes are set initially
@@ -138,7 +150,7 @@ test_reinit_local_fixes_missing_commands_exclude() {
     assert_git_exclude_not_contains ".cursor/commands/$TEST_LOCAL_DIR"
     
     # Re-init should fix the missing exclude
-    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
     
     # Verify all excludes are restored
     assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
@@ -256,17 +268,24 @@ test_lazy_init_copies_target_dir() {
     assert_file_exists "$custom_dir/$TEST_LOCAL_DIR/rule1.mdc"
 }
 
-test_lazy_init_creates_git_excludes() {
-    # Setup: Commit mode only (no git excludes)
+test_lazy_init_creates_hook_by_default() {
+    # Setup: Commit mode only (no local mode)
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
-    assert_git_exclude_not_contains "$TEST_LOCAL_MANIFEST_FILE"
+    assertFalse "Hook should not exist yet" "[ -f '.git/hooks/pre-commit' ] && grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
     
-    # Test: Add rule to local mode
+    # Test: Add rule to local mode (lazy init)
+    # TODO: Update to expect hook creation (new default behavior)
     cmd_add_rule "rule1.mdc" --local
     
-    # Expected: Git excludes created for local mode
-    assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
-    assert_git_exclude_contains "$TEST_TARGET_DIR/$TEST_LOCAL_DIR"
+    # Expected: Hook created for local mode (default behavior)
+    assertTrue "Pre-commit hook should be created" "[ -f '.git/hooks/pre-commit' ]"
+    assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
+    
+    # Git exclude should NOT be used
+    assert_git_exclude_not_contains "$TEST_LOCAL_MANIFEST_FILE"
+    assert_git_exclude_not_contains "$TEST_TARGET_DIR/$TEST_LOCAL_DIR"
+    
+    return 0
 }
 
 test_lazy_init_preserves_manifest_entries() {
@@ -391,10 +410,11 @@ test_smart_mode_selection_prefers_existing() {
 }
 
 test_mode_detection_git_exclude_accuracy() {
-    # Setup: Local mode
-    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    # Setup: Local mode with git-exclude (using --git-exclude-ignore flag)
+    # TODO: Update to use --git-exclude-ignore flag
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
     
-    # Test: Git exclude should contain local files
+    # Test: Git exclude should contain local files (when using git-exclude mode)
     assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
     assert_git_exclude_contains "$TEST_TARGET_DIR/$TEST_LOCAL_DIR"
     

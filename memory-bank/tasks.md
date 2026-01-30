@@ -5,7 +5,7 @@
 **Task ID**: local-mode-default-switch
 **Title**: Make Hook-Based Ignore the Default Local Mode
 **Complexity**: Level 2
-**Status**: Planning Complete
+**Status**: REFLECT Complete
 **Branch**: `local-mode-fix`
 
 ## Description
@@ -137,13 +137,13 @@ None - this is a straightforward flag/default swap with well-defined behavior.
 
 ## Definition of Done
 
-- [ ] Hook-based mode is default for `init --local`
-- [ ] `--git-exclude-ignore` flag available for legacy behavior
-- [ ] `--hook-based-ignore` flag accepted as no-op (backwards compat)
-- [ ] Users can run `init --local` to convert existing git-exclude mode to hook-based
-- [ ] All existing tests updated for new defaults
-- [ ] New tests for `--git-exclude-ignore` flag
-- [ ] Help text updated with correct flag names
+- [x] Hook-based mode is default for `init --local`
+- [x] `--git-exclude-ignore` flag available for legacy behavior
+- [x] `--hook-based-ignore` flag accepted as no-op (backwards compat)
+- [x] Users can run `init --local` to convert existing git-exclude mode to hook-based
+- [x] All existing tests updated for new defaults
+- [x] New tests for `--git-exclude-ignore` flag
+- [x] Help text updated with correct flag names
 
 ---
 

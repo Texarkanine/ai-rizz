@@ -52,15 +52,62 @@ test_init_local_with_hook_based_ignore_creates_hook() {
     assert_local_mode_exists
 }
 
-test_init_local_without_flag_uses_git_exclude() {
-    # Test: Init without --hook-based-ignore flag
-    # Expected: Git exclude used, hook may or may not exist (harmless)
+test_init_local_without_flag_uses_hook() {
+    # Test: Init without any flag (default behavior changed to hook-based)
+    # Expected: Hook created, git exclude NOT used (hook is now default)
     
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    
+    # TODO: Update assertions for new default behavior
+    # Verify hook exists and contains marker
+    assertTrue "Pre-commit hook should exist" "[ -f '.git/hooks/pre-commit' ]"
+    assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
+    assertTrue "Hook should be executable" "[ -x '.git/hooks/pre-commit' ]"
+    
+    # Verify git exclude NOT used
+    assert_git_exclude_not_contains "$TEST_LOCAL_MANIFEST_FILE"
+    assert_git_exclude_not_contains "$TEST_TARGET_DIR/$TEST_LOCAL_DIR"
+    
+    # Verify local mode exists
+    assert_local_mode_exists
+}
+
+test_git_exclude_ignore_flag_creates_git_exclude() {
+    # Test: New --git-exclude-ignore flag creates git-exclude mode
+    # Expected: Git exclude used, hook NOT created (legacy behavior)
+    
+    # TODO: Implement test for new --git-exclude-ignore flag
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
     
     # Verify git exclude used
     assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
     assert_git_exclude_contains "$TEST_TARGET_DIR/$TEST_LOCAL_DIR"
+    
+    # Verify hook NOT created (or if it exists, it's harmless)
+    # For strict behavior, we expect no hook section
+    if [ -f .git/hooks/pre-commit ]; then
+        assertFalse "Hook should not contain ai-rizz marker with git-exclude mode" \
+            "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
+    fi
+    
+    # Verify local mode exists
+    assert_local_mode_exists
+}
+
+test_hook_based_ignore_flag_is_noop() {
+    # Test: Legacy --hook-based-ignore flag still accepted (backwards compat)
+    # Expected: Works same as no flag (hook is default now), no error
+    
+    # TODO: Implement test for backwards-compatible --hook-based-ignore flag
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --hook-based-ignore
+    
+    # Verify hook exists (same as default behavior)
+    assertTrue "Pre-commit hook should exist" "[ -f '.git/hooks/pre-commit' ]"
+    assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
+    
+    # Verify git exclude NOT used
+    assert_git_exclude_not_contains "$TEST_LOCAL_MANIFEST_FILE"
+    assert_git_exclude_not_contains "$TEST_TARGET_DIR/$TEST_LOCAL_DIR"
     
     # Verify local mode exists
     assert_local_mode_exists
@@ -70,13 +117,14 @@ test_init_local_without_flag_uses_git_exclude() {
 # MODE SWITCHING TESTS
 # ============================================================================
 
-test_switch_from_regular_to_hook_based_mode() {
-    # Setup: Regular local mode
-    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+test_switch_from_git_exclude_to_hook_based_mode() {
+    # Setup: Git-exclude local mode (using new --git-exclude-ignore flag)
+    # TODO: Update to use --git-exclude-ignore flag for setup
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
     assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
     
-    # Test: Switch to hook-based mode
-    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --hook-based-ignore
+    # Test: Re-init without flag (switches to default hook-based mode)
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     
     # Expected: Git exclude removed, hook created
     assert_git_exclude_not_contains "$TEST_LOCAL_MANIFEST_FILE"
@@ -85,13 +133,14 @@ test_switch_from_regular_to_hook_based_mode() {
     assertTrue "Hook should contain marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
 }
 
-test_switch_from_hook_based_to_regular_mode() {
-    # Setup: Hook-based local mode
-    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --hook-based-ignore
+test_switch_from_hook_based_to_git_exclude_mode() {
+    # Setup: Hook-based local mode (default now, no flag needed)
+    # TODO: Update - no flag needed for hook-based (it's default)
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     assertTrue "Hook should exist" "[ -f '.git/hooks/pre-commit' ]"
     
-    # Test: Switch to regular mode
-    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    # Test: Switch to git-exclude mode using new flag
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
     
     # Expected: Git exclude added, hook removed
     assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
@@ -219,8 +268,9 @@ test_git_exclude_protects_local_commands() {
     # Test: Git exclude mode should protect local commands
     # Expected: .cursor/commands/local/ should be in git exclude
     
-    # Setup: Regular local mode (git exclude, NOT hook-based)
-    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    # Setup: Git-exclude local mode (using --git-exclude-ignore flag)
+    # TODO: Update to use --git-exclude-ignore flag
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
     cmd_add_rule "command1.md" --local
     
     # Verify command deployed
@@ -237,8 +287,9 @@ test_git_exclude_removes_local_commands_on_deinit() {
     # Test: Deinit should remove commands directory from git exclude
     # Expected: .cursor/commands/local/ removed from git exclude
     
-    # Setup: Regular local mode
-    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    # Setup: Git-exclude local mode (using --git-exclude-ignore flag)
+    # TODO: Update to use --git-exclude-ignore flag
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
     cmd_add_rule "command1.md" --local
     assert_git_exclude_contains ".cursor/commands/local"
     

@@ -3,12 +3,12 @@
 ## Current Focus
 
 **Task**: Make Hook-Based Ignore the Default Local Mode
-**Phase**: Planning Complete → Ready for BUILD
+**Phase**: REFLECT Complete → Ready for ARCHIVE
 **Branch**: `local-mode-fix`
 
 ## Working On
 
-Planning complete. Ready to begin TDD implementation.
+Reflection complete. Ready to archive and commit.
 
 ## Recent Decisions
 
@@ -18,24 +18,25 @@ Planning complete. Ready to begin TDD implementation.
 - `--hook-based-ignore` kept as no-op for backwards compatibility
 - No creative phases needed - straightforward flag/default swap
 
-## Key Implementation Details
+## Key Changes Made
 
-**Files to Modify:**
-1. `ai-rizz` - Main script (~6 locations)
-2. `tests/unit/test_hook_based_local_mode.test.sh` - Update/add tests
-3. `tests/unit/test_initialization.test.sh` - Update assertions
+**Code Changes in `ai-rizz`:**
+1. Changed default `ci_hook_based=true` (was false)
+2. Added `--git-exclude-ignore` flag parsing
+3. Made `--hook-based-ignore` a no-op (backwards compat)
+4. Updated `lazy_init_mode()` to use hook-based by default
+5. Updated "same mode re-init" logic for hook-based mode
+6. Updated help text
 
-**Critical Changes:**
-- Line ~2491: `ci_hook_based=false` → `ci_hook_based=true`
-- Add `--git-exclude-ignore` flag parsing
-- Update help text (line ~4588)
+**Test Updates:**
+- Updated 4 test files for new defaults
+- Added 2 new tests for `--git-exclude-ignore` flag
+- All 30 tests pass
 
 ## Next Steps
 
-1. Write failing tests first (TDD)
-2. Implement code changes
-3. Verify all tests pass
-4. Run full test suite
+1. Run `/niko/reflect` to document completion
+2. Commit changes
 
 ---
 

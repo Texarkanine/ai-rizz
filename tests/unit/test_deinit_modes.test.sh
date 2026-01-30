@@ -98,8 +98,8 @@ test_deinit_single_mode_direct() {
 }
 
 test_deinit_local_removes_git_excludes() {
-    # Setup: Local mode
-    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    # Setup: Local mode with git-exclude (using --git-exclude-ignore flag)
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
     cmd_add_rule "rule1.mdc" --local
     assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
     
@@ -112,8 +112,8 @@ test_deinit_local_removes_git_excludes() {
 }
 
 test_deinit_commit_preserves_git_excludes() {
-    # Setup: Both modes
-    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    # Setup: Both modes with git-exclude for local mode
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
     cmd_add_rule "rule1.mdc" --commit
     assert_git_exclude_contains "$TEST_LOCAL_MANIFEST_FILE"
     

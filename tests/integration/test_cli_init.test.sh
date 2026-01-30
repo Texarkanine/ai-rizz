@@ -25,7 +25,7 @@ tearDown() {
 }
 
 # Test: ai-rizz init <repo> --local
-# Expected: Creates local mode structure with proper git excludes
+# Expected: Creates local mode structure with hook-based mode (default)
 test_init_local_mode_creates_proper_structure() {
     # Execute init command
     run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
@@ -39,9 +39,9 @@ test_init_local_mode_creates_proper_structure() {
     assertFalse "Commit manifest should not exist" "[ -f 'ai-rizz.skbd' ]"
     assertFalse "Shared directory should not exist" "[ -d '.cursor/rules/shared' ]"
     
-    # Verify git excludes
-    assert_git_excludes "ai-rizz.local.skbd"
-    assert_git_excludes ".cursor/rules/local"
+    # Verify hook-based mode (default) - hook created, git excludes NOT used
+    assertTrue "Pre-commit hook should exist" "[ -f '.git/hooks/pre-commit' ]"
+    assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
     
     # Verify manifest header (new 4-field format with defaults)
     first_line=$(head -n1 ai-rizz.local.skbd)
@@ -89,7 +89,7 @@ test_init_requires_mode_selection() {
 }
 
 # Test: ai-rizz init <repo> -d custom/path --local
-# Expected: Uses custom target directory
+# Expected: Uses custom target directory with hook-based mode (default)
 test_init_custom_target_directory() {
     custom_dir="custom/rules"
     
@@ -99,7 +99,10 @@ test_init_custom_target_directory() {
     
     # Verify custom directory structure
     assertTrue "Custom local directory should exist" "[ -d '$custom_dir/local' ]"
-    assert_git_excludes "$custom_dir/local"
+    
+    # Verify hook-based mode (default) - hook created
+    assertTrue "Pre-commit hook should exist" "[ -f '.git/hooks/pre-commit' ]"
+    assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
     
     # Verify manifest uses custom directory
     first_line=$(head -n1 ai-rizz.local.skbd)
@@ -140,15 +143,15 @@ test_init_twice_same_mode_idempotent() {
     assertTrue "Local directory should still exist" "[ -d '.cursor/rules/local' ]"
     assertFalse "Commit mode should not be created" "[ -f 'ai-rizz.skbd' ]"
     
-    # Verify git excludes still correct
-    assert_git_excludes "ai-rizz.local.skbd"
-    assert_git_excludes ".cursor/rules/local"
+    # Verify hook-based mode still active
+    assertTrue "Pre-commit hook should exist" "[ -f '.git/hooks/pre-commit' ]"
+    assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
 }
 
 # Test: ai-rizz init with different modes
 # Expected: Should create dual mode setup
 test_init_different_modes_creates_dual_mode() {
-    # First init with local mode
+    # First init with local mode (hook-based is default)
     run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
     assertEquals "Local init should succeed" 0 $?
     
@@ -162,9 +165,9 @@ test_init_different_modes_creates_dual_mode() {
     assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
     assertTrue "Shared directory should exist" "[ -d '.cursor/rules/shared' ]"
     
-    # Verify git excludes correct for dual mode
-    assert_git_excludes "ai-rizz.local.skbd"
-    assert_git_excludes ".cursor/rules/local"
+    # Verify hook-based mode for local, no excludes for commit
+    assertTrue "Pre-commit hook should exist" "[ -f '.git/hooks/pre-commit' ]"
+    assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
     assert_git_tracks "ai-rizz.skbd"
     assert_git_tracks ".cursor/rules/shared"
 }

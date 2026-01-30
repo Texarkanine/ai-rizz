@@ -87,9 +87,9 @@ test_deinit_commit_mode_only() {
 	assertTrue "Local directory should remain" "[ -d '.cursor/rules/local' ]"
 	assert_rule_deployed ".cursor/rules/local" "rule1"
 	
-	# Verify git excludes still correct for local mode
-	assert_git_excludes "ai-rizz.local.skbd"
-	assert_git_excludes ".cursor/rules/local"
+	# Verify hook-based mode still active for local mode (default)
+	assertTrue "Pre-commit hook should exist" "[ -f '.git/hooks/pre-commit' ]"
+	assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
 }
 
 # Test: ai-rizz deinit --all
@@ -318,9 +318,9 @@ test_deinit_commit_preserves_local() {
 	assertTrue "Local directory should be preserved" "[ -d '.cursor/rules/local' ]"
 	assert_rule_deployed ".cursor/rules/local" "rule1"
 	
-	# Verify git excludes maintained for preserved local mode
-	assert_git_excludes "ai-rizz.local.skbd"
-	assert_git_excludes ".cursor/rules/local"
+	# Verify hook-based mode still active for preserved local mode
+	assertTrue "Pre-commit hook should exist" "[ -f '.git/hooks/pre-commit' ]"
+	assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
 }
 
 # Test: ai-rizz deinit all modes removes everything

@@ -18,14 +18,16 @@ Existing partial work on `skill-support` branch:
 
 Next: PLAN phase
 
-### 2026-02-20: PLAN + PREFLIGHT - COMPLETE
+### 2026-02-20: PLAN - COMPLETE (revised)
 
-**Plan summary:**
-1. Fix `is_skill()` — add `rulesets/<r>/skills/<name>` case (within `${RULESETS_PATH}/*` branch, add `*/skills/*` match before the `*/*` rejection)
-2. Fix `copy_entry_to_target()` — in ruleset directory processing, add loop over `skills/` subdir to copy skill dirs to `.cursor/skills/<mode>/`
-3. Fix `cmd_list()` — in ruleset tree rendering, add `skills/` as a magic special directory (expansion with trailing `/` on skill names)
-4. Tests: `test_skill_detection.test.sh`, `test_skill_sync.test.sh`, `test_skill_list.test.sh`
+Full component analysis and implementation plan written. Key findings:
 
-Preflight: **PASS** (one non-blocking advisory)
+- **4 detection paths**: 3 standalone (already working), 1 embedded in rulesets (the gap)
+- **3 functions to modify**: `is_skill()`, `copy_entry_to_target()`, `cmd_list()`
+- **No open questions**: `commands/` magic subdir pattern is established; skills follows it
+- **14 behaviors** to verify across **3 new test files**
+- **8 TDD steps**: stubs → tests (fail) → implement (pass) → regression
+- Embedded skills deployed via directory walk in CETT, not via `is_skill()`
+- `is_skill_installed()` needs extension to check parent ruleset entries for embedded skills
 
-Next: BUILD phase (operator must run /build)
+Next: PREFLIGHT phase

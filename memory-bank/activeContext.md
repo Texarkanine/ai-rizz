@@ -6,18 +6,17 @@
 
 ## Phase
 
-`PREFLIGHT - COMPLETE (PASS)`
+`PLAN - COMPLETE`
 
 ## What Was Done
 
-- Memory bank initialized (persistent + ephemeral files created)
-- Complexity analysis: Level 3 determined
-- Existing partial implementation reviewed:
-  - `is_skill()` exists but missing `rulesets/<ruleset>/skills/<name>` case
-  - `copy_entry_to_target()` handles standalone skill entries but NOT skills inside rulesets
-  - `cmd_list()` shows skills from rules/ and rulesets/skills/ and symlinks but NOT from rulesets/<r>/skills/
-  - No tests exist for any skill functionality
+- Full component analysis of `is_skill()`, `copy_entry_to_target()`, `cmd_list()` completed
+- No open questions identified — `commands/` magic subdir pattern is established and skills follows it exactly
+- Test plan: 14 behaviors across 3 new test files (detection, sync, list display)
+- Implementation plan: 8 ordered steps following TDD (stubs → tests → code → regression)
+- Key insight: embedded skills (case 4) are discovered by directory walk in `copy_entry_to_target()`, not via `is_skill()` — but `is_skill()` still needs the case for validation completeness
+- Key insight: installed status for embedded skills requires checking parent ruleset manifest entries
 
 ## Next Step
 
-Complete PLAN phase, then run PREFLIGHT, then wait for operator to initiate BUILD.
+Run PREFLIGHT, then wait for operator to initiate BUILD.

@@ -87,3 +87,12 @@ Next: QA phase
 * No substantive issues found
 
 Next: REFLECT phase
+
+### 2026-02-20: REFLECT - COMPLETE
+
+* Work completed
+    - Full lifecycle reflection written to `memory-bank/reflection/reflection-skill-support.md`
+    - Two plan gaps identified: `cmd_add_rule()` add-time detection (unplanned gap fixed during build) and `cmd_deinit()` cleanup (caught at QA)
+    - Key insights documented for future directory-management features: explicit deinit checklist, CLI flow trace in preflight
+
+Next: ARCHIVE phase (operator must run /archive)

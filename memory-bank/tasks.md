@@ -213,3 +213,4 @@ No new technology — validation not required.
 - [x] Preflight
 - [x] Build
 - [x] QA (third pass — PASS)
+- [x] Reflect

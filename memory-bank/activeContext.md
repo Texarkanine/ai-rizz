@@ -6,7 +6,7 @@
 
 ## Phase
 
-`QA - COMPLETE (PASS)`
+`REFLECT - COMPLETE`
 
 ## What Was Done
 
@@ -41,4 +41,4 @@
 
 ## Next Step
 
-`/reflect` — QA passed. Proceed to reflection phase.
+Run `/archive` to create the archive document and finalize.

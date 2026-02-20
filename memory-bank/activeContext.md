@@ -6,17 +6,20 @@
 
 ## Phase
 
-`PLAN - COMPLETE`
+`PREFLIGHT - COMPLETE (PASS)`
 
 ## What Was Done
 
-- Full component analysis of `is_skill()`, `copy_entry_to_target()`, `cmd_list()` completed
-- No open questions identified — `commands/` magic subdir pattern is established and skills follows it exactly
-- Test plan: 14 behaviors across 3 new test files (detection, sync, list display)
-- Implementation plan: 8 ordered steps following TDD (stubs → tests → code → regression)
-- Key insight: embedded skills (case 4) are discovered by directory walk in `copy_entry_to_target()`, not via `is_skill()` — but `is_skill()` still needs the case for validation completeness
-- Key insight: installed status for embedded skills requires checking parent ruleset manifest entries
+- Plan phase completed with full component analysis, test plan (14 behaviors), and 8-step implementation plan
+- Preflight validation passed all checks:
+  - Convention compliance: PASS
+  - Dependency impact: PASS (only 2 call sites for is_skill)
+  - Conflict detection: PASS (SKILL.md uppercase skip prevents command collision)
+  - Completeness: PASS (all requirements mapped)
+  - Integration elegance: ADVISORY (tree rendering consistency)
+- Plan correction applied: `is_skill()` new case must be a separate arm before L290 catch-all, not inside it
+- Decision: embedded skills in rulesets get installed status from their parent ruleset's manifest entry
 
 ## Next Step
 
-Run PREFLIGHT, then wait for operator to initiate BUILD.
+Operator must run `/build` to begin implementation.

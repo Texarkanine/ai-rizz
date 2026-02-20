@@ -127,8 +127,8 @@ None — implementation approach is clear. The `commands/` magic subdirectory pa
 
 ### Step 5: Implement `is_skill()` — add `rulesets/<ruleset>/skills/<name>` case
 
-- Files: `ai-rizz` (L290-311, within `"${RULESETS_PATH}"/*)` branch)
-- Changes: Before the `*/*|skills|skills/*` rejection case, add a new match for `*/skills/*` that:
+- Files: `ai-rizz` (new case arm between L289 and L290)
+- Changes: Add a **new case arm** `"${RULESETS_PATH}"/*/skills/*)` BEFORE the catch-all `"${RULESETS_PATH}"/*)` arm. This new arm:
   - Strips prefix to get `<ruleset>/skills/<name>`
   - Validates no further nesting (rejects `*/skills/*/*`)
   - Checks for `SKILL.md`
@@ -182,6 +182,6 @@ No new technology — validation not required.
 - [x] Test planning complete (TDD)
 - [x] Implementation plan complete
 - [x] Technology validation complete
-- [ ] Preflight
+- [x] Preflight
 - [ ] Build
 - [ ] QA

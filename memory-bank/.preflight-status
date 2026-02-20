@@ -4,8 +4,12 @@ Preflight completed: 2026-02-20
 Task: skill-support
 
 All checks passed:
-- Convention compliance: PASS
-- Dependency impact: PASS  
-- Conflict detection: PASS
-- Completeness: PASS
-- Integration elegance: ADVISORY (non-blocking) - is_skill() is correctly complete even for paths not used as standalone manifest entries
+- Convention compliance: PASS — test names, variable prefixes, file locations all align
+- Dependency impact: PASS — only 2 call sites for is_skill(), no unexpected consumers
+- Conflict detection: PASS — SKILL.md uppercase skip prevents command collision; no duplication-in-waiting
+- Completeness: PASS — all 14 requirements mapped to concrete implementation steps
+- Integration elegance: ADVISORY (non-blocking) — tree rendering for skills/ should follow commands/ pattern exactly; ensure both can coexist in same ruleset
+
+Plan correction applied:
+- Step 5: is_skill() new case must be a NEW arm before L290, not inside L290 branch
+  Pattern: "${RULESETS_PATH}"/*/skills/*) — must precede the catch-all "${RULESETS_PATH}"/*)

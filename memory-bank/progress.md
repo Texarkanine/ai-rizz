@@ -31,3 +31,12 @@ Full component analysis and implementation plan written. Key findings:
 - `is_skill_installed()` needs extension to check parent ruleset entries for embedded skills
 
 Next: PREFLIGHT phase
+
+### 2026-02-20: PREFLIGHT - COMPLETE (PASS)
+
+Validated plan against codebase:
+- Convention compliance, dependency impact, conflict detection, completeness: all PASS
+- One plan correction: `is_skill()` new case must be a separate arm `"${RULESETS_PATH}"/*/skills/*)` before the catch-all `"${RULESETS_PATH}"/*)` arm at L290
+- Advisory: `skills/` tree rendering in `cmd_list()` should follow `commands/` pattern; ensure both coexist in same ruleset
+
+Next: BUILD phase (operator must run /build)

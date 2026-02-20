@@ -6,7 +6,7 @@
 # add/sync operations for both standalone skills (manifest entries) and
 # embedded skills (inside rulesets' skills/ subdir).
 #
-# Test Coverage (behaviors 8-15, 22-23 from the skill-support plan):
+# Test Coverage (behaviors 8-15, 22-27 from the skill-support plan):
 #   8.  Standalone skill (rules/<name> in manifest) copied to .cursor/skills/<mode>/<name>/
 #   9.  Standalone skill contents preserved (SKILL.md + other files all copied)
 #   10. Ruleset with skills/<name>/SKILL.md → skill copied to .cursor/skills/<mode>/<name>/
@@ -17,6 +17,10 @@
 #   15. Ruleset with .mdc rules, .md commands, and skills/ → all three types deployed
 #   22. Skills directory cleared and rebuilt on sync (standalone skills re-deployed)
 #   23. Embedded skills re-deployed when parent ruleset is synced
+#   24. Deinit --local removes .cursor/skills/local/
+#   25. Deinit --commit removes .cursor/skills/shared/
+#   26. Deinit --global removes GLOBAL_SKILLS_DIR
+#   27. Standalone skill with symlink pointing outside repo is NOT deployed (security)
 #
 # Dependencies: shunit2, common test utilities
 # Usage: sh test_skill_sync.test.sh
@@ -381,20 +385,58 @@ test_deinit_commit_removes_skills_dir() {
 test_deinit_global_removes_skills_dir() {
 	# When deinit --global runs, the global skills dir (${GLOBAL_SKILLS_DIR})
 	# must be removed alongside GLOBAL_RULES_DIR and GLOBAL_COMMANDS_DIR.
-	# (HOME is overridden by the test framework so this is safe to run.)
+	# Uses cmd_add_rule --global to exercise the real deploy path (consistent
+	# with local/commit counterparts), rather than manually planting the dir.
+	# HOME is overridden by the test framework so this is safe to run.
+	mkdir -p "${REPO_DIR}/rules/my-skill"
+	echo "# My Skill" > "${REPO_DIR}/rules/my-skill/SKILL.md"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add skill" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
 	cmd_init "${TEST_SOURCE_REPO}" -d ".cursor/rules" --global
 	init_global_paths
-
-	# Plant a deployed skill dir to simulate a previously-synced skill
-	mkdir -p "${GLOBAL_SKILLS_DIR}/my-skill"
-	echo "# My Skill" > "${GLOBAL_SKILLS_DIR}/my-skill/SKILL.md"
-	assertTrue "global skill dir should exist before deinit" \
+	cmd_add_rule "my-skill" --global
+	assertTrue "global skill should be deployed before deinit" \
 		"[ -d '${GLOBAL_SKILLS_DIR}/my-skill' ]"
 
 	cmd_deinit --global -y
 
 	assertFalse "GLOBAL_SKILLS_DIR should be removed after global deinit" \
 		"[ -d '${GLOBAL_SKILLS_DIR}' ]"
+}
+
+# ============================================================================
+# BEHAVIOR 27: Standalone skill with symlink pointing outside repo is NOT deployed
+# ============================================================================
+
+test_standalone_skill_with_external_symlink_not_deployed() {
+	# A standalone skill (rules/<name>/ with SKILL.md) that contains a symlink
+	# pointing outside the repository root must NOT be deployed to .cursor/skills/.
+	# copy_entry_to_target() validates symlinks for ruleset .mdc files; the same
+	# security check must apply to skill directories before cp -rL.
+	outside_dir="${TEST_DIR}/outside"
+	mkdir -p "${outside_dir}"
+	echo "sensitive data" > "${outside_dir}/secret.txt"
+
+	mkdir -p "${REPO_DIR}/rules/malicious-skill"
+	echo "# Malicious Skill" > "${REPO_DIR}/rules/malicious-skill/SKILL.md"
+	# Symlink inside the skill dir that points outside the repo
+	ln -s "${outside_dir}/secret.txt" "${REPO_DIR}/rules/malicious-skill/secret.txt"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add skill with external symlink" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+
+	cmd_add_rule "malicious-skill" --commit
+
+	assertFalse "Skill with external symlink must NOT be deployed" \
+		"[ -d '.cursor/skills/shared/malicious-skill' ]"
 }
 
 # Load and run shunit2

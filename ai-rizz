@@ -4616,8 +4616,38 @@ copy_entry_to_target() {
 		# Check if this directory is a standalone skill (rules/<name>/ with SKILL.md)
 		if [ -n "${cett_mode}" ] && [ "$(is_skill "${cett_repo_dir}" "${cett_entry}")" = "true" ]; then
 			# Skill: copy the whole directory to .cursor/skills/<mode>/<name>/
-			cett_skills_target=$(get_skills_target_dir "${cett_mode}")
+			# Security: validate any symlinks inside the skill dir before copying.
+			# cp -rL follows all symlinks; a symlink pointing outside the repo
+			# could copy sensitive files from the host filesystem. Matching the
+			# security posture applied to ruleset .mdc symlinks (see below).
 			cett_skill_name=$(basename "${cett_source_path}")
+			cett_bad_slink=false
+			cett_slink_temp=$(mktemp)
+			find "${cett_source_path}" -type l > "${cett_slink_temp}" 2>/dev/null
+			while IFS= read -r cett_slink; do
+				[ -n "${cett_slink}" ] || continue
+				cett_slink_resolved=$(_readlink_f "${cett_slink}")
+				if [ -z "${cett_slink_resolved}" ]; then
+					warn "Skipping skill ${cett_skill_name}: failed to resolve symlink: ${cett_slink}"
+					cett_bad_slink=true
+					break
+				fi
+				case "${cett_slink_resolved}" in
+					"${cett_repo_dir}"/*)
+						# Symlink stays within repo — safe
+						;;
+					*)
+						warn "Skipping skill ${cett_skill_name}: symlink points outside repository: ${cett_slink} -> ${cett_slink_resolved}"
+						cett_bad_slink=true
+						break
+						;;
+				esac
+			done < "${cett_slink_temp}"
+			rm -f "${cett_slink_temp}"
+			if [ "${cett_bad_slink}" = "true" ]; then
+				return 0
+			fi
+			cett_skills_target=$(get_skills_target_dir "${cett_mode}")
 			mkdir -p "${cett_skills_target}"
 			cp -rL "${cett_source_path}" "${cett_skills_target}/"
 			return 0

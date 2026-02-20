@@ -1,0 +1,47 @@
+## From: .cursor/rules/ai-rizz-development.mdc
+
+# AI-Rizz Development Practices
+
+## Project Environment
+
+1. **NEVER** test `ai-rizz` commands in the project directory. `ai-rizz` *uses* itself to manage its own rules and you'll break the project configuration. **ALWAY** test `ai-rizz` using the test suites, or in a temporary directory.
+
+## Project-Specific Testing Standards
+
+1. **Test Execution**: Always run tests with `make test` for consistency. Individual test suites can be run directly for debugging only.
+    - all tests: `make test`
+    - single test: `./tests/unit/test_conflict_resolution.sh`
+    - single test, verbose: `VERBOSE_TESTS=true ./tests/unit/test_conflict_resolution.sh`
+        - there is NO more verbosity than this. You cannot run an individual test. If you have the output of a test suite run like the above, there is NO POINT in trying to run it in other ways. Add verbosity to the test suite, or modify the codebase. Do not keep running the tests and grepping for different things.
+        - **NEVER** waste time doing this: `VERBOSE_TESTS=true ./tests/integration/test_envvar_fallbacks.test.sh | grep -B5 -A5 "ASSERT.*expected"`; just read the regular test suite output by running as shown for "single test, verbose".
+
+2. **Test Environment Setup**: 
+   - Set git user and email in all dummy repositories used for testing
+   - Use `git commit --no-gpg-sign` in test environments
+
+3. **Test Output Management**: 
+   - Don't proactively truncate test output without understanding length first
+   - Run tests once to gauge output length before deciding on truncation
+
+## Function Documentation Standards
+
+For ai-rizz's complex command functions, ensure documentation includes:
+
+1. **Summary Bullet Points**: Long functions like `cmd_init` and `cmd_list` need summary bullet points explaining their primary purpose
+2. **Flag Documentation**: All `cmd_xxx` functions must document which flags they respond to (since they're user-interface functions)
+3. **Return Value Clarity**: Use shell conventions (0/1 for success/failure) not "TRUE/FALSE" in documentation
+4. **Complexity Explanation**: When describing complex logic, explain the value provided by the complexity, not just that "it's complex"
+
+## User Interface Patterns
+
+1. **Argument Ordering**: Support flexible argument ordering where reasonable (e.g., `ai-rizz add --local rule foo` and `ai-rizz add rule foo --local`)
+
+## Shell Scripting Specifics
+
+1. **Subshell Avoidance**: Avoid subshells when variable scope matters - use temporary files or other patterns instead
+2. **Variable Scope**: Continue using function-specific prefixes for all local variables (already established pattern)
+
+## Error Message Standards
+
+1. **Actionable Errors**: Error messages should include copy-pasteable fix commands when possible. If not possible, they should at least guide the user closer to a resolution.
+2. **Manifest Integrity**: Use the enhanced error format that shows both repositories and provides three clear resolution options

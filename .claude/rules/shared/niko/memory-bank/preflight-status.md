@@ -1,0 +1,16 @@
+---
+paths:
+  - memory-bank/.preflight_status
+---
+
+## From: .cursor/rules/shared/niko/memory-bank/preflight-status.mdc
+
+# Preflight Status
+
+The preflight status file is a simple text file used to track the status of the preflight analysis phase of a task.
+
+The preflight status file is stored in the `memory-bank/.preflight_status` file.
+
+If pre-flight checks pass, the file contains the text `PASS`.
+
+If pre-flight checks fail, the file should contain the text `FAIL`.

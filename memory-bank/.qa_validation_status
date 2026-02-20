@@ -1,0 +1,5 @@
+PASS
+task: skill-support
+date: 2026-02-20
+tests: 36/36 (26 unit + 7 integration + 3 new skill sync behaviors)
+trivial-fixes: 1 (cmd_deinit confirmation message now lists skills dirs alongside commands dirs)

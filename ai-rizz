@@ -3043,13 +3043,13 @@ cmd_deinit() {
 	# Build confirmation message
 	cd_items_to_remove=""
 	if [ "${cd_remove_local}" = "true" ] && [ "$(is_mode_active local)" = "true" ]; then
-		cd_items_to_remove="${cd_items_to_remove} ${LOCAL_MANIFEST_FILE} ${TARGET_DIR}/${LOCAL_DIR} .cursor/commands/${LOCAL_DIR}"
+		cd_items_to_remove="${cd_items_to_remove} ${LOCAL_MANIFEST_FILE} ${TARGET_DIR}/${LOCAL_DIR} .cursor/commands/${LOCAL_DIR} .cursor/skills/${LOCAL_DIR}"
 	fi
 	if [ "${cd_remove_commit}" = "true" ] && [ "$(is_mode_active commit)" = "true" ]; then
-		cd_items_to_remove="${cd_items_to_remove} ${COMMIT_MANIFEST_FILE} ${TARGET_DIR}/${SHARED_DIR} .cursor/commands/${SHARED_DIR}"
+		cd_items_to_remove="${cd_items_to_remove} ${COMMIT_MANIFEST_FILE} ${TARGET_DIR}/${SHARED_DIR} .cursor/commands/${SHARED_DIR} .cursor/skills/${SHARED_DIR}"
 	fi
 	if [ "${cd_remove_global}" = "true" ] && [ "$(is_mode_active global)" = "true" ]; then
-		cd_items_to_remove="${cd_items_to_remove} ${GLOBAL_MANIFEST_FILE} ${GLOBAL_RULES_DIR} ${GLOBAL_COMMANDS_DIR}"
+		cd_items_to_remove="${cd_items_to_remove} ${GLOBAL_MANIFEST_FILE} ${GLOBAL_RULES_DIR} ${GLOBAL_COMMANDS_DIR} ${GLOBAL_SKILLS_DIR}"
 	fi
 	
 	# Confirm deletion

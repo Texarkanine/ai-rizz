@@ -6,7 +6,7 @@
 
 ## Phase
 
-`BUILD (QA rework #2) - COMPLETE (PASS)`
+`QA - COMPLETE (PASS)`
 
 ## What Was Done
 
@@ -41,4 +41,4 @@
 
 ## Next Step
 
-Run `/qa` to re-run QA phase.
+`/reflect` — QA passed. Proceed to reflection phase.

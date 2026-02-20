@@ -6,25 +6,26 @@
 
 ## Phase
 
-`PREFLIGHT - COMPLETE (PASS)`
+`BUILD - COMPLETE (PASS)`
 
 ## What Was Done
 
-- Reset ai-rizz to main (stripped previous incorrect skill implementation)
-- Rewrote plan with corrected two-path design:
-  - `rules/<skill-name>/SKILL.md` — standalone skill (manifest entry)
-  - `rulesets/<ruleset>/skills/<skill-name>/SKILL.md` — embedded in ruleset (discovered during sync)
-  - NOT valid: `rulesets/skills/<name>`, `rulesets/<name>` symlink-to-skill
-- Updated projectbrief.md and systemPatterns.md to reflect correct design
-- Preflight passed all checks; insertion points verified against clean codebase
-- Plan refinements: standalone skill check inside dir branch; embedded skills insertion point clarified
+- Implemented all 10 TDD steps: stubs → failing tests → implementation → full regression pass
+- `is_skill()`: case-pattern detection for standalone (`rules/<name>`) and embedded (`rulesets/<r>/skills/<name>`) skill paths
+- `get_skills_target_dir()`: mode→path mapper analogous to `get_commands_target_dir()`
+- `cmd_add_rule()`: extended to accept skill directories (no-extension name resolves to skill dir check)
+- `copy_entry_to_target()`: standalone skill branch + embedded skills/ subdir walk with `cp -rL`
+- `sync_manifest_to_directory()`: skills dir cleared on sync alongside commands dir
+- `cmd_list()`: "Available skills:" section with glyph status; skills/ magic subdir in ruleset tree
+- 3 new test files (25 tests) + fixed 2 bugs (set -e/grep, double-prefix in test)
+- 33/33 tests pass (26 unit + 7 integration)
 
 ## Decisions
 
-- Previous skill code was based on incorrect design and fully removed (git checkout main -- ai-rizz)
-- Only two skill definition paths are valid (operator directive)
-- Symlinks in rulesets pointing to skill dirs work via normal ruleset symlink mechanism, not special skill detection
+- `cmd_add_rule` was not originally planned to change, but gap discovered: need skill dir detection at add-time
+- `grep -v '^$' || true` required to prevent `set -e` from aborting `cmd_list` when no skills exist in repo
+- Embedded skill installed status determined by checking parent ruleset in manifest (not by direct manifest entry)
 
 ## Next Step
 
-Operator must run `/build` to begin implementation.
+Run `/qa` to begin QA phase.

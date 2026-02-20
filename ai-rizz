@@ -50,6 +50,7 @@ RULESETS_PATH=""                                    # Rulesets path from manifes
 GLOBAL_MANIFEST_FILE=""          # Set to "${HOME}/ai-rizz.skbd" at runtime
 GLOBAL_RULES_DIR=""              # Set to "${HOME}/.cursor/rules/ai-rizz" at runtime
 GLOBAL_COMMANDS_DIR=""           # Set to "${HOME}/.cursor/commands/ai-rizz" at runtime
+GLOBAL_SKILLS_DIR=""             # Set to "${HOME}/.cursor/skills/ai-rizz" at runtime
 
 # Initialize global paths (called after script loading and during tests)
 init_global_paths() {
@@ -57,6 +58,7 @@ init_global_paths() {
 	GLOBAL_MANIFEST_FILE="${HOME}/ai-rizz.skbd"
 	GLOBAL_RULES_DIR="${HOME}/.cursor/rules/ai-rizz"
 	GLOBAL_COMMANDS_DIR="${HOME}/.cursor/commands/ai-rizz"
+	GLOBAL_SKILLS_DIR="${HOME}/.cursor/skills/ai-rizz"
 }
 
 # Initialize global paths on script load
@@ -211,17 +213,77 @@ is_command() {
 #
 get_entity_type() {
 	get_entity="${1}"
-	
+
 	if [ "$(is_command "${get_entity}")" = "true" ]; then
 		echo "command"
 	else
 		echo "rule"
 	fi
-	
+
 	return 0
 }
 
-# Get the commands target directory for a given mode
+# Check if a repository entry is a skill (directory with SKILL.md)
+#
+# A skill is a directory containing SKILL.md at exactly one of two valid paths:
+#   1. rules/<name>/   — standalone skill; exactly one level under rules/, no nesting
+#   2. rulesets/<r>/skills/<name>/ — embedded in a ruleset's magic skills/ subdir;
+#                                    exactly one level under skills/, no nesting
+#
+# Any other path (e.g. rules/a/b, rulesets/skills/name, rulesets/<r>) returns "false".
+#
+# Globals:
+#   RULES_PATH    - Path prefix for rules entries (e.g., "rules")
+#   RULESETS_PATH - Path prefix for ruleset entries (e.g., "rulesets")
+#
+# Arguments:
+#   $1 - Repository directory (path to repo root; used to stat SKILL.md)
+#   $2 - Entry path relative to repository (e.g., "rules/niko-skill")
+#
+# Outputs:
+#   Stdout: "true" if entry is a skill, "false" otherwise
+#
+# Returns:
+#   0 always
+#
+is_skill() {
+	is_repo_dir="${1}"
+	is_entry="${2}"
+
+	case "${is_entry}" in
+		"${RULES_PATH}"/*/*)
+			# Nested path (rules/a/b or deeper) — nesting not allowed for standalone skills
+			echo "false"
+			;;
+		"${RULES_PATH}"/*)
+			# Standalone skill candidate: rules/<name>/ (exactly one level)
+			if [ -f "${is_repo_dir}/${is_entry}/SKILL.md" ]; then
+				echo "true"
+			else
+				echo "false"
+			fi
+			;;
+		"${RULESETS_PATH}"/*/skills/*/*)
+			# Nested path (rulesets/r/skills/a/b or deeper) — nesting not allowed
+			echo "false"
+			;;
+		"${RULESETS_PATH}"/*/skills/*)
+			# Embedded skill candidate: rulesets/<r>/skills/<name>/ (exactly one level under skills/)
+			if [ -f "${is_repo_dir}/${is_entry}/SKILL.md" ]; then
+				echo "true"
+			else
+				echo "false"
+			fi
+			;;
+		*)
+			echo "false"
+			;;
+	esac
+
+	return 0
+}
+
+# Get the skills target directory for a given mode
 #
 # Returns the appropriate .cursor/commands/ subdirectory based on mode.
 # Commands use a parallel structure to rules:
@@ -264,7 +326,54 @@ get_commands_target_dir() {
 			echo ".cursor/commands/${SHARED_DIR}"
 			;;
 	esac
-	
+
+	return 0
+}
+
+# Get the skills target directory for a given mode
+#
+# Returns the appropriate .cursor/skills/ subdirectory based on mode.
+# Skills use a parallel directory structure to rules and commands:
+#   - local:  .cursor/skills/local/
+#   - commit: .cursor/skills/shared/
+#   - global: ~/.cursor/skills/ai-rizz/
+#
+# Globals:
+#   GLOBAL_SKILLS_DIR - Global skills directory (set by init_global_paths)
+#   LOCAL_DIR         - Local mode directory name
+#   SHARED_DIR        - Shared/commit mode directory name
+#
+# Arguments:
+#   $1 - Mode: "local", "commit", or "global"
+#
+# Outputs:
+#   Stdout: Target skills directory path
+#
+# Returns:
+#   0 always
+#
+get_skills_target_dir() {
+	gstd_mode="${1}"
+
+	case "${gstd_mode}" in
+		local)
+			echo ".cursor/skills/${LOCAL_DIR}"
+			;;
+		commit)
+			echo ".cursor/skills/${SHARED_DIR}"
+			;;
+		global)
+			# Ensure global paths are current
+			init_global_paths
+			echo "${GLOBAL_SKILLS_DIR}"
+			;;
+		*)
+			# Default to shared for unknown modes (shouldn't happen)
+			warn "Unknown mode '${gstd_mode}' in get_skills_target_dir, defaulting to shared"
+			echo ".cursor/skills/${SHARED_DIR}"
+			;;
+	esac
+
 	return 0
 }
 
@@ -3334,7 +3443,94 @@ cmd_list() {
 			fi
 		done
 	fi
-	
+	echo ""
+
+	# Display skills from both valid paths, deduplicated by name
+	# Standalone skills: rules/<name>/ directories with SKILL.md
+	# Embedded skills:   rulesets/<r>/skills/<name>/ directories with SKILL.md
+	echo "Available skills:"
+
+	# Collect unique skill names from both paths
+	cl_skill_names=""
+
+	# Standalone skills from rules/<name>/
+	if [ -d "${cl_repo_dir}/${RULES_PATH}" ]; then
+		cl_ssd_temp=$(mktemp)
+		find "${cl_repo_dir}/${RULES_PATH}" -mindepth 1 -maxdepth 1 -type d > "${cl_ssd_temp}" 2>/dev/null
+		while IFS= read -r cl_ssd_dir; do
+			if [ -n "${cl_ssd_dir}" ] && [ -f "${cl_ssd_dir}/SKILL.md" ]; then
+				cl_skill_names="${cl_skill_names}$(basename "${cl_ssd_dir}")
+"
+			fi
+		done < "${cl_ssd_temp}"
+		rm -f "${cl_ssd_temp}"
+	fi
+
+	# Embedded skills from rulesets/<r>/skills/<name>/
+	if [ -d "${cl_repo_dir}/${RULESETS_PATH}" ]; then
+		cl_rsd_temp=$(mktemp)
+		find "${cl_repo_dir}/${RULESETS_PATH}" -mindepth 1 -maxdepth 1 -type d > "${cl_rsd_temp}" 2>/dev/null
+		while IFS= read -r cl_rsd_dir; do
+			if [ -n "${cl_rsd_dir}" ] && [ -d "${cl_rsd_dir}/skills" ]; then
+				cl_emb_temp=$(mktemp)
+				find "${cl_rsd_dir}/skills" -mindepth 1 -maxdepth 1 -type d > "${cl_emb_temp}" 2>/dev/null
+				while IFS= read -r cl_emb_dir; do
+					if [ -n "${cl_emb_dir}" ] && [ -f "${cl_emb_dir}/SKILL.md" ]; then
+						cl_skill_names="${cl_skill_names}$(basename "${cl_emb_dir}")
+"
+					fi
+				done < "${cl_emb_temp}"
+				rm -f "${cl_emb_temp}"
+			fi
+		done < "${cl_rsd_temp}"
+		rm -f "${cl_rsd_temp}"
+	fi
+
+	# Deduplicate and sort
+	cl_skill_names=$(printf '%s' "${cl_skill_names}" | sort -u | grep -v '^$' || true)
+
+	if [ -z "${cl_skill_names}" ]; then
+		echo "  No skills found"
+	else
+		for cl_skill_name in ${cl_skill_names}; do
+			# Determine installed status:
+			# 1. Check standalone path (rules/<name> in manifest)
+			cl_skill_status=$(is_installed "${RULES_PATH}/${cl_skill_name}")
+
+			# 2. If not standalone-installed, check via parent rulesets (embedded)
+			if [ "${cl_skill_status}" = "uninstalled" ] && [ -d "${cl_repo_dir}/${RULESETS_PATH}" ]; then
+				cl_prset_temp=$(mktemp)
+				find "${cl_repo_dir}/${RULESETS_PATH}" -mindepth 1 -maxdepth 1 -type d > "${cl_prset_temp}" 2>/dev/null
+				while IFS= read -r cl_prset_dir; do
+					if [ -n "${cl_prset_dir}" ] && [ -f "${cl_prset_dir}/skills/${cl_skill_name}/SKILL.md" ]; then
+						cl_prset_name=$(basename "${cl_prset_dir}")
+						cl_prset_status=$(is_installed "${RULESETS_PATH}/${cl_prset_name}")
+						if [ "${cl_prset_status}" != "uninstalled" ]; then
+							cl_skill_status="${cl_prset_status}"
+							break
+						fi
+					fi
+				done < "${cl_prset_temp}"
+				rm -f "${cl_prset_temp}"
+			fi
+
+			case "${cl_skill_status}" in
+				committed)
+					printf "  %s %s/\n" "${COMMITTED_GLYPH}" "${cl_skill_name}"
+					;;
+				local)
+					printf "  %s %s/\n" "${LOCAL_GLYPH}" "${cl_skill_name}"
+					;;
+				global)
+					printf "  %s %s/\n" "${GLOBAL_GLYPH}" "${cl_skill_name}"
+					;;
+				*)
+					printf "  %s %s/\n" "${UNINSTALLED_GLYPH}" "${cl_skill_name}"
+					;;
+			esac
+		done
+	fi
+
 	return 0
 }
 
@@ -3488,15 +3684,22 @@ cmd_add_rule() {
 
 	# Process each rule
 	for car_rule in ${car_rules}; do
+		# Reset per-iteration flags
+		car_is_skill=false
+
 		# Handle extension: .mdc for rules, .md for commands
-		# If no extension, try .mdc first, then .md (allows extensionless add)
+		# If no extension, check for skill directory first, then try .mdc/.md
 		case "${car_rule}" in
-			*".mdc"|*".md") 
+			*".mdc"|*".md")
 				car_item="${car_rule}"
-				;;  
-			*) 
-				# Try .mdc (rule) first
-				if [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.mdc" ]; then
+				;;
+			*)
+				# Check if it's a skill directory (rules/<name>/ with SKILL.md)
+				if [ "$(is_skill "${car_repo_dir}" "${RULES_PATH}/${car_rule}")" = "true" ]; then
+					car_item="${car_rule}"
+					car_is_skill=true
+				# Try .mdc (rule) next
+				elif [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.mdc" ]; then
 					car_item="${car_rule}.mdc"
 				# Fall back to .md (command)
 				elif [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.md" ]; then
@@ -3505,25 +3708,33 @@ cmd_add_rule() {
 					# Neither exists - default to .mdc for error message
 					car_item="${car_rule}.mdc"
 				fi
-				;;  
+				;;
 		esac
-		
+
 		car_rule_path="${RULES_PATH}/${car_item}"
-		
-		# Check if rule/command exists in the correct source repo for this mode
-		if ! check_repository_item "${car_rule_path}" "Rule" "file" "${car_repo_dir}"; then
-			continue
+
+		# Check if rule/command/skill exists in the correct source repo for this mode
+		if [ "${car_is_skill}" = "true" ]; then
+			if ! check_repository_item "${car_rule_path}" "Skill" "dir" "${car_repo_dir}"; then
+				continue
+			fi
+		else
+			if ! check_repository_item "${car_rule_path}" "Rule" "file" "${car_repo_dir}"; then
+				continue
+			fi
 		fi
-		
+
 		# Check for mode transition and warn if entity is moving between modes
 		car_current_mode=$(get_entity_installed_mode "${car_rule_path}")
 		warn_mode_transition "${car_item}" "${car_current_mode}" "${car_mode}"
-		
-		# Check for downgrade conflicts first
-		if ! check_rule_downgrade_conflict "${car_item}" "${car_mode}"; then
-			continue  # Skip this rule, conflict detected
+
+		# Check for downgrade conflicts (rules/commands only; skills are dirs, not rule files)
+		if [ "${car_is_skill}" != "true" ]; then
+			if ! check_rule_downgrade_conflict "${car_item}" "${car_mode}"; then
+				continue  # Skip this rule, conflict detected
+			fi
 		fi
-		
+
 		# Handle conflict resolution migration using helper function
 		migrate_from_opposite_mode "${car_rule_path}" "${car_mode}" "${car_lazy_init_occurred}"
 
@@ -3531,11 +3742,15 @@ cmd_add_rule() {
 		if [ ! -w "${car_target_dir}" ]; then
 			show_permission_error "${car_target_dir}" "write to"
 		fi
-		
+
 		# Add to target manifest
 		add_manifest_entry_to_file "${car_manifest_file}" "${car_rule_path}"
-		
-		echo "Added rule: ${car_rule_path}"
+
+		if [ "${car_is_skill}" = "true" ]; then
+			echo "Added skill: ${car_rule_path}"
+		else
+			echo "Added rule: ${car_rule_path}"
+		fi
 	done
 	
 	# Sync to update file locations
@@ -4131,6 +4346,16 @@ sync_manifest_to_directory() {
 					find "${smtd_commands_dir}" -type d -empty -delete 2>/dev/null || true
 				fi
 			fi
+
+			# Also clear the corresponding skills directory for this mode
+			# Skills are stored as subdirectories and must be fully removed before rebuild
+			if [ -n "${smtd_mode}" ]; then
+				smtd_skills_dir=$(get_skills_target_dir "${smtd_mode}")
+				if [ -d "${smtd_skills_dir}" ]; then
+					# Remove skill subdirectories (each skill is a directory)
+					find "${smtd_skills_dir}" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} + 2>/dev/null || true
+				fi
+			fi
 			
 			# Migration: Clean up old command structures from prior versions
 			# This handles multiple migration scenarios:
@@ -4358,6 +4583,16 @@ copy_entry_to_target() {
 			cp -L "${cett_source_path}" "${cett_target_directory}/"
 		fi
 	elif [ -d "${cett_source_path}" ]; then
+		# Check if this directory is a standalone skill (rules/<name>/ with SKILL.md)
+		if [ -n "${cett_mode}" ] && [ "$(is_skill "${cett_repo_dir}" "${cett_entry}")" = "true" ]; then
+			# Skill: copy the whole directory to .cursor/skills/<mode>/<name>/
+			cett_skills_target=$(get_skills_target_dir "${cett_mode}")
+			cett_skill_name=$(basename "${cett_source_path}")
+			mkdir -p "${cett_skills_target}"
+			cp -rL "${cett_source_path}" "${cett_skills_target}/"
+			return 0
+		fi
+
 		# Directory (ruleset) - copy .mdc files to rules dir, .md files to commands dir
 		# Handle symlinks and files differently:
 		# - Symlinks: Copy flat (all instances are the same rule)
@@ -4471,8 +4706,23 @@ copy_entry_to_target() {
 					fi
 				fi
 			done < "${cett_cmd_temp_file}"
-			
+
 			rm -f "${cett_cmd_temp_file}"
+
+			# Copy embedded skills from ruleset's skills/ subdir to skills target
+			# Each direct child of skills/ that contains SKILL.md is a skill dir
+			cett_skills_subdir="${cett_source_path}/skills"
+			if [ -d "${cett_skills_subdir}" ]; then
+				cett_skills_target=$(get_skills_target_dir "${cett_mode}")
+				cett_skill_dirs=$(find "${cett_skills_subdir}" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+				for cett_skill_dir in ${cett_skill_dirs}; do
+					# Only copy dirs that have SKILL.md (are valid skills)
+					if [ -f "${cett_skill_dir}/SKILL.md" ]; then
+						mkdir -p "${cett_skills_target}"
+						cp -rL "${cett_skill_dir}" "${cett_skills_target}/"
+					fi
+				done
+			fi
 		fi
 	else
 		warn "Entry not found in repository: ${cett_entry}"

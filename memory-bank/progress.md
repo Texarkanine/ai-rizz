@@ -54,3 +54,23 @@ Actions taken:
 - Preflight passed all 8 checks
 
 Next: BUILD phase (operator must run /build)
+
+### 2026-02-20: BUILD - COMPLETE (PASS)
+
+All 10 implementation steps completed via TDD:
+
+* Work completed
+    - `is_skill()` implemented: case-pattern matching for `rules/<name>` and `rulesets/<r>/skills/<name>` paths
+    - `get_skills_target_dir()` implemented: mode→path mapper
+    - `GLOBAL_SKILLS_DIR` global added
+    - `cmd_add_rule()` extended to handle skill directories (unplanned gap — `rules/<name>` with SKILL.md detected at add-time)
+    - `copy_entry_to_target()` extended: standalone skill branch + embedded skills/ subdir walk
+    - `sync_manifest_to_directory()` extended: skills dir cleared on sync alongside commands dir
+    - `cmd_list()` extended: "Available skills:" section with glyph status; embedded skills check parent ruleset for installed status; skills/ magic subdir in ruleset tree
+    - 3 new test files: `test_skill_detection.test.sh` (9 tests), `test_skill_sync.test.sh` (10 tests), `test_skill_list_display.test.sh` (6 tests)
+* Bugs fixed during build
+    - `grep -v '^$' || true` — prevented `set -e` from aborting `cmd_list` when no skills exist
+    - `cmd_add_rule "installed-skill"` (not `"rules/installed-skill"`) — fixed double-prefix in test
+* Test results: 26/26 unit + 7/7 integration = **33/33 PASS**
+
+Next: QA phase

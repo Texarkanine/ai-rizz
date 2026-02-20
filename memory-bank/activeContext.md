@@ -6,7 +6,7 @@
 
 ## Phase
 
-`BUILD - COMPLETE (PASS) [QA rework]`
+`BUILD (QA rework #2) - COMPLETE (PASS)`
 
 ## What Was Done
 
@@ -32,6 +32,12 @@
 - Test `test_ruleset_tree_expands_skills_subdir` tightened: now greps for `skill-one`/`skill-two` without trailing `/` (tree format) rather than checking the whole output
 - Trivial fix: `get_commands_target_dir()` docstring first line had "skills" instead of "commands"
 - 33/33 tests pass
+
+## QA Rework #2
+
+- `cmd_deinit()` now removes skills dirs alongside commands dirs for all three modes
+- 3 new tests added to `test_skill_sync.test.sh`: behaviors 24/25/26 (local/commit/global deinit)
+- 36/36 tests pass (29 unit + 7 integration)
 
 ## Next Step
 

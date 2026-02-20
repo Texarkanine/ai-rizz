@@ -3078,9 +3078,10 @@ cmd_deinit() {
 		rm -rf "${TARGET_DIR:?}/${LOCAL_DIR}"
 		rm -f "${LOCAL_MANIFEST_FILE}"
 		
-		# Also remove local commands directory
+		# Also remove local commands and skills directories
 		rm -rf ".cursor/commands/${LOCAL_DIR}"
-		
+		rm -rf ".cursor/skills/${LOCAL_DIR}"
+
 		# Only clear unified variables if commit mode isn't active
 		if [ "$(is_mode_active commit)" = "false" ]; then
 			SOURCE_REPO=""
@@ -3096,9 +3097,10 @@ cmd_deinit() {
 		rm -rf "${TARGET_DIR:?}/${SHARED_DIR}"
 		rm -f "${COMMIT_MANIFEST_FILE}"
 		
-		# Also remove commit commands directory
+		# Also remove commit commands and skills directories
 		rm -rf ".cursor/commands/${SHARED_DIR}"
-		
+		rm -rf ".cursor/skills/${SHARED_DIR}"
+
 		# Only clear unified variables if local mode isn't active
 		if [ "$(is_mode_active local)" = "false" ]; then
 			SOURCE_REPO=""
@@ -3113,8 +3115,9 @@ cmd_deinit() {
 		# Remove files
 		rm -rf "${GLOBAL_RULES_DIR}"
 		rm -rf "${GLOBAL_COMMANDS_DIR}"
+		rm -rf "${GLOBAL_SKILLS_DIR}"
 		rm -f "${GLOBAL_MANIFEST_FILE}"
-		
+
 		echo "Removed global mode configuration"
 	fi
 	

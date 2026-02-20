@@ -322,6 +322,81 @@ test_embedded_skills_redeployed_on_sync() {
 		"[ -f '.cursor/skills/shared/embedded-skill/SKILL.md' ]"
 }
 
+# ============================================================================
+# BEHAVIOR 24: Deinit local mode removes .cursor/skills/local/
+# ============================================================================
+
+test_deinit_local_removes_skills_dir() {
+	# When deinit --local runs, the skills dir for local mode
+	# (.cursor/skills/local/) must be removed alongside the rules and commands dirs.
+	mkdir -p "${REPO_DIR}/rules/my-skill"
+	echo "# My Skill" > "${REPO_DIR}/rules/my-skill/SKILL.md"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add skill" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --local
+	cmd_add_rule "my-skill" --local
+	assertTrue "skill should be deployed before deinit" \
+		"[ -d '.cursor/skills/local/my-skill' ]"
+
+	cmd_deinit --local -y
+
+	assertFalse ".cursor/skills/local/ should be removed after local deinit" \
+		"[ -d '.cursor/skills/local' ]"
+}
+
+# ============================================================================
+# BEHAVIOR 25: Deinit commit mode removes .cursor/skills/shared/
+# ============================================================================
+
+test_deinit_commit_removes_skills_dir() {
+	# When deinit --commit runs, the skills dir for commit mode
+	# (.cursor/skills/shared/) must be removed alongside the rules and commands dirs.
+	mkdir -p "${REPO_DIR}/rules/my-skill"
+	echo "# My Skill" > "${REPO_DIR}/rules/my-skill/SKILL.md"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add skill" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+	cmd_add_rule "my-skill" --commit
+	assertTrue "skill should be deployed before deinit" \
+		"[ -d '.cursor/skills/shared/my-skill' ]"
+
+	cmd_deinit --commit -y
+
+	assertFalse ".cursor/skills/shared/ should be removed after commit deinit" \
+		"[ -d '.cursor/skills/shared' ]"
+}
+
+# ============================================================================
+# BEHAVIOR 26: Deinit global mode removes GLOBAL_SKILLS_DIR
+# ============================================================================
+
+test_deinit_global_removes_skills_dir() {
+	# When deinit --global runs, the global skills dir (${GLOBAL_SKILLS_DIR})
+	# must be removed alongside GLOBAL_RULES_DIR and GLOBAL_COMMANDS_DIR.
+	# (HOME is overridden by the test framework so this is safe to run.)
+	cmd_init "${TEST_SOURCE_REPO}" -d ".cursor/rules" --global
+	init_global_paths
+
+	# Plant a deployed skill dir to simulate a previously-synced skill
+	mkdir -p "${GLOBAL_SKILLS_DIR}/my-skill"
+	echo "# My Skill" > "${GLOBAL_SKILLS_DIR}/my-skill/SKILL.md"
+	assertTrue "global skill dir should exist before deinit" \
+		"[ -d '${GLOBAL_SKILLS_DIR}/my-skill' ]"
+
+	cmd_deinit --global -y
+
+	assertFalse "GLOBAL_SKILLS_DIR should be removed after global deinit" \
+		"[ -d '${GLOBAL_SKILLS_DIR}' ]"
+}
+
 # Load and run shunit2
 # shellcheck disable=SC1090
 . "$(dirname "$0")/../../shunit2"

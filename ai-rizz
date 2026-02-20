@@ -1188,7 +1188,8 @@ update_git_exclude() {
 
 # Setup git excludes for local mode
 #
-# Adds local manifest, rules directory, and commands directory to git excludes.
+# Adds local manifest, rules directory, commands directory, and skills directory
+# to git excludes.
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename to exclude
@@ -1205,15 +1206,17 @@ update_git_exclude() {
 #
 setup_local_mode_excludes() {
 	slme_target_dir="${1}"
-	
+
 	update_git_exclude "${LOCAL_MANIFEST_FILE}" "add"
 	update_git_exclude "${slme_target_dir}/${LOCAL_DIR}" "add"
 	update_git_exclude ".cursor/commands/${LOCAL_DIR}" "add"
+	update_git_exclude ".cursor/skills/${LOCAL_DIR}" "add"
 }
 
 # Remove all local mode excludes
 #
-# Removes local manifest, rules directory, and commands directory from git excludes.
+# Removes local manifest, rules directory, commands directory, and skills directory
+# from git excludes.
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename to unexclude
@@ -1230,10 +1233,11 @@ setup_local_mode_excludes() {
 #
 remove_local_mode_excludes() {
 	rlme_target_dir="${1}"
-	
+
 	update_git_exclude "${LOCAL_MANIFEST_FILE}" "remove"
 	update_git_exclude "${rlme_target_dir}/${LOCAL_DIR}" "remove"
 	update_git_exclude ".cursor/commands/${LOCAL_DIR}" "remove"
+	update_git_exclude ".cursor/skills/${LOCAL_DIR}" "remove"
 }
 
 # Check if hook-based mode is active
@@ -1318,7 +1322,7 @@ TARGET_DIR=$(head -n1 "$MANIFEST_PATH" 2>/dev/null | cut -f2)
 [ -z "$TARGET_DIR" ] && exit 0
 
 # Unstage local files (safe even if already ignored)
-git reset HEAD -- "$TARGET_DIR/local/" "$LOCAL_MANIFEST" ".cursor/commands/local/" 2>/dev/null || true
+git reset HEAD -- "$TARGET_DIR/local/" "$LOCAL_MANIFEST" ".cursor/commands/local/" ".cursor/skills/local/" 2>/dev/null || true
 # END ai-rizz hook
 HOOKEOF
 )
@@ -1443,6 +1447,9 @@ validate_git_exclude_state() {
 		fi
 		if [ ! -f ".git/info/exclude" ] || ! grep -q "^.cursor/commands/${LOCAL_DIR}$" ".git/info/exclude"; then
 			warn "Local commands directory not in git exclude (should be git-ignored)"
+		fi
+		if [ ! -f ".git/info/exclude" ] || ! grep -q "^.cursor/skills/${LOCAL_DIR}$" ".git/info/exclude"; then
+			warn "Local skills directory not in git exclude (should be git-ignored)"
 		fi
 	fi
 	
@@ -4773,11 +4780,42 @@ copy_entry_to_target() {
 			# Each direct child of skills/ that contains SKILL.md is a skill dir
 			cett_skills_subdir="${cett_source_path}/skills"
 			if [ -d "${cett_skills_subdir}" ]; then
-				cett_skills_target=$(get_skills_target_dir "${cett_mode}")
 				cett_skill_dirs=$(find "${cett_skills_subdir}" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
 				for cett_skill_dir in ${cett_skill_dirs}; do
 					# Only copy dirs that have SKILL.md (are valid skills)
 					if [ -f "${cett_skill_dir}/SKILL.md" ]; then
+						# Security: validate symlinks inside the skill dir before copying.
+						# cp -rL follows all symlinks; a symlink pointing outside the repo
+						# could copy sensitive files from the host filesystem.  Matches the
+						# standalone-skill validation in the rules/<name>/ code path above.
+						cett_emb_skill_name=$(basename "${cett_skill_dir}")
+						cett_emb_bad_slink=false
+						cett_emb_slink_temp=$(mktemp)
+						find "${cett_skill_dir}" -type l > "${cett_emb_slink_temp}" 2>/dev/null
+						while IFS= read -r cett_emb_slink; do
+							[ -n "${cett_emb_slink}" ] || continue
+							cett_emb_resolved=$(_readlink_f "${cett_emb_slink}")
+							if [ -z "${cett_emb_resolved}" ]; then
+								warn "Skipping embedded skill ${cett_emb_skill_name}: failed to resolve symlink: ${cett_emb_slink}"
+								cett_emb_bad_slink=true
+								break
+							fi
+							case "${cett_emb_resolved}" in
+								"${cett_repo_dir}"/*)
+									# Symlink stays within repo — safe
+									;;
+								*)
+									warn "Skipping embedded skill ${cett_emb_skill_name}: symlink points outside repository: ${cett_emb_slink} -> ${cett_emb_resolved}"
+									cett_emb_bad_slink=true
+									break
+									;;
+							esac
+						done < "${cett_emb_slink_temp}"
+						rm -f "${cett_emb_slink_temp}"
+						if [ "${cett_emb_bad_slink}" = "true" ]; then
+							continue
+						fi
+						cett_skills_target=$(get_skills_target_dir "${cett_mode}")
 						mkdir -p "${cett_skills_target}"
 						cp -rL "${cett_skill_dir}" "${cett_skills_target}/"
 					fi

@@ -21,6 +21,7 @@
 #   25. Deinit --commit removes .cursor/skills/shared/
 #   26. Deinit --global removes GLOBAL_SKILLS_DIR
 #   27. Standalone skill with symlink pointing outside repo is NOT deployed (security)
+#   28. Embedded skill with symlink pointing outside repo is NOT deployed (security)
 #
 # Dependencies: shunit2, common test utilities
 # Usage: sh test_skill_sync.test.sh
@@ -436,6 +437,41 @@ test_standalone_skill_with_external_symlink_not_deployed() {
 	cmd_add_rule "malicious-skill" --commit
 
 	assertFalse "Skill with external symlink must NOT be deployed" \
+		"[ -d '.cursor/skills/shared/malicious-skill' ]"
+}
+
+# ============================================================================
+# BEHAVIOR 28: Embedded skill with symlink pointing outside repo is NOT deployed
+# ============================================================================
+
+test_embedded_skill_with_external_symlink_not_deployed() {
+	# An embedded skill inside a ruleset's skills/<name>/ directory that contains
+	# a symlink pointing outside the repository root must NOT be deployed to
+	# .cursor/skills/. This mirrors the standalone-skill symlink check and ensures
+	# the same security validation is applied to the embedded-skill copy path in
+	# copy_entry_to_target(). The malicious symlink is:
+	#   ${REPO_DIR}/rulesets/malicious-ruleset/skills/malicious-skill/secret.txt
+	#   -> outside file
+	outside_dir="${TEST_DIR}/outside"
+	mkdir -p "${outside_dir}"
+	echo "sensitive data" > "${outside_dir}/secret.txt"
+
+	mkdir -p "${REPO_DIR}/rulesets/malicious-ruleset/skills/malicious-skill"
+	echo "# Malicious Embedded Skill" > \
+		"${REPO_DIR}/rulesets/malicious-ruleset/skills/malicious-skill/SKILL.md"
+	# Symlink inside the embedded skill dir that points outside the repo
+	ln -s "${outside_dir}/secret.txt" \
+		"${REPO_DIR}/rulesets/malicious-ruleset/skills/malicious-skill/secret.txt"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add ruleset with embedded skill containing external symlink" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+	cmd_add_ruleset "malicious-ruleset" --commit
+
+	assertFalse "Embedded skill with external symlink must NOT be deployed" \
 		"[ -d '.cursor/skills/shared/malicious-skill' ]"
 }
 

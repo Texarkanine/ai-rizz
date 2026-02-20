@@ -303,6 +303,86 @@ test_git_exclude_removes_local_commands_on_deinit() {
 }
 
 # ============================================================================
+# SKILL PROTECTION TESTS
+# ============================================================================
+
+test_git_exclude_protects_local_skills() {
+	# Test: Git-exclude local mode should protect .cursor/skills/local/ from being
+	# committed, just like .cursor/commands/local/. After cmd_init with
+	# --git-exclude-ignore, .cursor/skills/local should appear in .git/info/exclude.
+
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
+
+	assert_git_exclude_contains ".cursor/skills/local"
+
+	return 0
+}
+
+test_git_exclude_removes_local_skills_on_deinit() {
+	# Test: Deinit in git-exclude local mode should remove .cursor/skills/local/ from
+	# .git/info/exclude, just as it removes the commands and rules entries. After
+	# cmd_deinit, .cursor/skills/local must NOT appear in .git/info/exclude.
+
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
+	assert_git_exclude_contains ".cursor/skills/local"
+
+	cmd_deinit --local -y
+
+	assert_git_exclude_not_contains ".cursor/skills/local"
+
+	return 0
+}
+
+test_hook_unstages_local_skills() {
+	# Test: The pre-commit hook should unstage any staged files under
+	# .cursor/skills/local/, keeping them local-only just as it does for
+	# .cursor/commands/local/. Stage a skills file, run the hook, assert unstaged.
+
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --hook-based-ignore
+
+	# Create a fake skill file and stage it
+	mkdir -p ".cursor/skills/local/my-skill"
+	echo "# My Skill" > ".cursor/skills/local/my-skill/SKILL.md"
+	git add ".cursor/skills/local/my-skill/SKILL.md"
+
+	# Verify file is staged before hook
+	staged_before=$(git diff --cached --name-only)
+	assertTrue "Skill file should be staged before hook" \
+		"echo '$staged_before' | grep -q '.cursor/skills/local/my-skill/SKILL.md'"
+
+	# Run pre-commit hook
+	.git/hooks/pre-commit
+
+	# Expected: Skill file unstaged
+	staged_after=$(git diff --cached --name-only)
+	assertFalse "Local skill file should be unstaged after hook" \
+		"echo '$staged_after' | grep -q '.cursor/skills/local/my-skill/SKILL.md'"
+
+	return 0
+}
+
+test_validate_warns_missing_local_skills_exclude() {
+	# Test: In git-exclude local mode (no hook), if .cursor/skills/local is absent
+	# from .git/info/exclude, validate_git_exclude_state should emit a warning
+	# analogous to the existing warnings for the manifest, rules dir, and commands dir.
+
+	# Set up git-exclude local mode so the mode is active
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
+	assert_git_exclude_contains ".cursor/skills/local"
+
+	# Manually remove the skills entry to simulate a missing exclude
+	sed -i '/^\.cursor\/skills\/local$/d' .git/info/exclude
+
+	# validate_git_exclude_state should warn about the missing entry
+	output=$(validate_git_exclude_state "$TEST_TARGET_DIR" 2>&1)
+
+	assertTrue "Should warn about missing skills exclude entry" \
+		"echo '$output' | grep -q 'skills'"
+
+	return 0
+}
+
+# ============================================================================
 # COMMAND MIGRATION TESTS
 # ============================================================================
 

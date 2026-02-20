@@ -178,14 +178,17 @@ test_ruleset_tree_expands_skills_subdir() {
 
 	output=$(cmd_list)
 
-	# The ruleset tree should show the skills/ directory
-	echo "${output}" | grep -q "skills" || \
-		fail "Ruleset tree should show 'skills' subdir"
-	# The skills/ directory contents should be expanded (both skills visible)
-	echo "${output}" | grep -q "skill-one" || \
-		fail "skill-one should appear in ruleset tree skills/ expansion"
-	echo "${output}" | grep -q "skill-two" || \
-		fail "skill-two should appear in ruleset tree skills/ expansion"
+	# The ruleset tree should show the skills/ directory as a tree entry
+	# (filter "Available skills:" header so we only match the tree line)
+	echo "${output}" | grep -v "Available skills:" | grep -q "skills" || \
+		fail "Ruleset tree should show 'skills' as a tree entry: ${output}"
+	# The skills/ directory contents should be expanded in the tree.
+	# Tree entries show the bare name (no trailing "/"); the skills section
+	# shows "○ skill-one/" so filtering out lines with "/" isolates tree entries.
+	echo "${output}" | grep "skill-one" | grep -qv "/" || \
+		fail "skill-one should appear expanded in ruleset tree (without trailing /): ${output}"
+	echo "${output}" | grep "skill-two" | grep -qv "/" || \
+		fail "skill-two should appear expanded in ruleset tree (without trailing /): ${output}"
 }
 
 # Load and run shunit2

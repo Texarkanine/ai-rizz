@@ -283,7 +283,7 @@ is_skill() {
 	return 0
 }
 
-# Get the skills target directory for a given mode
+# Get the commands target directory for a given mode
 #
 # Returns the appropriate .cursor/commands/ subdirectory based on mode.
 # Commands use a parallel structure to rules:
@@ -3434,6 +3434,33 @@ cmd_list() {
 							printf "    │   %s %s\n" "${cl_cmd_tree_char}" "${cl_cmd_basename}"
 						done < "${cl_temp_cmd_items}"
 						rm -f "${cl_temp_cmd_items}"
+					elif [ "${cl_basename}" = "skills" ] && [ -d "${cl_item}" ]; then
+						# Show skills/ directory (magic subdir — expand one level like commands/)
+						printf "    %s %s\n" "${cl_tree_char}" "${cl_basename}"
+
+						# Show one level of skills/ contents (skill dirs and any other entries)
+						cl_skl_items=$(find "${cl_item}" -maxdepth 1 \( -type f -o -type l -o -type d \) ! -path "${cl_item}" | sort)
+						cl_skl_count=$(echo "${cl_skl_items}" | grep -c . || echo "0")
+						cl_skl_current=0
+						cl_temp_skl_items=$(mktemp)
+						echo "${cl_skl_items}" > "${cl_temp_skl_items}"
+						while IFS= read -r cl_skl_item; do
+							if [ -z "${cl_skl_item}" ]; then
+								continue
+							fi
+							cl_skl_current=$(expr ${cl_skl_current} + 1)
+							cl_skl_basename=$(basename "${cl_skl_item}")
+
+							# Determine tree character for skill item
+							if [ "${cl_skl_current}" -eq "${cl_skl_count}" ]; then
+								cl_skl_tree_char="└──"
+							else
+								cl_skl_tree_char="├──"
+							fi
+
+							printf "    │   %s %s\n" "${cl_skl_tree_char}" "${cl_skl_basename}"
+						done < "${cl_temp_skl_items}"
+						rm -f "${cl_temp_skl_items}"
 					else
 						# Regular item: .mdc file or subdirectory (show name only, no contents)
 						printf "    %s %s\n" "${cl_tree_char}" "${cl_basename}"

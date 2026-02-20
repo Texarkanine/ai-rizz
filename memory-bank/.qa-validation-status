@@ -1,0 +1,7 @@
+FAIL
+
+Step 9 (skills/ magic subdir expansion in ruleset tree) is not implemented.
+The `cmd_list` ruleset tree shows `skills/` as a plain single-line entry (unexpanded).
+Test test_ruleset_tree_expands_skills_subdir passes for wrong reasons (grep matches Available skills: header and skill names in the skills section, not the tree).
+
+Route: FAIL (fixable) → /build

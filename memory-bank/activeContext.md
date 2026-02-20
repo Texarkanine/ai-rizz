@@ -6,7 +6,7 @@
 
 ## Phase
 
-`BUILD - COMPLETE (PASS)`
+`BUILD - COMPLETE (PASS) [QA rework]`
 
 ## What Was Done
 
@@ -26,6 +26,13 @@
 - `grep -v '^$' || true` required to prevent `set -e` from aborting `cmd_list` when no skills exist in repo
 - Embedded skill installed status determined by checking parent ruleset in manifest (not by direct manifest entry)
 
+## QA Rework (Step 9)
+
+- `cmd_list()` ruleset tree now correctly expands `skills/` as a magic subdir (like `commands/`) — shows one level of skill dir names indented under the `skills/` entry
+- Test `test_ruleset_tree_expands_skills_subdir` tightened: now greps for `skill-one`/`skill-two` without trailing `/` (tree format) rather than checking the whole output
+- Trivial fix: `get_commands_target_dir()` docstring first line had "skills" instead of "commands"
+- 33/33 tests pass
+
 ## Next Step
 
-Run `/qa` to begin QA phase.
+Run `/qa` to re-run QA phase.

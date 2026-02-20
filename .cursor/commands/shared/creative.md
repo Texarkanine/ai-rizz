@@ -58,7 +58,7 @@ Load: .cursor/rules/shared/niko/Phases/CreativePhase/creative-phase-algorithm.md
 1. **Verify Planning Complete**
    - Check `memory-bank/tasks.md` for planning completion
    - Verify creative phases are identified
-   - If not complete, return to `/plan` command
+   - If not complete, return to `/niko/plan` command
 
 2. **Identify Creative Phases**
    - Read components flagged for creative work from `memory-bank/tasks.md`
@@ -85,9 +85,9 @@ Load: .cursor/rules/shared/niko/Phases/CreativePhase/creative-phase-algorithm.md
 
 ## Usage
 
-Type `/creative` to start creative design work for components flagged in the plan.
+Type `/niko/creative` to start creative design work for components flagged in the plan.
 
 ## Next Steps
 
-After all creative phases complete, proceed to `/qa` command for technical validation, then `/build` command for implementation.
+After all creative phases complete, proceed to `/niko/qa` command for technical validation, then `/niko/build` command for implementation.
 

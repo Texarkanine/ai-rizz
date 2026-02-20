@@ -1,43 +1,23 @@
-# Memory Bank: Active Context
+# Active Context
 
-## Current Focus
+## Current Task
 
-**Task**: <task name>
-**Phase**: <current phase>
-**Branch**: `<branch-name>`
+**skill-support** — Add complete skill support to ai-rizz
 
-## Working On
+## Phase
 
-<current focus>
+`PREFLIGHT - COMPLETE (PASS)`
 
-## Recent Decisions
+## What Was Done
 
-<recent decisions>
+- Memory bank initialized (persistent + ephemeral files created)
+- Complexity analysis: Level 3 determined
+- Existing partial implementation reviewed:
+  - `is_skill()` exists but missing `rulesets/<ruleset>/skills/<name>` case
+  - `copy_entry_to_target()` handles standalone skill entries but NOT skills inside rulesets
+  - `cmd_list()` shows skills from rules/ and rulesets/skills/ and symlinks but NOT from rulesets/<r>/skills/
+  - No tests exist for any skill functionality
 
-## Next Steps
+## Next Step
 
-<immediate next steps>
-
----
-
-## Context Template
-
-When working on a task, populate this section:
-
-```markdown
-**Task**: <task name>
-**Phase**: <current phase>
-**Branch**: `<branch-name>`
-
-## Working On
-
-<current focus>
-
-## Recent Decisions
-
-<recent decisions>
-
-## Next Steps
-
-<immediate next steps>
-```
+Complete PLAN phase, then run PREFLIGHT, then wait for operator to initiate BUILD.

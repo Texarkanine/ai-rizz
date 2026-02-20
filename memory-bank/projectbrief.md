@@ -7,29 +7,36 @@ As an ai-rizz user, I want skills to be fully supported so that I can manage AI 
 ## Requirements
 
 ### Skill Detection (`is_skill`)
-- `rules/<name>/SKILL.md` → skill (no nesting: `rules/a/b` not a skill)
-- `rulesets/skills/<name>/SKILL.md` → skill (top-level magic dir, no nesting)
-- `rulesets/<ruleset>/skills/<name>/SKILL.md` → skill inside a ruleset's magic `skills/` subdir
-- `rulesets/<name>` as symlink to `rules/<name>` where `SKILL.md` exists → skill
-- No other paths are recognized as skills
+
+Only two places skills may be defined:
+- `rules/<skill-name>/SKILL.md` — standalone skill (no nesting: `rules/a/b` is not a skill)
+- `rulesets/<ruleset-name>/skills/<skill-name>/SKILL.md` — skill inside a ruleset's magic `skills/` subdir
+
+Symlinks inside rulesets may point to `rules/<name>/` directories (same mechanism as rule symlinks), but this is just the normal ruleset symlink pattern — NOT a special skill detection path.
+
+No other paths are recognized as skills. Specifically:
+- `rulesets/skills/<name>` is NOT valid (no top-level magic skills dir in rulesets root)
+- `rulesets/<name>` as symlink to a skill is NOT valid (skills don't live at top-level of rulesets)
 
 ### Skill Deployment
 - Skills are copied as whole directories to `.cursor/skills/<mode>/` via `copy_entry_to_target()`
-- Skills inside a ruleset's `skills/` subdirectory are deployed when the ruleset is added/synced
+- Standalone skills (`rules/<name>`) are manifest entries — deployed directly when added/synced
+- Embedded skills (`rulesets/<r>/skills/<name>`) are deployed as part of their parent ruleset's sync
 - `cp -rL` used to follow symlinks within the skill directory
 
 ### List Display
 - Skills displayed in "Available skills:" section
 - Each skill shown with trailing `/` suffix: `  ○ niko-refresh/`
-- Skills discovered from all four detection paths
+- Skills discovered from both valid paths
 - Installation status glyph: `●` committed, `◐` local, `★` global, `○` uninstalled
+- Ruleset tree rendering shows `skills/` as a magic subdir with expanded contents (like `commands/`)
 
 ### Sync Behavior
 - Skills directory for the mode is cleared and rebuilt on sync (like commands dir)
-- Skills from ruleset `skills/` subdirectory are synced as part of the ruleset sync
+- Embedded skills synced as part of parent ruleset sync
 
 ### No Changes Needed
-- `add rule` / `add ruleset` / `remove rule` / `remove ruleset` CLI surface (manifest entries remain as paths)
+- `add rule` / `add ruleset` / `remove rule` / `remove ruleset` CLI surface
 - Manifest format (existing entries cover skills via their path)
 - Mode logic (local/commit/global)
 

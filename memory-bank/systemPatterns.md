@@ -13,26 +13,21 @@ All routing happens in `copy_entry_to_target()`: file vs directory is branched f
 ## Magic Subdirectories in Rulesets
 
 Rulesets can have special subdirectories whose contents are routed differently:
-- `commands/` — `.md` files copied flat to `.cursor/commands/<mode>/`
-- `skills/` — skill directories (each with `SKILL.md`) copied to `.cursor/skills/<mode>/`
+- `commands/` — `.md` files copied flat to `.cursor/commands/<mode>/` (actually: all `.md` files anywhere in the ruleset are commands, `commands/` is just organizational convention)
+- `skills/` — skill directories (each containing `SKILL.md`) copied to `.cursor/skills/<mode>/`
 
-This is analogous to how `commands/` in a ruleset causes its `.md` files to be treated as commands, `skills/` causes its subdirectories to be treated as skills.
+## Skill Definition Paths
 
-## Skill Discovery Paths
+Skills can be defined in exactly two places:
+1. `rules/<skill-name>/SKILL.md` — standalone skill, one level only, no nesting
+2. `rulesets/<ruleset-name>/skills/<skill-name>/SKILL.md` — embedded in a ruleset's magic `skills/` subdir
 
-Skills can live in four places:
-1. `rules/<name>/SKILL.md` — top-level in rules dir, no nesting
-2. `rulesets/skills/<name>/SKILL.md` — top-level magic skills dir in rulesets
-3. `rulesets/<ruleset>/skills/<name>/SKILL.md` — skills subdir inside a specific ruleset
-4. `rulesets/<name>` as symlink → `rules/<name>` — ruleset-level symlink to a skill
-
-Cases 1, 2, 4 are standalone manifest entries. Case 3 is discovered during ruleset deployment.
+Symlinks in rulesets pointing to `rules/<name>/` work the same as for rules (the normal ruleset symlink mechanism). This is not a separate skill detection path.
 
 ## POSIX-Compliant Local Variable Prefixes
 
 All functions use a function-specific prefix for local variables to avoid subshell scope issues. Examples:
-- `is_skill()` → `is_` prefix
-- `get_skills_target_dir()` → `gstd_` prefix
+- `is_command()` → `ic_` prefix
 - `cmd_add_rule()` → `car_` prefix
 - `copy_entry_to_target()` → `cett_` prefix
 

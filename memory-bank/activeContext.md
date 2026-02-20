@@ -10,15 +10,20 @@
 
 ## What Was Done
 
-- Plan phase completed with full component analysis, test plan (14 behaviors), and 8-step implementation plan
-- Preflight validation passed all checks:
-  - Convention compliance: PASS
-  - Dependency impact: PASS (only 2 call sites for is_skill)
-  - Conflict detection: PASS (SKILL.md uppercase skip prevents command collision)
-  - Completeness: PASS (all requirements mapped)
-  - Integration elegance: ADVISORY (tree rendering consistency)
-- Plan correction applied: `is_skill()` new case must be a separate arm before L290 catch-all, not inside it
-- Decision: embedded skills in rulesets get installed status from their parent ruleset's manifest entry
+- Reset ai-rizz to main (stripped previous incorrect skill implementation)
+- Rewrote plan with corrected two-path design:
+  - `rules/<skill-name>/SKILL.md` — standalone skill (manifest entry)
+  - `rulesets/<ruleset>/skills/<skill-name>/SKILL.md` — embedded in ruleset (discovered during sync)
+  - NOT valid: `rulesets/skills/<name>`, `rulesets/<name>` symlink-to-skill
+- Updated projectbrief.md and systemPatterns.md to reflect correct design
+- Preflight passed all checks; insertion points verified against clean codebase
+- Plan refinements: standalone skill check inside dir branch; embedded skills insertion point clarified
+
+## Decisions
+
+- Previous skill code was based on incorrect design and fully removed (git checkout main -- ai-rizz)
+- Only two skill definition paths are valid (operator directive)
+- Symlinks in rulesets pointing to skill dirs work via normal ruleset symlink mechanism, not special skill detection
 
 ## Next Step
 

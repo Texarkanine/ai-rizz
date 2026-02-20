@@ -40,3 +40,17 @@ Validated plan against codebase:
 - Advisory: `skills/` tree rendering in `cmd_list()` should follow `commands/` pattern; ensure both coexist in same ruleset
 
 Next: BUILD phase (operator must run /build)
+
+### 2026-02-20: PLAN + PREFLIGHT - REDO (corrected design)
+
+Operator identified incorrect design in previous work:
+- `rulesets/skills/<name>` and `rulesets/<name>` symlink-to-skill are NOT valid paths
+- Only two valid paths: `rules/<skill-name>/SKILL.md` and `rulesets/<r>/skills/<name>/SKILL.md`
+
+Actions taken:
+- Reset `ai-rizz` to main (`git checkout main -- ai-rizz`)
+- Rewrote plan from scratch with corrected design (10 steps, 23 behaviors)
+- Updated projectbrief.md and systemPatterns.md
+- Preflight passed all 8 checks
+
+Next: BUILD phase (operator must run /build)

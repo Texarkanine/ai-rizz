@@ -1,15 +1,15 @@
 PASS
 
 Preflight completed: 2026-02-20
-Task: skill-support
+Task: skill-support (corrected plan — reset from main)
 
 All checks passed:
-- Convention compliance: PASS — test names, variable prefixes, file locations all align
-- Dependency impact: PASS — only 2 call sites for is_skill(), no unexpected consumers
-- Conflict detection: PASS — SKILL.md uppercase skip prevents command collision; no duplication-in-waiting
-- Completeness: PASS — all 14 requirements mapped to concrete implementation steps
-- Integration elegance: ADVISORY (non-blocking) — tree rendering for skills/ should follow commands/ pattern exactly; ensure both can coexist in same ruleset
+- Convention compliance: PASS — insertion points, naming, prefixes all align
+- Dependency impact: PASS — no existing skill code; changes are purely additive
+- Conflict detection: PASS — SKILL.md uppercase skip prevents command collision
+- Completeness: PASS — all requirements mapped to concrete steps (23 behaviors, 10 implementation steps)
+- Integration elegance: PASS — skills/ follows established commands/ pattern exactly
 
-Plan correction applied:
-- Step 5: is_skill() new case must be a NEW arm before L290, not inside L290 branch
-  Pattern: "${RULESETS_PATH}"/*/skills/*) — must precede the catch-all "${RULESETS_PATH}"/*)
+Plan refinements applied during preflight:
+- Step 5: Standalone skill check goes inside existing dir branch (first check, before ruleset fallthrough)
+- Step 6: Embedded skills insertion between L4475 and L4476 (inside find-success block)

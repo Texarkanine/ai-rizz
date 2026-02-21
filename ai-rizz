@@ -3370,6 +3370,55 @@ cmd_list() {
 	fi
 	echo ""
 	
+	# Display standalone skills — only skills in rules/<name>/ that can be
+	# individually installed via 'ai-rizz add rule <name>'
+	echo "Available skills:"
+
+	# Collect unique skill names from rules/<name>/ only
+	cl_skill_names=""
+	if [ -d "${cl_repo_dir}/${RULES_PATH}" ]; then
+		cl_ssd_temp=$(mktemp)
+		find "${cl_repo_dir}/${RULES_PATH}" -mindepth 1 -maxdepth 1 -type d > "${cl_ssd_temp}" 2>/dev/null
+		while IFS= read -r cl_ssd_dir; do
+			if [ -n "${cl_ssd_dir}" ] && [ -f "${cl_ssd_dir}/SKILL.md" ]; then
+				cl_skill_names="${cl_skill_names}$(basename "${cl_ssd_dir}")
+"
+			fi
+		done < "${cl_ssd_temp}"
+		rm -f "${cl_ssd_temp}"
+	fi
+
+	# Sort, deduplicate, and iterate using a temp file to preserve names with spaces
+	cl_skl_names_tmp=$(mktemp)
+	printf '%s' "${cl_skill_names}" | sort -u | grep -v '^$' > "${cl_skl_names_tmp}" 2>/dev/null || true
+
+	if [ ! -s "${cl_skl_names_tmp}" ]; then
+		echo "  No skills found"
+	else
+		while IFS= read -r cl_skill_name; do
+			if [ -z "${cl_skill_name}" ]; then
+				continue
+			fi
+			cl_skill_status=$(is_installed "${RULES_PATH}/${cl_skill_name}")
+			case "${cl_skill_status}" in
+				committed)
+					printf "  %s %s/\n" "${COMMITTED_GLYPH}" "${cl_skill_name}"
+					;;
+				local)
+					printf "  %s %s/\n" "${LOCAL_GLYPH}" "${cl_skill_name}"
+					;;
+				global)
+					printf "  %s %s/\n" "${GLOBAL_GLYPH}" "${cl_skill_name}"
+					;;
+				*)
+					printf "  %s %s/\n" "${UNINSTALLED_GLYPH}" "${cl_skill_name}"
+					;;
+			esac
+		done < "${cl_skl_names_tmp}"
+	fi
+	rm -f "${cl_skl_names_tmp}"
+	echo ""
+
 	# Display rulesets
 	echo "Available rulesets:"
 	cl_rulesets=$(find "${cl_repo_dir}/${RULESETS_PATH}" -mindepth 1 -maxdepth 1 -type d | sort 2>/dev/null)
@@ -3495,108 +3544,6 @@ cmd_list() {
 		done
 	fi
 	echo ""
-
-	# Display skills from both valid paths, deduplicated by name
-	# Standalone skills: rules/<name>/ directories with SKILL.md
-	# Embedded skills:   rulesets/<r>/skills/<name>/ directories with SKILL.md
-	echo "Available skills:"
-
-	# Collect unique skill names from both paths
-	cl_skill_names=""
-
-	# Standalone skills from rules/<name>/
-	if [ -d "${cl_repo_dir}/${RULES_PATH}" ]; then
-		cl_ssd_temp=$(mktemp)
-		find "${cl_repo_dir}/${RULES_PATH}" -mindepth 1 -maxdepth 1 -type d > "${cl_ssd_temp}" 2>/dev/null
-		while IFS= read -r cl_ssd_dir; do
-			if [ -n "${cl_ssd_dir}" ] && [ -f "${cl_ssd_dir}/SKILL.md" ]; then
-				cl_skill_names="${cl_skill_names}$(basename "${cl_ssd_dir}")
-"
-			fi
-		done < "${cl_ssd_temp}"
-		rm -f "${cl_ssd_temp}"
-	fi
-
-	# Embedded skills from rulesets/<r>/skills/<name>/
-	if [ -d "${cl_repo_dir}/${RULESETS_PATH}" ]; then
-		cl_rsd_temp=$(mktemp)
-		find "${cl_repo_dir}/${RULESETS_PATH}" -mindepth 1 -maxdepth 1 -type d > "${cl_rsd_temp}" 2>/dev/null
-		while IFS= read -r cl_rsd_dir; do
-			if [ -n "${cl_rsd_dir}" ] && [ -d "${cl_rsd_dir}/skills" ]; then
-				cl_emb_temp=$(mktemp)
-				find "${cl_rsd_dir}/skills" -mindepth 1 -maxdepth 1 -type d > "${cl_emb_temp}" 2>/dev/null
-				while IFS= read -r cl_emb_dir; do
-					if [ -n "${cl_emb_dir}" ] && [ -f "${cl_emb_dir}/SKILL.md" ]; then
-						cl_skill_names="${cl_skill_names}$(basename "${cl_emb_dir}")
-"
-					fi
-				done < "${cl_emb_temp}"
-				rm -f "${cl_emb_temp}"
-			fi
-		done < "${cl_rsd_temp}"
-		rm -f "${cl_rsd_temp}"
-	fi
-
-	# Deduplicate and sort
-	cl_skill_names=$(printf '%s' "${cl_skill_names}" | sort -u | grep -v '^$' || true)
-
-	if [ -z "${cl_skill_names}" ]; then
-		echo "  No skills found"
-	else
-		for cl_skill_name in ${cl_skill_names}; do
-			# Determine installed status:
-			# 1. Check standalone path (rules/<name> in manifest)
-			cl_skill_status=$(is_installed "${RULES_PATH}/${cl_skill_name}")
-
-			# 2. If not standalone-installed, check via parent rulesets (embedded).
-			# Scan all matching rulesets and keep the strongest status
-			# (committed > local > global > uninstalled); break early only on
-			# "committed" since nothing can outrank it.
-			if [ "${cl_skill_status}" = "uninstalled" ] && [ -d "${cl_repo_dir}/${RULESETS_PATH}" ]; then
-				cl_prset_temp=$(mktemp)
-				find "${cl_repo_dir}/${RULESETS_PATH}" -mindepth 1 -maxdepth 1 -type d > "${cl_prset_temp}" 2>/dev/null
-				while IFS= read -r cl_prset_dir; do
-					if [ -n "${cl_prset_dir}" ] && [ -f "${cl_prset_dir}/skills/${cl_skill_name}/SKILL.md" ]; then
-						cl_prset_name=$(basename "${cl_prset_dir}")
-						cl_prset_status=$(is_installed "${RULESETS_PATH}/${cl_prset_name}")
-						# Upgrade cl_skill_status if cl_prset_status has higher priority
-						case "${cl_prset_status}" in
-							committed)
-								cl_skill_status="committed"
-								break  # committed is the strongest; no need to check further
-								;;
-							local)
-								if [ "${cl_skill_status}" != "committed" ]; then
-									cl_skill_status="local"
-								fi
-								;;
-							global)
-								if [ "${cl_skill_status}" = "uninstalled" ]; then
-									cl_skill_status="global"
-								fi
-								;;
-						esac
-					fi
-				done < "${cl_prset_temp}"
-				rm -f "${cl_prset_temp}"
-			fi
-
-			case "${cl_skill_status}" in
-				committed)
-					printf "  %s %s/\n" "${COMMITTED_GLYPH}" "${cl_skill_name}"
-					;;
-				local)
-					printf "  %s %s/\n" "${LOCAL_GLYPH}" "${cl_skill_name}"
-					;;
-				global)
-					printf "  %s %s/\n" "${GLOBAL_GLYPH}" "${cl_skill_name}"
-					;;
-				*)
-					printf "  %s %s/\n" "${UNINSTALLED_GLYPH}" "${cl_skill_name}"
-					;;
-			esac
-		done
-	fi
 
 	return 0
 }
@@ -4849,8 +4796,9 @@ copy_entry_to_target() {
 			# Each direct child of skills/ that contains SKILL.md is a skill dir
 			cett_skills_subdir="${cett_source_path}/skills"
 			if [ -d "${cett_skills_subdir}" ]; then
-				cett_skill_dirs=$(find "${cett_skills_subdir}" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
-				for cett_skill_dir in ${cett_skill_dirs}; do
+				cett_skill_dirs_tmp=$(mktemp)
+				find "${cett_skills_subdir}" -mindepth 1 -maxdepth 1 -type d > "${cett_skill_dirs_tmp}" 2>/dev/null || true
+				while IFS= read -r cett_skill_dir; do
 					# Only copy dirs that have SKILL.md (are valid skills)
 					if [ -f "${cett_skill_dir}/SKILL.md" ]; then
 						# Security: validate symlinks inside the skill dir before copying.
@@ -4888,7 +4836,8 @@ copy_entry_to_target() {
 						mkdir -p "${cett_skills_target}"
 						cp -rL "${cett_skill_dir}" "${cett_skills_target}/"
 					fi
-				done
+				done < "${cett_skill_dirs_tmp}"
+				rm -f "${cett_skill_dirs_tmp}"
 			fi
 		fi
 	else

@@ -2,19 +2,22 @@
 #
 # test_skill_list_display.test.sh - Skill list display test suite
 #
-# Tests that cmd_list() correctly discovers and displays skills from both
-# valid skill paths (rules/<name> and rulesets/<r>/skills/<name>), shows
-# installation status glyphs, deduplicates, and renders skills/ as a magic
-# subdir in the ruleset tree.
+# Tests that cmd_list() correctly discovers and displays skills from the
+# standalone rules/<name> path only, shows installation status glyphs,
+# renders skills/ as a magic subdir in the ruleset tree, and places
+# "Available rulesets:" after "Available skills:".
 #
-# Test Coverage (behaviors 16-21 from the skill-support plan):
+# Test Coverage:
 #   16. Skills from rules/<name> appear in "Available skills:" section with trailing "/"
-#   17. Skills from rulesets/<r>/skills/<name> appear in "Available skills:" section
+#   17. Embedded-only skills (rulesets/<r>/skills/<name>) do NOT appear in
+#       "Available skills:" — they are visible in the ruleset tree but cannot
+#       be installed individually
 #   18. Standalone skill shows correct installed status glyph
-#   19. Embedded skill shows installed when parent ruleset is installed
-#   20. Deduplication: skill in both paths shown only once
+#   20. Deduplication: skill in both rules/ and a ruleset's skills/ shown once
+#       (from the standalone path)
 #   21. Ruleset tree rendering shows skills/ as magic subdir with expanded contents
-#   22. Ruleset tree skills/ expansion only shows dirs that contain SKILL.md (not plain dirs)
+#   23. Ruleset tree skills/ expansion only shows dirs that contain SKILL.md
+#   24. "Available rulesets:" section appears after "Available skills:" in output
 #
 # Dependencies: shunit2, common test utilities
 # Usage: sh test_skill_list_display.test.sh
@@ -52,12 +55,14 @@ test_standalone_skill_appears_in_skills_section() {
 }
 
 # ============================================================================
-# BEHAVIOR 17: Embedded skills appear in "Available skills:" section
+# BEHAVIOR 17: Embedded-only skills do NOT appear in "Available skills:"
 # ============================================================================
 
-test_embedded_skill_appears_in_skills_section() {
-	# A rulesets/<r>/skills/<name> directory with SKILL.md appears in the
-	# "Available skills:" section of cmd_list output.
+test_embedded_skill_not_in_skills_section() {
+	# A skill that only exists under rulesets/<r>/skills/<name> cannot be
+	# installed individually (ai-rizz add rule <name> fails), so it must NOT
+	# appear in the "Available skills:" section.  It is still visible in the
+	# ruleset tree expansion.
 	mkdir -p "${REPO_DIR}/rulesets/my-ruleset/skills/embedded-skill"
 	echo "# Embedded" > "${REPO_DIR}/rulesets/my-ruleset/skills/embedded-skill/SKILL.md"
 
@@ -70,10 +75,14 @@ test_embedded_skill_appears_in_skills_section() {
 
 	output=$(cmd_list)
 
-	echo "${output}" | grep -q "Available skills:" || \
-		fail "Output should have 'Available skills:' section"
-	echo "${output}" | grep -q "embedded-skill/" || \
-		fail "Embedded skill should appear in skills section"
+	# Must NOT appear in "Available skills:" — the trailing "/" is the marker
+	# used exclusively in the skills section (tree entries have no trailing /)
+	echo "${output}" | grep -q "embedded-skill/" && \
+		fail "Embedded-only skill must not appear in Available skills: ${output}" || true
+
+	# Must still appear in the ruleset tree (skills/ subdir expansion)
+	echo "${output}" | grep -q "embedded-skill" || \
+		fail "Embedded skill should still appear in ruleset tree: ${output}"
 }
 
 # ============================================================================
@@ -107,38 +116,12 @@ test_standalone_skill_installed_glyph() {
 }
 
 # ============================================================================
-# BEHAVIOR 19: Embedded skill shows installed when parent ruleset is installed
-# ============================================================================
-
-test_embedded_skill_installed_when_ruleset_installed() {
-	# An embedded skill inside an installed ruleset shows as installed in the
-	# "Available skills:" section.
-	mkdir -p "${REPO_DIR}/rulesets/my-ruleset/skills/embedded-skill"
-	echo "# Embedded" > "${REPO_DIR}/rulesets/my-ruleset/skills/embedded-skill/SKILL.md"
-
-	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
-	git add . >/dev/null 2>&1
-	git commit --no-gpg-sign -m "Add ruleset with embedded skill" >/dev/null 2>&1
-	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
-
-	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
-	cmd_add_ruleset "my-ruleset" --commit
-
-	output=$(cmd_list)
-
-	# embedded-skill should show as installed (committed glyph ●) because
-	# its parent ruleset is installed
-	echo "${output}" | grep -q "● embedded-skill/" || \
-		fail "Embedded skill with installed parent ruleset should show committed glyph (●): ${output}"
-}
-
-# ============================================================================
-# BEHAVIOR 20: Deduplication — same skill name in both paths shown once
+# BEHAVIOR 20: Deduplication — skill in both rules/ and ruleset shown once
 # ============================================================================
 
 test_skill_deduplicated_when_in_both_paths() {
 	# If a skill name exists in both rules/<name> and rulesets/<r>/skills/<name>,
-	# it appears only once in "Available skills:".
+	# it appears only once in "Available skills:" (from the standalone path).
 	mkdir -p "${REPO_DIR}/rules/shared-skill"
 	echo "# Shared standalone" > "${REPO_DIR}/rules/shared-skill/SKILL.md"
 	mkdir -p "${REPO_DIR}/rulesets/my-ruleset/skills/shared-skill"
@@ -155,7 +138,7 @@ test_skill_deduplicated_when_in_both_paths() {
 
 	# Count occurrences of "shared-skill/" in the output — should be exactly 1
 	count=$(echo "${output}" | grep -c "shared-skill/")
-	assertEquals "shared-skill/ should appear exactly once (deduplicated)" "1" "${count}"
+	assertEquals "shared-skill/ should appear exactly once" "1" "${count}"
 }
 
 # ============================================================================
@@ -193,38 +176,6 @@ test_ruleset_tree_expands_skills_subdir() {
 }
 
 # ============================================================================
-# BEHAVIOR 22: Strongest install status wins when skill appears in multiple rulesets
-# ============================================================================
-
-test_embedded_skill_shows_strongest_status_across_rulesets() {
-	# When the same embedded skill exists in two rulesets installed at different
-	# modes (one "local", one "committed"), the skill must display the committed
-	# glyph (●) — the strongest status — not the weaker local glyph (◐).
-	# The rulesets are named so the "local" one sorts alphabetically first,
-	# ensuring this covers the bug where the loop stopped at the first match.
-	mkdir -p "${REPO_DIR}/rulesets/aaa-local-ruleset/skills/shared-skill"
-	echo "# Shared skill" > "${REPO_DIR}/rulesets/aaa-local-ruleset/skills/shared-skill/SKILL.md"
-	mkdir -p "${REPO_DIR}/rulesets/zzz-commit-ruleset/skills/shared-skill"
-	echo "# Shared skill" > "${REPO_DIR}/rulesets/zzz-commit-ruleset/skills/shared-skill/SKILL.md"
-
-	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
-	git add . >/dev/null 2>&1
-	git commit --no-gpg-sign -m "Add two rulesets with shared embedded skill" >/dev/null 2>&1
-	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
-
-	# Init local mode first; commit mode is lazily initialised by cmd_add_ruleset
-	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --local
-	cmd_add_ruleset "aaa-local-ruleset" --local
-	cmd_add_ruleset "zzz-commit-ruleset" --commit
-
-	output=$(cmd_list)
-
-	# committed (●) must win over local (◐) regardless of iteration order
-	echo "${output}" | grep -q "● shared-skill/" || \
-		fail "shared-skill should show committed glyph (●) — strongest status wins: ${output}"
-}
-
-# ============================================================================
 # BEHAVIOR 23: Ruleset tree skills/ expansion filters to valid skills only
 # ============================================================================
 
@@ -254,6 +205,32 @@ test_ruleset_tree_skills_subdir_shows_only_valid_skills() {
 	# not-a-skill (no SKILL.md) must NOT appear in the tree expansion
 	assertFalse "not-a-skill (no SKILL.md) must not appear in tree expansion" \
 		"echo '${output}' | grep -q 'not-a-skill'"
+}
+
+# ============================================================================
+# BEHAVIOR 24: "Available rulesets:" section appears after "Available skills:"
+# ============================================================================
+
+test_rulesets_section_comes_after_skills_section() {
+	# The output order must be:
+	#   Available rules: → Available commands: → Available skills: → Available rulesets:
+	# Rulesets are last because they are composite items that contain rules,
+	# commands, and skills — listing them last keeps the atomic items first.
+	# All four section headers are printed unconditionally (even when empty),
+	# so no special repo content is required.
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+
+	output=$(cmd_list)
+
+	# Extract line numbers of each section header
+	skills_line=$(echo "${output}" | grep -n "Available skills:" | cut -d: -f1)
+	rulesets_line=$(echo "${output}" | grep -n "Available rulesets:" | cut -d: -f1)
+
+	assertNotNull "Output should contain 'Available skills:'" "${skills_line}"
+	assertNotNull "Output should contain 'Available rulesets:'" "${rulesets_line}"
+
+	assertTrue "'Available skills:' should appear before 'Available rulesets:'" \
+		"[ '${skills_line}' -lt '${rulesets_line}' ]"
 }
 
 # Load and run shunit2

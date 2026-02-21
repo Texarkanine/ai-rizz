@@ -370,8 +370,13 @@ test_validate_warns_missing_local_skills_exclude() {
 	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
 	assert_git_exclude_contains ".cursor/skills/local"
 
-	# Manually remove the skills entry to simulate a missing exclude
-	sed -i '/^\.cursor\/skills\/local$/d' .git/info/exclude
+	# Manually remove the skills entry to simulate a missing exclude.
+	# Use a temp-file pattern (matching update_git_exclude in production) instead
+	# of sed -i, which requires a backup extension on macOS/BSD sed.
+	_tmp=$(mktemp)
+	grep -v '^\.cursor/skills/local$' .git/info/exclude > "${_tmp}" || true
+	cat "${_tmp}" > .git/info/exclude
+	rm -f "${_tmp}"
 
 	# validate_git_exclude_state should warn about the missing entry
 	output=$(validate_git_exclude_state "$TEST_TARGET_DIR" 2>&1)

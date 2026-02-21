@@ -2853,6 +2853,7 @@ EOF
 			# Create global mode directory structure
 			mkdir -p "${GLOBAL_RULES_DIR}"
 			mkdir -p "${GLOBAL_COMMANDS_DIR}"
+			mkdir -p "${GLOBAL_SKILLS_DIR}"
 			
 			# Write manifest to home directory
 			# Global mode uses its own target dir (the global dirs) but stores the source repo
@@ -4013,13 +4014,28 @@ cmd_remove_rule() {
 					crr_found_md=true
 				fi
 				
-				# Prefer .mdc, fall back to .md
+				# Check all manifests for extensionless entry (skills stored as rules/<name>)
+				crr_path_noext="${RULES_PATH}/${rule}"
+				crr_found_noext=false
+				if [ "$(is_mode_active local)" = "true" ] && read_manifest_entries "$LOCAL_MANIFEST_FILE" 2>/dev/null | grep -q "^${crr_path_noext}$"; then
+					crr_found_noext=true
+				fi
+				if [ "$(is_mode_active commit)" = "true" ] && read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null | grep -q "^${crr_path_noext}$"; then
+					crr_found_noext=true
+				fi
+				if [ "$(is_mode_active global)" = "true" ] && read_manifest_entries "$GLOBAL_MANIFEST_FILE" 2>/dev/null | grep -q "^${crr_path_noext}$"; then
+					crr_found_noext=true
+				fi
+
+				# Prefer .mdc, fall back to .md, then extensionless (skills)
 				if [ "${crr_found_mdc}" = "true" ]; then
 					crr_item="${rule}.mdc"
 				elif [ "${crr_found_md}" = "true" ]; then
 					crr_item="${rule}.md"
+				elif [ "${crr_found_noext}" = "true" ]; then
+					crr_item="${rule}"
 				else
-					# Neither found - default to .mdc for error message
+					# Nothing found - default to .mdc for error message
 					crr_item="${rule}.mdc"
 				fi
 				;;  

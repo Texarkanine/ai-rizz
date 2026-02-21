@@ -3548,7 +3548,10 @@ cmd_list() {
 			# 1. Check standalone path (rules/<name> in manifest)
 			cl_skill_status=$(is_installed "${RULES_PATH}/${cl_skill_name}")
 
-			# 2. If not standalone-installed, check via parent rulesets (embedded)
+			# 2. If not standalone-installed, check via parent rulesets (embedded).
+			# Scan all matching rulesets and keep the strongest status
+			# (committed > local > global > uninstalled); break early only on
+			# "committed" since nothing can outrank it.
 			if [ "${cl_skill_status}" = "uninstalled" ] && [ -d "${cl_repo_dir}/${RULESETS_PATH}" ]; then
 				cl_prset_temp=$(mktemp)
 				find "${cl_repo_dir}/${RULESETS_PATH}" -mindepth 1 -maxdepth 1 -type d > "${cl_prset_temp}" 2>/dev/null
@@ -3556,10 +3559,23 @@ cmd_list() {
 					if [ -n "${cl_prset_dir}" ] && [ -f "${cl_prset_dir}/skills/${cl_skill_name}/SKILL.md" ]; then
 						cl_prset_name=$(basename "${cl_prset_dir}")
 						cl_prset_status=$(is_installed "${RULESETS_PATH}/${cl_prset_name}")
-						if [ "${cl_prset_status}" != "uninstalled" ]; then
-							cl_skill_status="${cl_prset_status}"
-							break
-						fi
+						# Upgrade cl_skill_status if cl_prset_status has higher priority
+						case "${cl_prset_status}" in
+							committed)
+								cl_skill_status="committed"
+								break  # committed is the strongest; no need to check further
+								;;
+							local)
+								if [ "${cl_skill_status}" != "committed" ]; then
+									cl_skill_status="local"
+								fi
+								;;
+							global)
+								if [ "${cl_skill_status}" = "uninstalled" ]; then
+									cl_skill_status="global"
+								fi
+								;;
+						esac
 					fi
 				done < "${cl_prset_temp}"
 				rm -f "${cl_prset_temp}"

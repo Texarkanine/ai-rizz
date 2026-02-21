@@ -193,7 +193,39 @@ test_ruleset_tree_expands_skills_subdir() {
 }
 
 # ============================================================================
-# BEHAVIOR 22: Ruleset tree skills/ expansion filters to valid skills only
+# BEHAVIOR 22: Strongest install status wins when skill appears in multiple rulesets
+# ============================================================================
+
+test_embedded_skill_shows_strongest_status_across_rulesets() {
+	# When the same embedded skill exists in two rulesets installed at different
+	# modes (one "local", one "committed"), the skill must display the committed
+	# glyph (●) — the strongest status — not the weaker local glyph (◐).
+	# The rulesets are named so the "local" one sorts alphabetically first,
+	# ensuring this covers the bug where the loop stopped at the first match.
+	mkdir -p "${REPO_DIR}/rulesets/aaa-local-ruleset/skills/shared-skill"
+	echo "# Shared skill" > "${REPO_DIR}/rulesets/aaa-local-ruleset/skills/shared-skill/SKILL.md"
+	mkdir -p "${REPO_DIR}/rulesets/zzz-commit-ruleset/skills/shared-skill"
+	echo "# Shared skill" > "${REPO_DIR}/rulesets/zzz-commit-ruleset/skills/shared-skill/SKILL.md"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add two rulesets with shared embedded skill" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+	# Init local mode first; commit mode is lazily initialised by cmd_add_ruleset
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --local
+	cmd_add_ruleset "aaa-local-ruleset" --local
+	cmd_add_ruleset "zzz-commit-ruleset" --commit
+
+	output=$(cmd_list)
+
+	# committed (●) must win over local (◐) regardless of iteration order
+	echo "${output}" | grep -q "● shared-skill/" || \
+		fail "shared-skill should show committed glyph (●) — strongest status wins: ${output}"
+}
+
+# ============================================================================
+# BEHAVIOR 23: Ruleset tree skills/ expansion filters to valid skills only
 # ============================================================================
 
 test_ruleset_tree_skills_subdir_shows_only_valid_skills() {

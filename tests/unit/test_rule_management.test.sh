@@ -185,6 +185,33 @@ test_remove_updates_manifests() {
 # SKILL REMOVE TESTS
 # ============================================================================
 
+test_add_rule_warns_on_skill_and_rule_name_conflict() {
+    # When both rules/<name>/SKILL.md and rules/<name>.mdc exist, cmd_add_rule
+    # called with the bare extensionless <name> silently picks the skill.  It
+    # must instead emit a warning recommending the explicit ".mdc" extension so
+    # the caller knows there is ambiguity, while still proceeding to add.
+
+    mkdir -p "${REPO_DIR}/rules/ambiguous"
+    echo "# Skill" > "${REPO_DIR}/rules/ambiguous/SKILL.md"
+    echo "Rule content" > "${REPO_DIR}/rules/ambiguous.mdc"
+    cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+    git config user.email "test@example.com" >/dev/null 2>&1
+    git config user.name "Test User" >/dev/null 2>&1
+    git add . >/dev/null 2>&1
+    git commit --no-gpg-sign -m "Add ambiguous rule+skill" >/dev/null 2>&1
+    cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+    cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+
+    output=$(cmd_add_rule "ambiguous" --commit 2>&1)
+
+    # A warning recommending the explicit ".mdc" extension must appear — the
+    # success message ("Added skill: rules/ambiguous") won't contain "mdc" so
+    # this specifically exercises the new ambiguity warning path.
+    echo "${output}" | grep -qi "mdc" || \
+        fail "Should warn recommending '.mdc' extension when skill and rule name conflict: ${output}"
+}
+
 test_remove_skill_by_extensionless_name() {
     # Skills are stored in the manifest as extensionless paths (e.g. rules/my-skill).
     # cmd_remove_rule "my-skill" must resolve that entry even though it carries no
@@ -195,6 +222,8 @@ test_remove_skill_by_extensionless_name() {
     mkdir -p "${REPO_DIR}/rules/my-skill"
     echo "# My Skill" > "${REPO_DIR}/rules/my-skill/SKILL.md"
     cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+    git config user.email "test@example.com" >/dev/null 2>&1
+    git config user.name "Test User" >/dev/null 2>&1
     git add . >/dev/null 2>&1
     git commit --no-gpg-sign -m "Add my-skill" >/dev/null 2>&1
     cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -206,12 +235,16 @@ test_remove_skill_by_extensionless_name() {
     assertTrue "Skill should be in commit manifest before remove" \
         "grep -q '^rules/my-skill$' '${TEST_COMMIT_MANIFEST_FILE}'"
 
-    # Remove by extensionless name — must succeed
-    cmd_remove_rule "my-skill" --commit
+    # Remove by extensionless name — must succeed and say "skill" not "rule"
+    remove_output=$(cmd_remove_rule "my-skill" --commit 2>&1)
 
     # Verify the skill entry is gone from the manifest
     assertFalse "Skill should be removed from commit manifest" \
         "grep -q '^rules/my-skill$' '${TEST_COMMIT_MANIFEST_FILE}'"
+
+    # Output must say "skill" not "rule" for an extensionless manifest entry
+    echo "${remove_output}" | grep -q "Removed skill" || \
+        fail "Removal output should say 'Removed skill', got: ${remove_output}"
 }
 
 # Load and run shunit2

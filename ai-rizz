@@ -219,8 +219,6 @@ get_entity_type() {
 	else
 		echo "rule"
 	fi
-
-	return 0
 }
 
 # Check if a repository entry is a skill (directory with SKILL.md)
@@ -2561,42 +2559,51 @@ migrate_from_opposite_mode() {
 
 # Initialize the repository (progressive initialization)
 #
-# Creates local or commit mode with manifest file, target directory structure,
-# and git excludes (for local mode). 
+# Creates local, commit, or global mode with manifest file, target directory
+# structure, and git excludes (for local mode).
 #
-# Prompts for missing parameters, validates mode compatibility, syncs source 
-# repository, and handles idempotent re-init. Supports progressive dual-mode 
+# Prompts for missing parameters, validates mode compatibility, syncs source
+# repository, and handles idempotent re-init. Supports progressive dual-mode
 # by preserving existing mode configuration.
 #
 # Key behaviors:
 # • Prompts for missing source repo, target dir, and mode
-# • Validates git repository context and mode compatibility  
+# • Validates git repository context and mode compatibility
 # • Creates manifest files and directory structure
 # • Sets up git excludes for local mode only
 # • Handles idempotent re-initialization
 # • Uses environment variable fallbacks if available
+# • Global mode creates GLOBAL_RULES_DIR, GLOBAL_COMMANDS_DIR, and
+#   GLOBAL_SKILLS_DIR under ${HOME}/.cursor/ and stores the manifest at
+#   GLOBAL_MANIFEST_FILE (${HOME}/ai-rizz.skbd); target is fixed to
+#   .cursor/rules.  Global mode works outside a git repository.
 #
 # Globals:
-#   COMMIT_MANIFEST_FILE - Commit manifest filename (read)
-#   LOCAL_MANIFEST_FILE - Local manifest filename (read)
-#   CUSTOM_MANIFEST_ROOT - Custom manifest root filename (read)
-#   DEFAULT_TARGET_DIR - Default target directory
-#   LOCAL_DIR - Local directory name
-#   SHARED_DIR - Shared directory name
+#   COMMIT_MANIFEST_FILE  - Commit manifest filename (read)
+#   LOCAL_MANIFEST_FILE   - Local manifest filename (read)
+#   GLOBAL_MANIFEST_FILE  - Global manifest path (read/write, global mode)
+#   GLOBAL_RULES_DIR      - Global rules directory created by global init
+#   GLOBAL_COMMANDS_DIR   - Global commands directory created by global init
+#   GLOBAL_SKILLS_DIR     - Global skills directory created by global init
+#   CUSTOM_MANIFEST_ROOT  - Custom manifest root filename (read)
+#   DEFAULT_TARGET_DIR    - Default target directory
+#   LOCAL_DIR             - Local directory name
+#   SHARED_DIR            - Shared directory name
 #
 # Arguments:
-#   [source_repo]        - Repository URL (prompted if not provided)
-#   [-d target_dir]      - Target directory (defaults to .cursor/rules)
-#   [--local|-l]         - Initialize local mode (git-ignored)
-#   [--commit|-c]        - Initialize commit mode (git-tracked)
+#   [source_repo]         - Repository URL (prompted if not provided)
+#   [-d target_dir]       - Target directory (defaults to .cursor/rules)
+#   [--local|-l]          - Initialize local mode (git-ignored)
+#   [--commit|-c]         - Initialize commit mode (git-tracked)
+#   [--global|-g]         - Initialize global mode (user-wide, ~/.cursor/)
 #   [-s, --skibidi file]  - Use custom manifest root filename (processed globally)
 #   [-f, --manifest file] - Alias for --skibidi (processed globally)
-#   [--rule-path]        - Rules path (optional, defaults to "rules")
-#   [--ruleset-path]     - Rulesets path (optional, defaults to "rulesets")
+#   [--rule-path]         - Rules path (optional, defaults to "rules")
+#   [--ruleset-path]      - Rulesets path (optional, defaults to "rulesets")
 #
 # Returns:
 #   0 on success
-#   1 on error (via error() function)
+#   non-zero on error (via error() function)
 #
 cmd_init() {
 	ci_source_repo=""
@@ -3449,12 +3456,18 @@ cmd_list() {
 						# Show skills/ directory (magic subdir — expand one level like commands/)
 						printf "    %s %s\n" "${cl_tree_char}" "${cl_basename}"
 
-						# Show one level of skills/ contents (skill dirs and any other entries)
-						cl_skl_items=$(find "${cl_item}" -maxdepth 1 \( -type f -o -type l -o -type d \) ! -path "${cl_item}" | sort)
-						cl_skl_count=$(echo "${cl_skl_items}" | grep -c . || echo "0")
-						cl_skl_current=0
+						# Show one level of skills/ contents — only actual skills (dirs containing SKILL.md)
+						cl_temp_skl_all=$(mktemp)
 						cl_temp_skl_items=$(mktemp)
-						echo "${cl_skl_items}" > "${cl_temp_skl_items}"
+						find "${cl_item}" -maxdepth 1 -mindepth 1 -type d | sort > "${cl_temp_skl_all}" 2>/dev/null || true
+						while IFS= read -r cl_skl_dir; do
+							if [ -n "${cl_skl_dir}" ] && [ -f "${cl_skl_dir}/SKILL.md" ]; then
+								echo "${cl_skl_dir}" >> "${cl_temp_skl_items}"
+							fi
+						done < "${cl_temp_skl_all}"
+						rm -f "${cl_temp_skl_all}"
+						cl_skl_count=$(grep -c . "${cl_temp_skl_items}" 2>/dev/null || echo "0")
+						cl_skl_current=0
 						while IFS= read -r cl_skl_item; do
 							if [ -z "${cl_skl_item}" ]; then
 								continue
@@ -3657,6 +3670,7 @@ check_rule_downgrade_conflict() {
 #   <rule>...            - Rule names (.mdc extension optional)
 #   [--local|-l]         - Add to local mode (git-ignored)
 #   [--commit|-c]        - Add to commit mode (git-tracked)
+#   [--global|-g]        - Add to global mode (user-wide, ~/.cursor/)
 #
 # Outputs:
 #   Stdout: Success messages for each added rule
@@ -3736,6 +3750,11 @@ cmd_add_rule() {
 				if [ "$(is_skill "${car_repo_dir}" "${RULES_PATH}/${car_rule}")" = "true" ]; then
 					car_item="${car_rule}"
 					car_is_skill=true
+					# Warn when a same-named .mdc rule also exists — the skill wins
+					# by convention but the ambiguity may surprise the caller.
+					if [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.mdc" ]; then
+						warn "Both a skill directory and a rule file exist for '${car_rule}'; adding as skill. Use '${car_rule}.mdc' to add the rule instead."
+					fi
 				# Try .mdc (rule) next
 				elif [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.mdc" ]; then
 					car_item="${car_rule}.mdc"
@@ -3979,6 +3998,9 @@ cmd_remove_rule() {
 
 	# Process each rule
 	for rule in ${crr_rules}; do
+		# Reset per-iteration flags
+		crr_found_noext=false
+
 		# Handle extension: .mdc for rules, .md for commands
 		# If no extension, try .mdc first, then .md (allows extensionless remove)
 		case "${rule}" in
@@ -4043,7 +4065,16 @@ cmd_remove_rule() {
 		
 		removed=false
 		rule_path="${RULES_PATH}/${crr_item}"
-		
+
+		# Determine entity noun for user-facing messages
+		if [ "${crr_found_noext}" = "true" ]; then
+			crr_entity_noun="skill"
+			crr_entity_noun_cap="Skill"
+		else
+			crr_entity_noun="rule"
+			crr_entity_noun_cap="Rule"
+		fi
+
 		# If we have a specific mode from environment variable, only remove from that mode
 		if [ -n "${crr_mode}" ]; then
 			case "${crr_mode}" in
@@ -4051,10 +4082,10 @@ cmd_remove_rule() {
 					if [ "$(is_mode_active local)" = "true" ]; then
 						if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
 							remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
-							echo "Removed rule: $rule_path"
+							echo "Removed ${crr_entity_noun}: $rule_path"
 							removed=true
 						else
-							warn "Rule not found in local mode: ${crr_item}"
+							warn "${crr_entity_noun_cap} not found in local mode: ${crr_item}"
 						fi
 					fi
 					;;
@@ -4062,10 +4093,10 @@ cmd_remove_rule() {
 					if [ "$(is_mode_active commit)" = "true" ]; then
 						if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
 							remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
-							echo "Removed rule: $rule_path"
+							echo "Removed ${crr_entity_noun}: $rule_path"
 							removed=true
 						else
-							warn "Rule not found in commit mode: ${crr_item}"
+							warn "${crr_entity_noun_cap} not found in commit mode: ${crr_item}"
 						fi
 					fi
 					;;
@@ -4073,10 +4104,10 @@ cmd_remove_rule() {
 					if [ "$(is_mode_active global)" = "true" ]; then
 						if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
 							remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$rule_path"
-							echo "Removed rule: $rule_path"
+							echo "Removed ${crr_entity_noun}: $rule_path"
 							removed=true
 						else
-							warn "Rule not found in global mode: ${crr_item}"
+							warn "${crr_entity_noun_cap} not found in global mode: ${crr_item}"
 						fi
 					fi
 					;;
@@ -4086,29 +4117,29 @@ cmd_remove_rule() {
 			if [ "$(is_mode_active local)" = "true" ]; then
 				if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
 					remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
-					echo "Removed rule: $rule_path"
+					echo "Removed ${crr_entity_noun}: $rule_path"
 					removed=true
 				fi
 			fi
-			
+
 			if [ "$(is_mode_active commit)" = "true" ] && [ "$removed" = "false" ]; then
 				if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
 					remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
-					echo "Removed rule: $rule_path"
+					echo "Removed ${crr_entity_noun}: $rule_path"
 					removed=true
 				fi
 			fi
-			
+
 			if [ "$(is_mode_active global)" = "true" ] && [ "$removed" = "false" ]; then
 				if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
 					remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$rule_path"
-					echo "Removed rule: $rule_path"
+					echo "Removed ${crr_entity_noun}: $rule_path"
 					removed=true
 				fi
 			fi
-			
+
 			if [ "$removed" = "false" ]; then
-				warn "Rule not found in any mode: ${crr_item}"
+				warn "${crr_entity_noun_cap} not found in any mode: ${crr_item}"
 			fi
 		fi
 	done
@@ -4405,8 +4436,8 @@ sync_manifest_to_directory() {
 			if [ -n "${smtd_mode}" ]; then
 				smtd_skills_dir=$(get_skills_target_dir "${smtd_mode}")
 				if [ -d "${smtd_skills_dir}" ]; then
-					# Remove skill subdirectories (each skill is a directory)
-					find "${smtd_skills_dir}" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} + 2>/dev/null || true
+					# Remove all children (dirs, files, and symlinks) at depth 1
+					find "${smtd_skills_dir}" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
 				fi
 			fi
 			

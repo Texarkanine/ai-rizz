@@ -14,6 +14,7 @@
 #   19. Embedded skill shows installed when parent ruleset is installed
 #   20. Deduplication: skill in both paths shown only once
 #   21. Ruleset tree rendering shows skills/ as magic subdir with expanded contents
+#   22. Ruleset tree skills/ expansion only shows dirs that contain SKILL.md (not plain dirs)
 #
 # Dependencies: shunit2, common test utilities
 # Usage: sh test_skill_list_display.test.sh
@@ -189,6 +190,38 @@ test_ruleset_tree_expands_skills_subdir() {
 		fail "skill-one should appear expanded in ruleset tree (without trailing /): ${output}"
 	echo "${output}" | grep "skill-two" | grep -qv "/" || \
 		fail "skill-two should appear expanded in ruleset tree (without trailing /): ${output}"
+}
+
+# ============================================================================
+# BEHAVIOR 22: Ruleset tree skills/ expansion filters to valid skills only
+# ============================================================================
+
+test_ruleset_tree_skills_subdir_shows_only_valid_skills() {
+	# When a ruleset's skills/ directory contains a mix of valid skill dirs
+	# (containing SKILL.md) and plain directories (no SKILL.md), only the valid
+	# skill dirs should appear in the tree expansion.  Plain dirs must be
+	# silently excluded.
+	mkdir -p "${REPO_DIR}/rulesets/my-ruleset/skills/real-skill"
+	echo "# Real" > "${REPO_DIR}/rulesets/my-ruleset/skills/real-skill/SKILL.md"
+	mkdir -p "${REPO_DIR}/rulesets/my-ruleset/skills/not-a-skill"
+	echo "some file" > "${REPO_DIR}/rulesets/my-ruleset/skills/not-a-skill/README.txt"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add ruleset with mixed skills dir" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+
+	output=$(cmd_list)
+
+	# real-skill (has SKILL.md) should appear in the tree
+	echo "${output}" | grep "real-skill" | grep -qv "/" || \
+		fail "real-skill should appear in ruleset tree (without trailing /): ${output}"
+
+	# not-a-skill (no SKILL.md) must NOT appear in the tree expansion
+	assertFalse "not-a-skill (no SKILL.md) must not appear in tree expansion" \
+		"echo '${output}' | grep -q 'not-a-skill'"
 }
 
 # Load and run shunit2

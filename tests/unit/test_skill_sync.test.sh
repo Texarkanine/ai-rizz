@@ -22,6 +22,7 @@
 #   26. Deinit --global removes GLOBAL_SKILLS_DIR
 #   27. Standalone skill with symlink pointing outside repo is NOT deployed (security)
 #   28. Embedded skill with symlink pointing outside repo is NOT deployed (security)
+#   29. Skills cleanup removes stale plain files, not just stale directories
 #
 # Dependencies: shunit2, common test utilities
 # Usage: sh test_skill_sync.test.sh
@@ -443,6 +444,42 @@ test_standalone_skill_with_external_symlink_not_deployed() {
 # ============================================================================
 # BEHAVIOR 28: Embedded skill with symlink pointing outside repo is NOT deployed
 # ============================================================================
+
+# ============================================================================
+# BEHAVIOR 29: Skills cleanup removes stale files, not just stale directories
+# ============================================================================
+
+test_skills_cleanup_removes_stale_files_not_just_dirs() {
+	# The sync pre-pass clears the skills target directory before rebuilding.
+	# If the cleanup uses "-type d" it only removes subdirectories and leaves
+	# behind any stale plain files or symlinks.  This test plants a plain file
+	# directly inside .cursor/skills/shared/ (simulating a leftover artefact)
+	# and asserts it is gone after a sync.
+	mkdir -p "${REPO_DIR}/rules/real-skill"
+	echo "# Real" > "${REPO_DIR}/rules/real-skill/SKILL.md"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add real skill for stale-file test" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+	cmd_add_rule "real-skill" --commit
+
+	# Plant a stale plain file directly in the skills target dir (not a subdir)
+	mkdir -p ".cursor/skills/shared"
+	echo "stale" > ".cursor/skills/shared/stale-file.txt"
+	assertTrue "stale-file.txt should exist before sync" \
+		"[ -f '.cursor/skills/shared/stale-file.txt' ]"
+
+	# Re-sync — cleanup must remove the stale file too
+	cmd_sync
+
+	assertFalse "stale-file.txt should be removed by skills cleanup" \
+		"[ -f '.cursor/skills/shared/stale-file.txt' ]"
+	assertTrue "real-skill dir should still be present after sync" \
+		"[ -d '.cursor/skills/shared/real-skill' ]"
+}
 
 test_embedded_skill_with_external_symlink_not_deployed() {
 	# An embedded skill inside a ruleset's skills/<name>/ directory that contains

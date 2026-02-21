@@ -77,7 +77,10 @@ test_global_constants_defined() {
     
     assertNotNull "GLOBAL_COMMANDS_DIR should be defined" "${GLOBAL_COMMANDS_DIR}"
     assertEquals "GLOBAL_COMMANDS_DIR should be ~/.cursor/commands/ai-rizz" "${HOME}/.cursor/commands/ai-rizz" "${GLOBAL_COMMANDS_DIR}"
-    
+
+    assertNotNull "GLOBAL_SKILLS_DIR should be defined" "${GLOBAL_SKILLS_DIR}"
+    assertEquals "GLOBAL_SKILLS_DIR should be ~/.cursor/skills/ai-rizz" "${HOME}/.cursor/skills/ai-rizz" "${GLOBAL_SKILLS_DIR}"
+
     teardown_global_test_environment
 }
 

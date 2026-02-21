@@ -4066,14 +4066,20 @@ cmd_remove_rule() {
 		removed=false
 		rule_path="${RULES_PATH}/${crr_item}"
 
-		# Determine entity noun for user-facing messages
-		if [ "${crr_found_noext}" = "true" ]; then
-			crr_entity_noun="skill"
-			crr_entity_noun_cap="Skill"
-		else
-			crr_entity_noun="rule"
-			crr_entity_noun_cap="Rule"
-		fi
+		# Determine entity noun for user-facing messages from the actual item
+		# being removed, not from crr_found_noext — both a .mdc rule and an
+		# extensionless skill entry can coexist in the manifest, so crr_found_noext
+		# may be true even when crr_item was resolved to "rule.mdc".
+		case "${crr_item}" in
+			*".mdc"|*".md")
+				crr_entity_noun="rule"
+				crr_entity_noun_cap="Rule"
+				;;
+			*)
+				crr_entity_noun="skill"
+				crr_entity_noun_cap="Skill"
+				;;
+		esac
 
 		# If we have a specific mode from environment variable, only remove from that mode
 		if [ -n "${crr_mode}" ]; then

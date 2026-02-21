@@ -4645,6 +4645,25 @@ copy_entry_to_target() {
 			# security posture applied to ruleset .mdc symlinks (see below).
 			cett_skill_name=$(basename "${cett_source_path}")
 			cett_bad_slink=false
+			# Guard: check if cett_source_path itself is a symlink (before cp -rL).
+			# cp -rL follows symlinks; if the top-level skill directory is a symlink
+			# pointing outside the repo, it could copy sensitive host-filesystem files.
+			if [ -L "${cett_source_path}" ]; then
+				cett_top_resolved=$(_readlink_f "${cett_source_path}")
+				if [ -z "${cett_top_resolved}" ]; then
+					warn "Skipping skill ${cett_skill_name}: failed to resolve symlink: ${cett_source_path}"
+					return 0
+				fi
+				case "${cett_top_resolved}" in
+					"${cett_repo_dir}"/*)
+						# Symlink stays within repo — safe to proceed
+						;;
+					*)
+						warn "Skipping skill ${cett_skill_name}: symlink points outside repository: ${cett_source_path} -> ${cett_top_resolved}"
+						return 0
+						;;
+				esac
+			fi
 			cett_slink_temp=$(mktemp)
 			find "${cett_source_path}" -type l > "${cett_slink_temp}" 2>/dev/null
 			while IFS= read -r cett_slink; do

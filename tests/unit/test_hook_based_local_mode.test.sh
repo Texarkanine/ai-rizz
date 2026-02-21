@@ -308,11 +308,27 @@ test_git_exclude_removes_local_commands_on_deinit() {
 
 test_git_exclude_protects_local_skills() {
 	# Test: Git-exclude local mode should protect .cursor/skills/local/ from being
-	# committed, just like .cursor/commands/local/. After cmd_init with
+	# committed, just like .cursor/commands/local/. After deploying a skill with
 	# --git-exclude-ignore, .cursor/skills/local should appear in .git/info/exclude.
 
-	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
+	# Create a skill in the test repo and commit it
+	mkdir -p "${REPO_DIR}/rules/skill1"
+	echo "# Skill 1" > "${REPO_DIR}/rules/skill1/SKILL.md"
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add skill1" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
 
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --git-exclude-ignore
+	cmd_add_rule "skill1" --local
+
+	# Verify skill deployed to local skills dir
+	assertTrue "Skills local dir should be created" "[ -d '.cursor/skills/local' ]"
+	assertTrue "Deployed skill dir should exist" "[ -d '.cursor/skills/local/skill1' ]"
+
+	# Verify git exclude protects the skills directory
 	assert_git_exclude_contains ".cursor/skills/local"
 
 	return 0

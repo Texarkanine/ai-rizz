@@ -48,6 +48,8 @@ test_standalone_skill_deployed_to_skills_dir() {
 	echo "# My Skill" > "${REPO_DIR}/rules/my-skill/SKILL.md"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add standalone skill" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -78,6 +80,8 @@ test_standalone_skill_contents_preserved() {
 	echo "helper content" > "${REPO_DIR}/rules/rich-skill/helper.sh"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add rich skill" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -106,6 +110,8 @@ test_embedded_skill_deployed_when_ruleset_added() {
 	echo "rule content" > "${REPO_DIR}/rulesets/my-ruleset/rule.mdc"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add ruleset with embedded skill" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -132,6 +138,8 @@ test_embedded_skill_contents_all_copied() {
 	echo "extra" > "${REPO_DIR}/rulesets/my-ruleset/skills/embedded-rich/notes.md"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add ruleset with rich embedded skill" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -159,6 +167,8 @@ test_ruleset_without_skills_subdir_unchanged() {
 	echo "rule content" > "${REPO_DIR}/rulesets/plain-ruleset/rule.mdc"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add plain ruleset" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -186,6 +196,8 @@ test_skills_subdir_without_skill_md_not_deployed() {
 	echo "rule content" > "${REPO_DIR}/rulesets/my-ruleset/rule.mdc"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add ruleset with non-skill skills dir" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -210,6 +222,8 @@ test_ruleset_with_rules_and_skills_deploys_both() {
 	echo "rule content" > "${REPO_DIR}/rulesets/combo-ruleset/rule.mdc"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add combo ruleset" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -238,6 +252,8 @@ test_ruleset_with_rules_commands_and_skills_deploys_all() {
 	echo "command content" > "${REPO_DIR}/rulesets/triple-ruleset/my-command.md"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add triple-type ruleset" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -270,6 +286,8 @@ test_skills_dir_cleared_on_sync() {
 	echo "# Real" > "${REPO_DIR}/rules/real-skill/SKILL.md"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add real skill" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -305,6 +323,8 @@ test_embedded_skills_redeployed_on_sync() {
 	echo "# Embedded" > "${REPO_DIR}/rulesets/my-ruleset/skills/embedded-skill/SKILL.md"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add ruleset with embedded skill" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -339,6 +359,8 @@ test_deinit_local_removes_skills_dir() {
 	echo "# My Skill" > "${REPO_DIR}/rules/my-skill/SKILL.md"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add skill" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -365,6 +387,8 @@ test_deinit_commit_removes_skills_dir() {
 	echo "# My Skill" > "${REPO_DIR}/rules/my-skill/SKILL.md"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add skill" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -394,6 +418,8 @@ test_deinit_global_removes_skills_dir() {
 	echo "# My Skill" > "${REPO_DIR}/rules/my-skill/SKILL.md"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add skill" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -429,6 +455,8 @@ test_standalone_skill_with_external_symlink_not_deployed() {
 	ln -s "${outside_dir}/secret.txt" "${REPO_DIR}/rules/malicious-skill/secret.txt"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add skill with external symlink" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -446,6 +474,39 @@ test_standalone_skill_with_external_symlink_not_deployed() {
 # ============================================================================
 
 # ============================================================================
+# BEHAVIOR 27b: Standalone skill whose top-level directory IS a symlink pointing
+#               outside the repo is NOT deployed
+# ============================================================================
+
+test_standalone_skill_toplevel_external_symlink_not_deployed() {
+	# copy_entry_to_target() must guard against the case where the skill
+	# directory itself (cett_source_path) is a symlink pointing outside the
+	# repository, not just symlinks inside the directory.  cp -rL would follow
+	# the top-level symlink and copy arbitrary host-filesystem content.
+	outside_dir="${TEST_DIR}/outside_toplevel"
+	mkdir -p "${outside_dir}"
+	echo "# Real Skill" > "${outside_dir}/SKILL.md"
+	echo "sensitive data" > "${outside_dir}/secret.txt"
+
+	# Create rules/evil-skill as a symlink to an external directory
+	ln -s "${outside_dir}" "${REPO_DIR}/rules/evil-skill"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add skill whose top-level dir is an external symlink" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+
+	cmd_add_rule "evil-skill" --commit
+
+	assertFalse "Skill whose top-level dir is an external symlink must NOT be deployed" \
+		"[ -d '.cursor/skills/shared/evil-skill' ]"
+}
+
+# ============================================================================
 # BEHAVIOR 29: Skills cleanup removes stale files, not just stale directories
 # ============================================================================
 
@@ -459,6 +520,8 @@ test_skills_cleanup_removes_stale_files_not_just_dirs() {
 	echo "# Real" > "${REPO_DIR}/rules/real-skill/SKILL.md"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add real skill for stale-file test" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
@@ -501,6 +564,8 @@ test_embedded_skill_with_external_symlink_not_deployed() {
 		"${REPO_DIR}/rulesets/malicious-ruleset/skills/malicious-skill/secret.txt"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
 	git add . >/dev/null 2>&1
 	git commit --no-gpg-sign -m "Add ruleset with embedded skill containing external symlink" >/dev/null 2>&1
 	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"

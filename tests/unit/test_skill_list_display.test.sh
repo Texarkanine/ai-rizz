@@ -216,8 +216,19 @@ test_rulesets_section_comes_after_skills_section() {
 	#   Available rules: → Available commands: → Available skills: → Available rulesets:
 	# Rulesets are last because they are composite items that contain rules,
 	# commands, and skills — listing them last keeps the atomic items first.
-	# All four section headers are printed unconditionally (even when empty),
-	# so no special repo content is required.
+	# Section headers are only printed when content exists, so this test adds
+	# one standalone skill (to trigger "Available skills:") and one ruleset
+	# (to trigger "Available rulesets:") before calling cmd_list.
+	mkdir -p "${REPO_DIR}/rules/ordering-skill"
+	echo "# Ordering Skill" > "${REPO_DIR}/rules/ordering-skill/SKILL.md"
+	mkdir -p "${REPO_DIR}/rulesets/ordering-ruleset"
+	echo "# Rule" > "${REPO_DIR}/rulesets/ordering-ruleset/rule.mdc"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add skill and ruleset for ordering test" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 
 	output=$(cmd_list)

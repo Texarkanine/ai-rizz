@@ -3309,12 +3309,10 @@ cmd_list() {
 		echo "${cl_is_installed_status}"
 	}
 	
-	# Display rules (*.mdc files)
-	echo "Available rules:"
+	# Display rules (*.mdc files) — section omitted entirely when empty
 	cl_rules=$(find "${cl_repo_dir}/${RULES_PATH}" -maxdepth 1 -name "*.mdc" -type f 2>/dev/null | sort)
-	if [ -z "${cl_rules}" ]; then
-		echo "  No rules found"
-	else
+	if [ -n "${cl_rules}" ]; then
+		echo "Available rules:"
 		for cl_rule in ${cl_rules}; do
 			cl_rule_name=$(basename "${cl_rule}")
 			cl_rule_path="${RULES_PATH}/${cl_rule_name}"
@@ -3335,15 +3333,13 @@ cmd_list() {
 					;;
 			esac
 		done
+		echo ""
 	fi
-	echo ""
 	
-	# Display commands (*.md files) with / prefix
-	echo "Available commands:"
+	# Display commands (*.md files) with / prefix — section omitted entirely when empty
 	cl_commands=$(find "${cl_repo_dir}/${RULES_PATH}" -maxdepth 1 -name "*.md" ! -name "*.mdc" -type f 2>/dev/null | sort)
-	if [ -z "${cl_commands}" ]; then
-		echo "  No commands found"
-	else
+	if [ -n "${cl_commands}" ]; then
+		echo "Available commands:"
 		for cl_command in ${cl_commands}; do
 			cl_command_name=$(basename "${cl_command}")
 			cl_command_path="${RULES_PATH}/${cl_command_name}"
@@ -3367,12 +3363,12 @@ cmd_list() {
 					;;
 			esac
 		done
+		echo ""
 	fi
-	echo ""
 	
 	# Display standalone skills — only skills in rules/<name>/ that can be
 	# individually installed via 'ai-rizz add rule <name>'
-	echo "Available skills:"
+	# Section omitted entirely when empty.
 
 	# Collect unique skill names from rules/<name>/ only
 	cl_skill_names=""
@@ -3392,9 +3388,8 @@ cmd_list() {
 	cl_skl_names_tmp=$(mktemp)
 	printf '%s' "${cl_skill_names}" | sort -u | grep -v '^$' > "${cl_skl_names_tmp}" 2>/dev/null || true
 
-	if [ ! -s "${cl_skl_names_tmp}" ]; then
-		echo "  No skills found"
-	else
+	if [ -s "${cl_skl_names_tmp}" ]; then
+		echo "Available skills:"
 		while IFS= read -r cl_skill_name; do
 			if [ -z "${cl_skill_name}" ]; then
 				continue
@@ -3415,16 +3410,14 @@ cmd_list() {
 					;;
 			esac
 		done < "${cl_skl_names_tmp}"
+		echo ""
 	fi
 	rm -f "${cl_skl_names_tmp}"
-	echo ""
 
-	# Display rulesets
-	echo "Available rulesets:"
+	# Display rulesets — section omitted entirely when empty
 	cl_rulesets=$(find "${cl_repo_dir}/${RULESETS_PATH}" -mindepth 1 -maxdepth 1 -type d | sort 2>/dev/null)
-	if [ -z "${cl_rulesets}" ]; then
-		echo "  No rulesets found"
-	else
+	if [ -n "${cl_rulesets}" ]; then
+		echo "Available rulesets:"
 		for cl_ruleset in ${cl_rulesets}; do
 			cl_ruleset_name=$(basename "${cl_ruleset}")
 			cl_ruleset_path="${RULESETS_PATH}/${cl_ruleset_name}"
@@ -3542,8 +3535,8 @@ cmd_list() {
 				rm -f "${cl_temp_items}"
 			fi
 		done
+		echo ""
 	fi
-	echo ""
 
 	return 0
 }
@@ -4538,6 +4531,60 @@ file_exists_in_commit_mode() {
 	return 1  # Not found in commit mode
 }
 
+# Validate that all symlinks inside a directory resolve within a given repo root
+#
+# Iterates every symlink under dir (non-recursively finding all symlinks via
+# find), resolves each with _readlink_f, and verifies the resolved path starts
+# with repo_dir/.  Emits a warn message (prefixed with label) on the first
+# failed or out-of-repo symlink and returns 1.
+# Used by copy_entry_to_target() to guard both standalone and embedded skill
+# directories before cp -rL is invoked.
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Directory to scan for symlinks
+#   $2 - Repository root directory (resolved absolute path)
+#   $3 - Human-readable label for warn messages (e.g. skill name)
+#
+# Outputs:
+#   Stderr: Warning via warn() on the first invalid symlink
+#
+# Returns:
+#   0 if all symlinks are valid (or no symlinks exist)
+#   1 if any symlink is unresolvable or points outside repo_dir
+#
+validate_dir_symlinks() {
+	vds_dir="${1}"
+	vds_repo_dir="${2}"
+	vds_label="${3}"
+	vds_result=0
+	vds_temp=$(mktemp)
+	find "${vds_dir}" -type l > "${vds_temp}" 2>/dev/null
+	while IFS= read -r vds_slink; do
+		[ -n "${vds_slink}" ] || continue
+		vds_resolved=$(_readlink_f "${vds_slink}")
+		if [ -z "${vds_resolved}" ]; then
+			warn "Skipping skill ${vds_label}: failed to resolve symlink: ${vds_slink}"
+			vds_result=1
+			break
+		fi
+		case "${vds_resolved}" in
+			"${vds_repo_dir}"/*)
+				# Symlink stays within repo — safe
+				;;
+			*)
+				warn "Skipping skill ${vds_label}: symlink points outside repository: ${vds_slink} -> ${vds_resolved}"
+				vds_result=1
+				break
+				;;
+		esac
+	done < "${vds_temp}"
+	rm -f "${vds_temp}"
+	return "${vds_result}"
+}
+
 # Copy a single entry (rule or ruleset) to target directory
 #
 # Handles both individual rules (single file copy) and rulesets (copy all
@@ -4644,7 +4691,6 @@ copy_entry_to_target() {
 			# could copy sensitive files from the host filesystem. Matching the
 			# security posture applied to ruleset .mdc symlinks (see below).
 			cett_skill_name=$(basename "${cett_source_path}")
-			cett_bad_slink=false
 			# Guard: check if cett_source_path itself is a symlink (before cp -rL).
 			# cp -rL follows symlinks; if the top-level skill directory is a symlink
 			# pointing outside the repo, it could copy sensitive host-filesystem files.
@@ -4664,29 +4710,7 @@ copy_entry_to_target() {
 						;;
 				esac
 			fi
-			cett_slink_temp=$(mktemp)
-			find "${cett_source_path}" -type l > "${cett_slink_temp}" 2>/dev/null
-			while IFS= read -r cett_slink; do
-				[ -n "${cett_slink}" ] || continue
-				cett_slink_resolved=$(_readlink_f "${cett_slink}")
-				if [ -z "${cett_slink_resolved}" ]; then
-					warn "Skipping skill ${cett_skill_name}: failed to resolve symlink: ${cett_slink}"
-					cett_bad_slink=true
-					break
-				fi
-				case "${cett_slink_resolved}" in
-					"${cett_repo_dir}"/*)
-						# Symlink stays within repo — safe
-						;;
-					*)
-						warn "Skipping skill ${cett_skill_name}: symlink points outside repository: ${cett_slink} -> ${cett_slink_resolved}"
-						cett_bad_slink=true
-						break
-						;;
-				esac
-			done < "${cett_slink_temp}"
-			rm -f "${cett_slink_temp}"
-			if [ "${cett_bad_slink}" = "true" ]; then
+			if ! validate_dir_symlinks "${cett_source_path}" "${cett_repo_dir}" "${cett_skill_name}"; then
 				return 0
 			fi
 			cett_skills_target=$(get_skills_target_dir "${cett_mode}")
@@ -4814,41 +4838,37 @@ copy_entry_to_target() {
 			# Copy embedded skills from ruleset's skills/ subdir to skills target
 			# Each direct child of skills/ that contains SKILL.md is a skill dir
 			cett_skills_subdir="${cett_source_path}/skills"
-			if [ -d "${cett_skills_subdir}" ]; then
+			# Guard: if skills/ itself is a symlink, validate it resolves within the repo.
+			# find without -L does not traverse a symlinked starting directory, but this
+			# explicit check makes the intent clear and guards against future -L additions.
+			cett_skills_subdir_safe=true
+			if [ -L "${cett_skills_subdir}" ]; then
+				cett_skills_subdir_resolved=$(_readlink_f "${cett_skills_subdir}")
+				if [ -z "${cett_skills_subdir_resolved}" ]; then
+					warn "Skipping skills/ subdir for ${cett_entry}: failed to resolve symlink: ${cett_skills_subdir}"
+					cett_skills_subdir_safe=false
+				else
+					case "${cett_skills_subdir_resolved}" in
+						"${cett_repo_dir}"/*)
+							# Symlink stays within repo — safe
+							;;
+						*)
+							warn "Skipping skills/ subdir for ${cett_entry}: symlink points outside repository: ${cett_skills_subdir} -> ${cett_skills_subdir_resolved}"
+							cett_skills_subdir_safe=false
+							;;
+					esac
+				fi
+			fi
+			if [ "${cett_skills_subdir_safe}" = "true" ] && [ -d "${cett_skills_subdir}" ]; then
 				cett_skill_dirs_tmp=$(mktemp)
 				find "${cett_skills_subdir}" -mindepth 1 -maxdepth 1 -type d > "${cett_skill_dirs_tmp}" 2>/dev/null || true
 				while IFS= read -r cett_skill_dir; do
 					# Only copy dirs that have SKILL.md (are valid skills)
 					if [ -f "${cett_skill_dir}/SKILL.md" ]; then
 						# Security: validate symlinks inside the skill dir before copying.
-						# cp -rL follows all symlinks; a symlink pointing outside the repo
-						# could copy sensitive files from the host filesystem.  Matches the
-						# standalone-skill validation in the rules/<name>/ code path above.
+						# Uses the shared validate_dir_symlinks helper (same check as standalone skills).
 						cett_emb_skill_name=$(basename "${cett_skill_dir}")
-						cett_emb_bad_slink=false
-						cett_emb_slink_temp=$(mktemp)
-						find "${cett_skill_dir}" -type l > "${cett_emb_slink_temp}" 2>/dev/null
-						while IFS= read -r cett_emb_slink; do
-							[ -n "${cett_emb_slink}" ] || continue
-							cett_emb_resolved=$(_readlink_f "${cett_emb_slink}")
-							if [ -z "${cett_emb_resolved}" ]; then
-								warn "Skipping embedded skill ${cett_emb_skill_name}: failed to resolve symlink: ${cett_emb_slink}"
-								cett_emb_bad_slink=true
-								break
-							fi
-							case "${cett_emb_resolved}" in
-								"${cett_repo_dir}"/*)
-									# Symlink stays within repo — safe
-									;;
-								*)
-									warn "Skipping embedded skill ${cett_emb_skill_name}: symlink points outside repository: ${cett_emb_slink} -> ${cett_emb_resolved}"
-									cett_emb_bad_slink=true
-									break
-									;;
-							esac
-						done < "${cett_emb_slink_temp}"
-						rm -f "${cett_emb_slink_temp}"
-						if [ "${cett_emb_bad_slink}" = "true" ]; then
+						if ! validate_dir_symlinks "${cett_skill_dir}" "${cett_repo_dir}" "${cett_emb_skill_name}"; then
 							continue
 						fi
 						cett_skills_target=$(get_skills_target_dir "${cett_mode}")

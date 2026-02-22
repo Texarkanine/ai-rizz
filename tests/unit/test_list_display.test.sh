@@ -250,27 +250,82 @@ test_list_shows_uninstalled_glyph_for_new_command() {
         fail "Should show uninstalled glyph for new command: $output"
 }
 
-# Test that no commands message is shown when none exist
-test_list_shows_no_commands_message_when_empty() {
+# Test that the commands section is omitted entirely when no commands exist
+test_list_empty_commands_section_omitted() {
     # Setup: Remove any .md files to ensure no commands exist
     # The common setUp creates command1.md and command2.md for other tests
     rm -f "$REPO_DIR/rules/"*.md
-    
+
     # Commit the removal
     cd "$REPO_DIR" || fail "Failed to cd to repo"
     git add . >/dev/null 2>&1
     git commit --no-gpg-sign -m "Remove command files for empty test" >/dev/null 2>&1
     cd "$TEST_DIR/app" || fail "Failed to cd to app"
-    
+
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
-    
+
     output=$(cmd_list)
-    
-    # Should have commands section
-    echo "$output" | grep -q "Available commands:" || fail "Should have 'Available commands:' section"
-    
-    # Should show "No commands found" message
-    echo "$output" | grep -q "No commands found" || fail "Should show 'No commands found': $output"
+
+    # When no commands exist, the section header and "No commands found" must be absent
+    assertFalse "Available commands: section must not appear when empty" \
+        "echo '${output}' | grep -q 'Available commands:'"
+    assertFalse "No commands found message must not appear" \
+        "echo '${output}' | grep -q 'No commands found'"
+}
+
+# Test that the rules section is omitted entirely when no rules exist
+test_list_empty_rules_section_omitted() {
+    # Setup: Remove all .mdc rule files so the rules section is empty
+    rm -f "$REPO_DIR/rules/"*.mdc
+
+    cd "$REPO_DIR" || fail "Failed to cd to repo"
+    git add . >/dev/null 2>&1
+    git commit --no-gpg-sign -m "Remove rules for empty-section test" >/dev/null 2>&1
+    cd "$TEST_DIR/app" || fail "Failed to cd to app"
+
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
+
+    output=$(cmd_list)
+
+    assertFalse "Available rules: section must not appear when empty" \
+        "echo '${output}' | grep -q 'Available rules:'"
+    assertFalse "No rules found message must not appear" \
+        "echo '${output}' | grep -q 'No rules found'"
+}
+
+# Test that the skills section is omitted entirely when no standalone skills exist
+test_list_empty_skills_section_omitted() {
+    # The base test repo (setUp) has rules but no skill directories, so the
+    # "Available skills:" section must be absent from cmd_list output.
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
+
+    output=$(cmd_list)
+
+    assertFalse "Available skills: section must not appear when empty" \
+        "echo '${output}' | grep -q 'Available skills:'"
+    assertFalse "No skills found message must not appear" \
+        "echo '${output}' | grep -q 'No skills found'"
+}
+
+# Test that the rulesets section is omitted entirely when no rulesets exist
+test_list_empty_rulesets_section_omitted() {
+    # Remove the rulesets created by setUp so the section is empty.
+    rm -rf "$REPO_DIR/rulesets"
+    mkdir -p "$REPO_DIR/rulesets"
+
+    cd "$REPO_DIR" || fail "Failed to cd to repo"
+    git add . >/dev/null 2>&1
+    git commit --no-gpg-sign -m "Remove rulesets for empty-section test" >/dev/null 2>&1
+    cd "$TEST_DIR/app" || fail "Failed to cd to app"
+
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
+
+    output=$(cmd_list)
+
+    assertFalse "Available rulesets: section must not appear when empty" \
+        "echo '${output}' | grep -q 'Available rulesets:'"
+    assertFalse "No rulesets found message must not appear" \
+        "echo '${output}' | grep -q 'No rulesets found'"
 }
 
 # Load shunit2

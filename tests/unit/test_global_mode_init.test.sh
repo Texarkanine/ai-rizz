@@ -4,7 +4,7 @@
 #
 # Tests all aspects of ai-rizz global mode initialization including:
 # - Global manifest creation and structure
-# - Global directory setup (~/.cursor/rules/ai-rizz/, ~/.cursor/commands/ai-rizz/)
+# - Global directory setup (~/.cursor/rules/ai-rizz/, ~/.cursor/commands/ai-rizz/, ~/.cursor/skills/ai-rizz/)
 # - Interaction with repository modes (local/commit)
 # - Idempotent re-initialization behavior
 #
@@ -77,7 +77,10 @@ test_global_constants_defined() {
     
     assertNotNull "GLOBAL_COMMANDS_DIR should be defined" "${GLOBAL_COMMANDS_DIR}"
     assertEquals "GLOBAL_COMMANDS_DIR should be ~/.cursor/commands/ai-rizz" "${HOME}/.cursor/commands/ai-rizz" "${GLOBAL_COMMANDS_DIR}"
-    
+
+    assertNotNull "GLOBAL_SKILLS_DIR should be defined" "${GLOBAL_SKILLS_DIR}"
+    assertEquals "GLOBAL_SKILLS_DIR should be ~/.cursor/skills/ai-rizz" "${HOME}/.cursor/skills/ai-rizz" "${GLOBAL_SKILLS_DIR}"
+
     teardown_global_test_environment
 }
 
@@ -108,15 +111,16 @@ test_init_global_mode_creates_manifest() {
 
 test_init_global_mode_creates_directories() {
     # Test: ai-rizz init $REPO --global
-    # Expected: Creates global rules and commands directories
-    
+    # Expected: Creates global rules, commands, and skills directories
+
     setup_global_test_environment
-    
+
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
-    
+
     assertTrue "Global rules directory should exist" "[ -d '${GLOBAL_RULES_DIR}' ]"
     assertTrue "Global commands directory should exist" "[ -d '${GLOBAL_COMMANDS_DIR}' ]"
-    
+    assertTrue "Global skills directory should exist" "[ -d '${GLOBAL_SKILLS_DIR}' ]"
+
     teardown_global_test_environment
 }
 

@@ -50,6 +50,7 @@ RULESETS_PATH=""                                    # Rulesets path from manifes
 GLOBAL_MANIFEST_FILE=""          # Set to "${HOME}/ai-rizz.skbd" at runtime
 GLOBAL_RULES_DIR=""              # Set to "${HOME}/.cursor/rules/ai-rizz" at runtime
 GLOBAL_COMMANDS_DIR=""           # Set to "${HOME}/.cursor/commands/ai-rizz" at runtime
+GLOBAL_SKILLS_DIR=""             # Set to "${HOME}/.cursor/skills/ai-rizz" at runtime
 
 # Initialize global paths (called after script loading and during tests)
 init_global_paths() {
@@ -57,6 +58,7 @@ init_global_paths() {
 	GLOBAL_MANIFEST_FILE="${HOME}/ai-rizz.skbd"
 	GLOBAL_RULES_DIR="${HOME}/.cursor/rules/ai-rizz"
 	GLOBAL_COMMANDS_DIR="${HOME}/.cursor/commands/ai-rizz"
+	GLOBAL_SKILLS_DIR="${HOME}/.cursor/skills/ai-rizz"
 }
 
 # Initialize global paths on script load
@@ -211,13 +213,71 @@ is_command() {
 #
 get_entity_type() {
 	get_entity="${1}"
-	
+
 	if [ "$(is_command "${get_entity}")" = "true" ]; then
 		echo "command"
 	else
 		echo "rule"
 	fi
-	
+}
+
+# Check if a repository entry is a skill (directory with SKILL.md)
+#
+# A skill is a directory containing SKILL.md at exactly one of two valid paths:
+#   1. rules/<name>/   — standalone skill; exactly one level under rules/, no nesting
+#   2. rulesets/<r>/skills/<name>/ — embedded in a ruleset's magic skills/ subdir;
+#                                    exactly one level under skills/, no nesting
+#
+# Any other path (e.g. rules/a/b, rulesets/skills/name, rulesets/<r>) returns "false".
+#
+# Globals:
+#   RULES_PATH    - Path prefix for rules entries (e.g., "rules")
+#   RULESETS_PATH - Path prefix for ruleset entries (e.g., "rulesets")
+#
+# Arguments:
+#   $1 - Repository directory (path to repo root; used to stat SKILL.md)
+#   $2 - Entry path relative to repository (e.g., "rules/niko-skill")
+#
+# Outputs:
+#   Stdout: "true" if entry is a skill, "false" otherwise
+#
+# Returns:
+#   0 always
+#
+is_skill() {
+	is_repo_dir="${1}"
+	is_entry="${2}"
+
+	case "${is_entry}" in
+		"${RULES_PATH}"/*/*)
+			# Nested path (rules/a/b or deeper) — nesting not allowed for standalone skills
+			echo "false"
+			;;
+		"${RULES_PATH}"/*)
+			# Standalone skill candidate: rules/<name>/ (exactly one level)
+			if [ -f "${is_repo_dir}/${is_entry}/SKILL.md" ]; then
+				echo "true"
+			else
+				echo "false"
+			fi
+			;;
+		"${RULESETS_PATH}"/*/skills/*/*)
+			# Nested path (rulesets/r/skills/a/b or deeper) — nesting not allowed
+			echo "false"
+			;;
+		"${RULESETS_PATH}"/*/skills/*)
+			# Embedded skill candidate: rulesets/<r>/skills/<name>/ (exactly one level under skills/)
+			if [ -f "${is_repo_dir}/${is_entry}/SKILL.md" ]; then
+				echo "true"
+			else
+				echo "false"
+			fi
+			;;
+		*)
+			echo "false"
+			;;
+	esac
+
 	return 0
 }
 
@@ -264,7 +324,54 @@ get_commands_target_dir() {
 			echo ".cursor/commands/${SHARED_DIR}"
 			;;
 	esac
-	
+
+	return 0
+}
+
+# Get the skills target directory for a given mode
+#
+# Returns the appropriate .cursor/skills/ subdirectory based on mode.
+# Skills use a parallel directory structure to rules and commands:
+#   - local:  .cursor/skills/local/
+#   - commit: .cursor/skills/shared/
+#   - global: ~/.cursor/skills/ai-rizz/
+#
+# Globals:
+#   GLOBAL_SKILLS_DIR - Global skills directory (set by init_global_paths)
+#   LOCAL_DIR         - Local mode directory name
+#   SHARED_DIR        - Shared/commit mode directory name
+#
+# Arguments:
+#   $1 - Mode: "local", "commit", or "global"
+#
+# Outputs:
+#   Stdout: Target skills directory path
+#
+# Returns:
+#   0 always
+#
+get_skills_target_dir() {
+	gstd_mode="${1}"
+
+	case "${gstd_mode}" in
+		local)
+			echo ".cursor/skills/${LOCAL_DIR}"
+			;;
+		commit)
+			echo ".cursor/skills/${SHARED_DIR}"
+			;;
+		global)
+			# Ensure global paths are current
+			init_global_paths
+			echo "${GLOBAL_SKILLS_DIR}"
+			;;
+		*)
+			# Default to shared for unknown modes (shouldn't happen)
+			warn "Unknown mode '${gstd_mode}' in get_skills_target_dir, defaulting to shared"
+			echo ".cursor/skills/${SHARED_DIR}"
+			;;
+	esac
+
 	return 0
 }
 
@@ -1079,7 +1186,8 @@ update_git_exclude() {
 
 # Setup git excludes for local mode
 #
-# Adds local manifest, rules directory, and commands directory to git excludes.
+# Adds local manifest, rules directory, commands directory, and skills directory
+# to git excludes.
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename to exclude
@@ -1096,15 +1204,17 @@ update_git_exclude() {
 #
 setup_local_mode_excludes() {
 	slme_target_dir="${1}"
-	
+
 	update_git_exclude "${LOCAL_MANIFEST_FILE}" "add"
 	update_git_exclude "${slme_target_dir}/${LOCAL_DIR}" "add"
 	update_git_exclude ".cursor/commands/${LOCAL_DIR}" "add"
+	update_git_exclude ".cursor/skills/${LOCAL_DIR}" "add"
 }
 
 # Remove all local mode excludes
 #
-# Removes local manifest, rules directory, and commands directory from git excludes.
+# Removes local manifest, rules directory, commands directory, and skills directory
+# from git excludes.
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename to unexclude
@@ -1121,10 +1231,11 @@ setup_local_mode_excludes() {
 #
 remove_local_mode_excludes() {
 	rlme_target_dir="${1}"
-	
+
 	update_git_exclude "${LOCAL_MANIFEST_FILE}" "remove"
 	update_git_exclude "${rlme_target_dir}/${LOCAL_DIR}" "remove"
 	update_git_exclude ".cursor/commands/${LOCAL_DIR}" "remove"
+	update_git_exclude ".cursor/skills/${LOCAL_DIR}" "remove"
 }
 
 # Check if hook-based mode is active
@@ -1209,7 +1320,7 @@ TARGET_DIR=$(head -n1 "$MANIFEST_PATH" 2>/dev/null | cut -f2)
 [ -z "$TARGET_DIR" ] && exit 0
 
 # Unstage local files (safe even if already ignored)
-git reset HEAD -- "$TARGET_DIR/local/" "$LOCAL_MANIFEST" ".cursor/commands/local/" 2>/dev/null || true
+git reset HEAD -- "$TARGET_DIR/local/" "$LOCAL_MANIFEST" ".cursor/commands/local/" ".cursor/skills/local/" 2>/dev/null || true
 # END ai-rizz hook
 HOOKEOF
 )
@@ -1334,6 +1445,9 @@ validate_git_exclude_state() {
 		fi
 		if [ ! -f ".git/info/exclude" ] || ! grep -q "^.cursor/commands/${LOCAL_DIR}$" ".git/info/exclude"; then
 			warn "Local commands directory not in git exclude (should be git-ignored)"
+		fi
+		if [ ! -f ".git/info/exclude" ] || ! grep -q "^.cursor/skills/${LOCAL_DIR}$" ".git/info/exclude"; then
+			warn "Local skills directory not in git exclude (should be git-ignored)"
 		fi
 	fi
 	
@@ -2445,42 +2559,51 @@ migrate_from_opposite_mode() {
 
 # Initialize the repository (progressive initialization)
 #
-# Creates local or commit mode with manifest file, target directory structure,
-# and git excludes (for local mode). 
+# Creates local, commit, or global mode with manifest file, target directory
+# structure, and git excludes (for local mode).
 #
-# Prompts for missing parameters, validates mode compatibility, syncs source 
-# repository, and handles idempotent re-init. Supports progressive dual-mode 
+# Prompts for missing parameters, validates mode compatibility, syncs source
+# repository, and handles idempotent re-init. Supports progressive dual-mode
 # by preserving existing mode configuration.
 #
 # Key behaviors:
 # • Prompts for missing source repo, target dir, and mode
-# • Validates git repository context and mode compatibility  
+# • Validates git repository context and mode compatibility
 # • Creates manifest files and directory structure
 # • Sets up git excludes for local mode only
 # • Handles idempotent re-initialization
 # • Uses environment variable fallbacks if available
+# • Global mode creates GLOBAL_RULES_DIR, GLOBAL_COMMANDS_DIR, and
+#   GLOBAL_SKILLS_DIR under ${HOME}/.cursor/ and stores the manifest at
+#   GLOBAL_MANIFEST_FILE (${HOME}/ai-rizz.skbd); target is fixed to
+#   .cursor/rules.  Global mode works outside a git repository.
 #
 # Globals:
-#   COMMIT_MANIFEST_FILE - Commit manifest filename (read)
-#   LOCAL_MANIFEST_FILE - Local manifest filename (read)
-#   CUSTOM_MANIFEST_ROOT - Custom manifest root filename (read)
-#   DEFAULT_TARGET_DIR - Default target directory
-#   LOCAL_DIR - Local directory name
-#   SHARED_DIR - Shared directory name
+#   COMMIT_MANIFEST_FILE  - Commit manifest filename (read)
+#   LOCAL_MANIFEST_FILE   - Local manifest filename (read)
+#   GLOBAL_MANIFEST_FILE  - Global manifest path (read/write, global mode)
+#   GLOBAL_RULES_DIR      - Global rules directory created by global init
+#   GLOBAL_COMMANDS_DIR   - Global commands directory created by global init
+#   GLOBAL_SKILLS_DIR     - Global skills directory created by global init
+#   CUSTOM_MANIFEST_ROOT  - Custom manifest root filename (read)
+#   DEFAULT_TARGET_DIR    - Default target directory
+#   LOCAL_DIR             - Local directory name
+#   SHARED_DIR            - Shared directory name
 #
 # Arguments:
-#   [source_repo]        - Repository URL (prompted if not provided)
-#   [-d target_dir]      - Target directory (defaults to .cursor/rules)
-#   [--local|-l]         - Initialize local mode (git-ignored)
-#   [--commit|-c]        - Initialize commit mode (git-tracked)
+#   [source_repo]         - Repository URL (prompted if not provided)
+#   [-d target_dir]       - Target directory (defaults to .cursor/rules)
+#   [--local|-l]          - Initialize local mode (git-ignored)
+#   [--commit|-c]         - Initialize commit mode (git-tracked)
+#   [--global|-g]         - Initialize global mode (user-wide, ~/.cursor/)
 #   [-s, --skibidi file]  - Use custom manifest root filename (processed globally)
 #   [-f, --manifest file] - Alias for --skibidi (processed globally)
-#   [--rule-path]        - Rules path (optional, defaults to "rules")
-#   [--ruleset-path]     - Rulesets path (optional, defaults to "rulesets")
+#   [--rule-path]         - Rules path (optional, defaults to "rules")
+#   [--ruleset-path]      - Rulesets path (optional, defaults to "rulesets")
 #
 # Returns:
 #   0 on success
-#   1 on error (via error() function)
+#   non-zero on error (via error() function)
 #
 cmd_init() {
 	ci_source_repo=""
@@ -2737,6 +2860,7 @@ EOF
 			# Create global mode directory structure
 			mkdir -p "${GLOBAL_RULES_DIR}"
 			mkdir -p "${GLOBAL_COMMANDS_DIR}"
+			mkdir -p "${GLOBAL_SKILLS_DIR}"
 			
 			# Write manifest to home directory
 			# Global mode uses its own target dir (the global dirs) but stores the source repo
@@ -2934,13 +3058,13 @@ cmd_deinit() {
 	# Build confirmation message
 	cd_items_to_remove=""
 	if [ "${cd_remove_local}" = "true" ] && [ "$(is_mode_active local)" = "true" ]; then
-		cd_items_to_remove="${cd_items_to_remove} ${LOCAL_MANIFEST_FILE} ${TARGET_DIR}/${LOCAL_DIR} .cursor/commands/${LOCAL_DIR}"
+		cd_items_to_remove="${cd_items_to_remove} ${LOCAL_MANIFEST_FILE} ${TARGET_DIR}/${LOCAL_DIR} .cursor/commands/${LOCAL_DIR} .cursor/skills/${LOCAL_DIR}"
 	fi
 	if [ "${cd_remove_commit}" = "true" ] && [ "$(is_mode_active commit)" = "true" ]; then
-		cd_items_to_remove="${cd_items_to_remove} ${COMMIT_MANIFEST_FILE} ${TARGET_DIR}/${SHARED_DIR} .cursor/commands/${SHARED_DIR}"
+		cd_items_to_remove="${cd_items_to_remove} ${COMMIT_MANIFEST_FILE} ${TARGET_DIR}/${SHARED_DIR} .cursor/commands/${SHARED_DIR} .cursor/skills/${SHARED_DIR}"
 	fi
 	if [ "${cd_remove_global}" = "true" ] && [ "$(is_mode_active global)" = "true" ]; then
-		cd_items_to_remove="${cd_items_to_remove} ${GLOBAL_MANIFEST_FILE} ${GLOBAL_RULES_DIR} ${GLOBAL_COMMANDS_DIR}"
+		cd_items_to_remove="${cd_items_to_remove} ${GLOBAL_MANIFEST_FILE} ${GLOBAL_RULES_DIR} ${GLOBAL_COMMANDS_DIR} ${GLOBAL_SKILLS_DIR}"
 	fi
 	
 	# Confirm deletion
@@ -2969,9 +3093,10 @@ cmd_deinit() {
 		rm -rf "${TARGET_DIR:?}/${LOCAL_DIR}"
 		rm -f "${LOCAL_MANIFEST_FILE}"
 		
-		# Also remove local commands directory
+		# Also remove local commands and skills directories
 		rm -rf ".cursor/commands/${LOCAL_DIR}"
-		
+		rm -rf ".cursor/skills/${LOCAL_DIR}"
+
 		# Only clear unified variables if commit mode isn't active
 		if [ "$(is_mode_active commit)" = "false" ]; then
 			SOURCE_REPO=""
@@ -2987,9 +3112,10 @@ cmd_deinit() {
 		rm -rf "${TARGET_DIR:?}/${SHARED_DIR}"
 		rm -f "${COMMIT_MANIFEST_FILE}"
 		
-		# Also remove commit commands directory
+		# Also remove commit commands and skills directories
 		rm -rf ".cursor/commands/${SHARED_DIR}"
-		
+		rm -rf ".cursor/skills/${SHARED_DIR}"
+
 		# Only clear unified variables if local mode isn't active
 		if [ "$(is_mode_active local)" = "false" ]; then
 			SOURCE_REPO=""
@@ -3004,8 +3130,9 @@ cmd_deinit() {
 		# Remove files
 		rm -rf "${GLOBAL_RULES_DIR}"
 		rm -rf "${GLOBAL_COMMANDS_DIR}"
+		rm -rf "${GLOBAL_SKILLS_DIR}"
 		rm -f "${GLOBAL_MANIFEST_FILE}"
-		
+
 		echo "Removed global mode configuration"
 	fi
 	
@@ -3182,12 +3309,10 @@ cmd_list() {
 		echo "${cl_is_installed_status}"
 	}
 	
-	# Display rules (*.mdc files)
-	echo "Available rules:"
+	# Display rules (*.mdc files) — section omitted entirely when empty
 	cl_rules=$(find "${cl_repo_dir}/${RULES_PATH}" -maxdepth 1 -name "*.mdc" -type f 2>/dev/null | sort)
-	if [ -z "${cl_rules}" ]; then
-		echo "  No rules found"
-	else
+	if [ -n "${cl_rules}" ]; then
+		echo "Available rules:"
 		for cl_rule in ${cl_rules}; do
 			cl_rule_name=$(basename "${cl_rule}")
 			cl_rule_path="${RULES_PATH}/${cl_rule_name}"
@@ -3208,15 +3333,13 @@ cmd_list() {
 					;;
 			esac
 		done
+		echo ""
 	fi
-	echo ""
 	
-	# Display commands (*.md files) with / prefix
-	echo "Available commands:"
+	# Display commands (*.md files) with / prefix — section omitted entirely when empty
 	cl_commands=$(find "${cl_repo_dir}/${RULES_PATH}" -maxdepth 1 -name "*.md" ! -name "*.mdc" -type f 2>/dev/null | sort)
-	if [ -z "${cl_commands}" ]; then
-		echo "  No commands found"
-	else
+	if [ -n "${cl_commands}" ]; then
+		echo "Available commands:"
 		for cl_command in ${cl_commands}; do
 			cl_command_name=$(basename "${cl_command}")
 			cl_command_path="${RULES_PATH}/${cl_command_name}"
@@ -3240,15 +3363,61 @@ cmd_list() {
 					;;
 			esac
 		done
+		echo ""
 	fi
-	echo ""
 	
-	# Display rulesets
-	echo "Available rulesets:"
+	# Display standalone skills — only skills in rules/<name>/ that can be
+	# individually installed via 'ai-rizz add rule <name>'
+	# Section omitted entirely when empty.
+
+	# Collect unique skill names from rules/<name>/ only
+	cl_skill_names=""
+	if [ -d "${cl_repo_dir}/${RULES_PATH}" ]; then
+		cl_ssd_temp=$(mktemp)
+		find "${cl_repo_dir}/${RULES_PATH}" -mindepth 1 -maxdepth 1 -type d > "${cl_ssd_temp}" 2>/dev/null
+		while IFS= read -r cl_ssd_dir; do
+			if [ -n "${cl_ssd_dir}" ] && [ -f "${cl_ssd_dir}/SKILL.md" ]; then
+				cl_skill_names="${cl_skill_names}$(basename "${cl_ssd_dir}")
+"
+			fi
+		done < "${cl_ssd_temp}"
+		rm -f "${cl_ssd_temp}"
+	fi
+
+	# Sort, deduplicate, and iterate using a temp file to preserve names with spaces
+	cl_skl_names_tmp=$(mktemp)
+	printf '%s' "${cl_skill_names}" | sort -u | grep -v '^$' > "${cl_skl_names_tmp}" 2>/dev/null || true
+
+	if [ -s "${cl_skl_names_tmp}" ]; then
+		echo "Available skills:"
+		while IFS= read -r cl_skill_name; do
+			if [ -z "${cl_skill_name}" ]; then
+				continue
+			fi
+			cl_skill_status=$(is_installed "${RULES_PATH}/${cl_skill_name}")
+			case "${cl_skill_status}" in
+				committed)
+					printf "  %s %s/\n" "${COMMITTED_GLYPH}" "${cl_skill_name}"
+					;;
+				local)
+					printf "  %s %s/\n" "${LOCAL_GLYPH}" "${cl_skill_name}"
+					;;
+				global)
+					printf "  %s %s/\n" "${GLOBAL_GLYPH}" "${cl_skill_name}"
+					;;
+				*)
+					printf "  %s %s/\n" "${UNINSTALLED_GLYPH}" "${cl_skill_name}"
+					;;
+			esac
+		done < "${cl_skl_names_tmp}"
+		echo ""
+	fi
+	rm -f "${cl_skl_names_tmp}"
+
+	# Display rulesets — section omitted entirely when empty
 	cl_rulesets=$(find "${cl_repo_dir}/${RULESETS_PATH}" -mindepth 1 -maxdepth 1 -type d | sort 2>/dev/null)
-	if [ -z "${cl_rulesets}" ]; then
-		echo "  No rulesets found"
-	else
+	if [ -n "${cl_rulesets}" ]; then
+		echo "Available rulesets:"
 		for cl_ruleset in ${cl_rulesets}; do
 			cl_ruleset_name=$(basename "${cl_ruleset}")
 			cl_ruleset_path="${RULESETS_PATH}/${cl_ruleset_name}"
@@ -3325,6 +3494,39 @@ cmd_list() {
 							printf "    │   %s %s\n" "${cl_cmd_tree_char}" "${cl_cmd_basename}"
 						done < "${cl_temp_cmd_items}"
 						rm -f "${cl_temp_cmd_items}"
+					elif [ "${cl_basename}" = "skills" ] && [ -d "${cl_item}" ]; then
+						# Show skills/ directory (magic subdir — expand one level like commands/)
+						printf "    %s %s\n" "${cl_tree_char}" "${cl_basename}"
+
+						# Show one level of skills/ contents — only actual skills (dirs containing SKILL.md)
+						cl_temp_skl_all=$(mktemp)
+						cl_temp_skl_items=$(mktemp)
+						find "${cl_item}" -maxdepth 1 -mindepth 1 -type d | sort > "${cl_temp_skl_all}" 2>/dev/null || true
+						while IFS= read -r cl_skl_dir; do
+							if [ -n "${cl_skl_dir}" ] && [ -f "${cl_skl_dir}/SKILL.md" ]; then
+								echo "${cl_skl_dir}" >> "${cl_temp_skl_items}"
+							fi
+						done < "${cl_temp_skl_all}"
+						rm -f "${cl_temp_skl_all}"
+						cl_skl_count=$(grep -c . "${cl_temp_skl_items}" 2>/dev/null || echo "0")
+						cl_skl_current=0
+						while IFS= read -r cl_skl_item; do
+							if [ -z "${cl_skl_item}" ]; then
+								continue
+							fi
+							cl_skl_current=$(expr ${cl_skl_current} + 1)
+							cl_skl_basename=$(basename "${cl_skl_item}")
+
+							# Determine tree character for skill item
+							if [ "${cl_skl_current}" -eq "${cl_skl_count}" ]; then
+								cl_skl_tree_char="└──"
+							else
+								cl_skl_tree_char="├──"
+							fi
+
+							printf "    │   %s %s\n" "${cl_skl_tree_char}" "${cl_skl_basename}"
+						done < "${cl_temp_skl_items}"
+						rm -f "${cl_temp_skl_items}"
 					else
 						# Regular item: .mdc file or subdirectory (show name only, no contents)
 						printf "    %s %s\n" "${cl_tree_char}" "${cl_basename}"
@@ -3333,8 +3535,9 @@ cmd_list() {
 				rm -f "${cl_temp_items}"
 			fi
 		done
+		echo ""
 	fi
-	
+
 	return 0
 }
 
@@ -3423,6 +3626,7 @@ check_rule_downgrade_conflict() {
 #   <rule>...            - Rule names (.mdc extension optional)
 #   [--local|-l]         - Add to local mode (git-ignored)
 #   [--commit|-c]        - Add to commit mode (git-tracked)
+#   [--global|-g]        - Add to global mode (user-wide, ~/.cursor/)
 #
 # Outputs:
 #   Stdout: Success messages for each added rule
@@ -3488,15 +3692,27 @@ cmd_add_rule() {
 
 	# Process each rule
 	for car_rule in ${car_rules}; do
+		# Reset per-iteration flags
+		car_is_skill=false
+
 		# Handle extension: .mdc for rules, .md for commands
-		# If no extension, try .mdc first, then .md (allows extensionless add)
+		# If no extension, check for skill directory first, then try .mdc/.md
 		case "${car_rule}" in
-			*".mdc"|*".md") 
+			*".mdc"|*".md")
 				car_item="${car_rule}"
-				;;  
-			*) 
-				# Try .mdc (rule) first
-				if [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.mdc" ]; then
+				;;
+			*)
+				# Check if it's a skill directory (rules/<name>/ with SKILL.md)
+				if [ "$(is_skill "${car_repo_dir}" "${RULES_PATH}/${car_rule}")" = "true" ]; then
+					car_item="${car_rule}"
+					car_is_skill=true
+					# Warn when a same-named .mdc rule also exists — the skill wins
+					# by convention but the ambiguity may surprise the caller.
+					if [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.mdc" ]; then
+						warn "Both a skill directory and a rule file exist for '${car_rule}'; adding as skill. Use '${car_rule}.mdc' to add the rule instead."
+					fi
+				# Try .mdc (rule) next
+				elif [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.mdc" ]; then
 					car_item="${car_rule}.mdc"
 				# Fall back to .md (command)
 				elif [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.md" ]; then
@@ -3505,25 +3721,33 @@ cmd_add_rule() {
 					# Neither exists - default to .mdc for error message
 					car_item="${car_rule}.mdc"
 				fi
-				;;  
+				;;
 		esac
-		
+
 		car_rule_path="${RULES_PATH}/${car_item}"
-		
-		# Check if rule/command exists in the correct source repo for this mode
-		if ! check_repository_item "${car_rule_path}" "Rule" "file" "${car_repo_dir}"; then
-			continue
+
+		# Check if rule/command/skill exists in the correct source repo for this mode
+		if [ "${car_is_skill}" = "true" ]; then
+			if ! check_repository_item "${car_rule_path}" "Skill" "dir" "${car_repo_dir}"; then
+				continue
+			fi
+		else
+			if ! check_repository_item "${car_rule_path}" "Rule" "file" "${car_repo_dir}"; then
+				continue
+			fi
 		fi
-		
+
 		# Check for mode transition and warn if entity is moving between modes
 		car_current_mode=$(get_entity_installed_mode "${car_rule_path}")
 		warn_mode_transition "${car_item}" "${car_current_mode}" "${car_mode}"
-		
-		# Check for downgrade conflicts first
-		if ! check_rule_downgrade_conflict "${car_item}" "${car_mode}"; then
-			continue  # Skip this rule, conflict detected
+
+		# Check for downgrade conflicts (rules/commands only; skills are dirs, not rule files)
+		if [ "${car_is_skill}" != "true" ]; then
+			if ! check_rule_downgrade_conflict "${car_item}" "${car_mode}"; then
+				continue  # Skip this rule, conflict detected
+			fi
 		fi
-		
+
 		# Handle conflict resolution migration using helper function
 		migrate_from_opposite_mode "${car_rule_path}" "${car_mode}" "${car_lazy_init_occurred}"
 
@@ -3531,11 +3755,15 @@ cmd_add_rule() {
 		if [ ! -w "${car_target_dir}" ]; then
 			show_permission_error "${car_target_dir}" "write to"
 		fi
-		
+
 		# Add to target manifest
 		add_manifest_entry_to_file "${car_manifest_file}" "${car_rule_path}"
-		
-		echo "Added rule: ${car_rule_path}"
+
+		if [ "${car_is_skill}" = "true" ]; then
+			echo "Added skill: ${car_rule_path}"
+		else
+			echo "Added rule: ${car_rule_path}"
+		fi
 	done
 	
 	# Sync to update file locations
@@ -3726,6 +3954,9 @@ cmd_remove_rule() {
 
 	# Process each rule
 	for rule in ${crr_rules}; do
+		# Reset per-iteration flags
+		crr_found_noext=false
+
 		# Handle extension: .mdc for rules, .md for commands
 		# If no extension, try .mdc first, then .md (allows extensionless remove)
 		case "${rule}" in
@@ -3761,13 +3992,28 @@ cmd_remove_rule() {
 					crr_found_md=true
 				fi
 				
-				# Prefer .mdc, fall back to .md
+				# Check all manifests for extensionless entry (skills stored as rules/<name>)
+				crr_path_noext="${RULES_PATH}/${rule}"
+				crr_found_noext=false
+				if [ "$(is_mode_active local)" = "true" ] && read_manifest_entries "$LOCAL_MANIFEST_FILE" 2>/dev/null | grep -q "^${crr_path_noext}$"; then
+					crr_found_noext=true
+				fi
+				if [ "$(is_mode_active commit)" = "true" ] && read_manifest_entries "$COMMIT_MANIFEST_FILE" 2>/dev/null | grep -q "^${crr_path_noext}$"; then
+					crr_found_noext=true
+				fi
+				if [ "$(is_mode_active global)" = "true" ] && read_manifest_entries "$GLOBAL_MANIFEST_FILE" 2>/dev/null | grep -q "^${crr_path_noext}$"; then
+					crr_found_noext=true
+				fi
+
+				# Prefer .mdc, fall back to .md, then extensionless (skills)
 				if [ "${crr_found_mdc}" = "true" ]; then
 					crr_item="${rule}.mdc"
 				elif [ "${crr_found_md}" = "true" ]; then
 					crr_item="${rule}.md"
+				elif [ "${crr_found_noext}" = "true" ]; then
+					crr_item="${rule}"
 				else
-					# Neither found - default to .mdc for error message
+					# Nothing found - default to .mdc for error message
 					crr_item="${rule}.mdc"
 				fi
 				;;  
@@ -3775,7 +4021,22 @@ cmd_remove_rule() {
 		
 		removed=false
 		rule_path="${RULES_PATH}/${crr_item}"
-		
+
+		# Determine entity noun for user-facing messages from the actual item
+		# being removed, not from crr_found_noext — both a .mdc rule and an
+		# extensionless skill entry can coexist in the manifest, so crr_found_noext
+		# may be true even when crr_item was resolved to "rule.mdc".
+		case "${crr_item}" in
+			*".mdc"|*".md")
+				crr_entity_noun="rule"
+				crr_entity_noun_cap="Rule"
+				;;
+			*)
+				crr_entity_noun="skill"
+				crr_entity_noun_cap="Skill"
+				;;
+		esac
+
 		# If we have a specific mode from environment variable, only remove from that mode
 		if [ -n "${crr_mode}" ]; then
 			case "${crr_mode}" in
@@ -3783,10 +4044,10 @@ cmd_remove_rule() {
 					if [ "$(is_mode_active local)" = "true" ]; then
 						if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
 							remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
-							echo "Removed rule: $rule_path"
+							echo "Removed ${crr_entity_noun}: $rule_path"
 							removed=true
 						else
-							warn "Rule not found in local mode: ${crr_item}"
+							warn "${crr_entity_noun_cap} not found in local mode: ${crr_item}"
 						fi
 					fi
 					;;
@@ -3794,10 +4055,10 @@ cmd_remove_rule() {
 					if [ "$(is_mode_active commit)" = "true" ]; then
 						if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
 							remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
-							echo "Removed rule: $rule_path"
+							echo "Removed ${crr_entity_noun}: $rule_path"
 							removed=true
 						else
-							warn "Rule not found in commit mode: ${crr_item}"
+							warn "${crr_entity_noun_cap} not found in commit mode: ${crr_item}"
 						fi
 					fi
 					;;
@@ -3805,10 +4066,10 @@ cmd_remove_rule() {
 					if [ "$(is_mode_active global)" = "true" ]; then
 						if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
 							remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$rule_path"
-							echo "Removed rule: $rule_path"
+							echo "Removed ${crr_entity_noun}: $rule_path"
 							removed=true
 						else
-							warn "Rule not found in global mode: ${crr_item}"
+							warn "${crr_entity_noun_cap} not found in global mode: ${crr_item}"
 						fi
 					fi
 					;;
@@ -3818,29 +4079,29 @@ cmd_remove_rule() {
 			if [ "$(is_mode_active local)" = "true" ]; then
 				if read_manifest_entries "$LOCAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
 					remove_manifest_entry_from_file "$LOCAL_MANIFEST_FILE" "$rule_path"
-					echo "Removed rule: $rule_path"
+					echo "Removed ${crr_entity_noun}: $rule_path"
 					removed=true
 				fi
 			fi
-			
+
 			if [ "$(is_mode_active commit)" = "true" ] && [ "$removed" = "false" ]; then
 				if read_manifest_entries "$COMMIT_MANIFEST_FILE" | grep -q "^$rule_path$"; then
 					remove_manifest_entry_from_file "$COMMIT_MANIFEST_FILE" "$rule_path"
-					echo "Removed rule: $rule_path"
+					echo "Removed ${crr_entity_noun}: $rule_path"
 					removed=true
 				fi
 			fi
-			
+
 			if [ "$(is_mode_active global)" = "true" ] && [ "$removed" = "false" ]; then
 				if read_manifest_entries "$GLOBAL_MANIFEST_FILE" | grep -q "^$rule_path$"; then
 					remove_manifest_entry_from_file "$GLOBAL_MANIFEST_FILE" "$rule_path"
-					echo "Removed rule: $rule_path"
+					echo "Removed ${crr_entity_noun}: $rule_path"
 					removed=true
 				fi
 			fi
-			
+
 			if [ "$removed" = "false" ]; then
-				warn "Rule not found in any mode: ${crr_item}"
+				warn "${crr_entity_noun_cap} not found in any mode: ${crr_item}"
 			fi
 		fi
 	done
@@ -4131,6 +4392,16 @@ sync_manifest_to_directory() {
 					find "${smtd_commands_dir}" -type d -empty -delete 2>/dev/null || true
 				fi
 			fi
+
+			# Also clear the corresponding skills directory for this mode
+			# Skills are stored as subdirectories and must be fully removed before rebuild
+			if [ -n "${smtd_mode}" ]; then
+				smtd_skills_dir=$(get_skills_target_dir "${smtd_mode}")
+				if [ -d "${smtd_skills_dir}" ]; then
+					# Remove all children (dirs, files, and symlinks) at depth 1
+					find "${smtd_skills_dir}" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+				fi
+			fi
 			
 			# Migration: Clean up old command structures from prior versions
 			# This handles multiple migration scenarios:
@@ -4260,6 +4531,60 @@ file_exists_in_commit_mode() {
 	return 1  # Not found in commit mode
 }
 
+# Validate that all symlinks inside a directory resolve within a given repo root
+#
+# Iterates every symlink under dir (non-recursively finding all symlinks via
+# find), resolves each with _readlink_f, and verifies the resolved path starts
+# with repo_dir/.  Emits a warn message (prefixed with label) on the first
+# failed or out-of-repo symlink and returns 1.
+# Used by copy_entry_to_target() to guard both standalone and embedded skill
+# directories before cp -rL is invoked.
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Directory to scan for symlinks
+#   $2 - Repository root directory (resolved absolute path)
+#   $3 - Human-readable label for warn messages (e.g. skill name)
+#
+# Outputs:
+#   Stderr: Warning via warn() on the first invalid symlink
+#
+# Returns:
+#   0 if all symlinks are valid (or no symlinks exist)
+#   1 if any symlink is unresolvable or points outside repo_dir
+#
+validate_dir_symlinks() {
+	vds_dir="${1}"
+	vds_repo_dir="${2}"
+	vds_label="${3}"
+	vds_result=0
+	vds_temp=$(mktemp)
+	find "${vds_dir}" -type l > "${vds_temp}" 2>/dev/null
+	while IFS= read -r vds_slink; do
+		[ -n "${vds_slink}" ] || continue
+		vds_resolved=$(_readlink_f "${vds_slink}")
+		if [ -z "${vds_resolved}" ]; then
+			warn "Skipping skill ${vds_label}: failed to resolve symlink: ${vds_slink}"
+			vds_result=1
+			break
+		fi
+		case "${vds_resolved}" in
+			"${vds_repo_dir}"/*)
+				# Symlink stays within repo — safe
+				;;
+			*)
+				warn "Skipping skill ${vds_label}: symlink points outside repository: ${vds_slink} -> ${vds_resolved}"
+				vds_result=1
+				break
+				;;
+		esac
+	done < "${vds_temp}"
+	rm -f "${vds_temp}"
+	return "${vds_result}"
+}
+
 # Copy a single entry (rule or ruleset) to target directory
 #
 # Handles both individual rules (single file copy) and rulesets (copy all
@@ -4358,6 +4683,42 @@ copy_entry_to_target() {
 			cp -L "${cett_source_path}" "${cett_target_directory}/"
 		fi
 	elif [ -d "${cett_source_path}" ]; then
+		# Check if this directory is a standalone skill (rules/<name>/ with SKILL.md)
+		if [ -n "${cett_mode}" ] && [ "$(is_skill "${cett_repo_dir}" "${cett_entry}")" = "true" ]; then
+			# Skill: copy the whole directory to .cursor/skills/<mode>/<name>/
+			# Security: validate any symlinks inside the skill dir before copying.
+			# cp -rL follows all symlinks; a symlink pointing outside the repo
+			# could copy sensitive files from the host filesystem. Matching the
+			# security posture applied to ruleset .mdc symlinks (see below).
+			cett_skill_name=$(basename "${cett_source_path}")
+			# Guard: check if cett_source_path itself is a symlink (before cp -rL).
+			# cp -rL follows symlinks; if the top-level skill directory is a symlink
+			# pointing outside the repo, it could copy sensitive host-filesystem files.
+			if [ -L "${cett_source_path}" ]; then
+				cett_top_resolved=$(_readlink_f "${cett_source_path}")
+				if [ -z "${cett_top_resolved}" ]; then
+					warn "Skipping skill ${cett_skill_name}: failed to resolve symlink: ${cett_source_path}"
+					return 0
+				fi
+				case "${cett_top_resolved}" in
+					"${cett_repo_dir}"/*)
+						# Symlink stays within repo — safe to proceed
+						;;
+					*)
+						warn "Skipping skill ${cett_skill_name}: symlink points outside repository: ${cett_source_path} -> ${cett_top_resolved}"
+						return 0
+						;;
+				esac
+			fi
+			if ! validate_dir_symlinks "${cett_source_path}" "${cett_repo_dir}" "${cett_skill_name}"; then
+				return 0
+			fi
+			cett_skills_target=$(get_skills_target_dir "${cett_mode}")
+			mkdir -p "${cett_skills_target}"
+			cp -rL "${cett_source_path}" "${cett_skills_target}/"
+			return 0
+		fi
+
 		# Directory (ruleset) - copy .mdc files to rules dir, .md files to commands dir
 		# Handle symlinks and files differently:
 		# - Symlinks: Copy flat (all instances are the same rule)
@@ -4471,8 +4832,52 @@ copy_entry_to_target() {
 					fi
 				fi
 			done < "${cett_cmd_temp_file}"
-			
+
 			rm -f "${cett_cmd_temp_file}"
+
+			# Copy embedded skills from ruleset's skills/ subdir to skills target
+			# Each direct child of skills/ that contains SKILL.md is a skill dir
+			cett_skills_subdir="${cett_source_path}/skills"
+			# Guard: if skills/ itself is a symlink, validate it resolves within the repo.
+			# find without -L does not traverse a symlinked starting directory, but this
+			# explicit check makes the intent clear and guards against future -L additions.
+			cett_skills_subdir_safe=true
+			if [ -L "${cett_skills_subdir}" ]; then
+				cett_skills_subdir_resolved=$(_readlink_f "${cett_skills_subdir}")
+				if [ -z "${cett_skills_subdir_resolved}" ]; then
+					warn "Skipping skills/ subdir for ${cett_entry}: failed to resolve symlink: ${cett_skills_subdir}"
+					cett_skills_subdir_safe=false
+				else
+					case "${cett_skills_subdir_resolved}" in
+						"${cett_repo_dir}"/*)
+							# Symlink stays within repo — safe
+							;;
+						*)
+							warn "Skipping skills/ subdir for ${cett_entry}: symlink points outside repository: ${cett_skills_subdir} -> ${cett_skills_subdir_resolved}"
+							cett_skills_subdir_safe=false
+							;;
+					esac
+				fi
+			fi
+			if [ "${cett_skills_subdir_safe}" = "true" ] && [ -d "${cett_skills_subdir}" ]; then
+				cett_skill_dirs_tmp=$(mktemp)
+				find "${cett_skills_subdir}" -mindepth 1 -maxdepth 1 -type d > "${cett_skill_dirs_tmp}" 2>/dev/null || true
+				while IFS= read -r cett_skill_dir; do
+					# Only copy dirs that have SKILL.md (are valid skills)
+					if [ -f "${cett_skill_dir}/SKILL.md" ]; then
+						# Security: validate symlinks inside the skill dir before copying.
+						# Uses the shared validate_dir_symlinks helper (same check as standalone skills).
+						cett_emb_skill_name=$(basename "${cett_skill_dir}")
+						if ! validate_dir_symlinks "${cett_skill_dir}" "${cett_repo_dir}" "${cett_emb_skill_name}"; then
+							continue
+						fi
+						cett_skills_target=$(get_skills_target_dir "${cett_mode}")
+						mkdir -p "${cett_skills_target}"
+						cp -rL "${cett_skill_dir}" "${cett_skills_target}/"
+					fi
+				done < "${cett_skill_dirs_tmp}"
+				rm -f "${cett_skill_dirs_tmp}"
+			fi
 		fi
 	else
 		warn "Entry not found in repository: ${cett_entry}"

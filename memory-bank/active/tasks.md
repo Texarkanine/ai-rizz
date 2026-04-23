@@ -12,3 +12,4 @@
 - [x] Update `memory-bank/systemPatterns.md` magic-subdir description
 - [x] Run full test suite (33/33)
 - [x] Commits: `d3da87e` (fix), follow-up memory-bank layout on branch as applicable
+- [x] **QA (2026-04-23):** Semantic review vs projectbrief — PASS; `./tests/run_tests.sh` 33/33

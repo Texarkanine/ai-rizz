@@ -4798,6 +4798,15 @@ copy_entry_to_target() {
 			
 			while IFS= read -r cett_cmd_file; do
 				if [ -n "${cett_cmd_file}" ] && ([ -f "${cett_cmd_file}" ] || [ -L "${cett_cmd_file}" ]); then
+					# Embedded skills live under rulesets/<r>/skills/; their *.md (e.g. references/)
+					# are part of the skill tree and must not be flattened into .cursor/commands/.
+					cett_cmd_rel="${cett_cmd_file#"${cett_source_path}"/}"
+					case "${cett_cmd_rel}" in
+						skills/*)
+							continue
+							;;
+					esac
+
 					cett_cmd_filename=$(basename "${cett_cmd_file}")
 					
 					# Skip uppercase .md files (README.md, CHANGELOG.md, etc.) - these are documentation

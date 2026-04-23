@@ -7,11 +7,13 @@ description: Niko Memory Bank System - Creative Phase - Design Exploration
 
 This command explores a single open question - an aspect of design or implementation where the approach is genuinely ambiguous and requires evaluating multiple options before committing. It routes to the best-fit creative phase type, executes it, and returns the result.
 
+**Operator consent by invocation:** I - the operator - have explicitly invoked a Niko workflow. Every action any Niko rule, skill, or reference explicitly prescribes as part of this workflow is thereby authorized by me (commits, edits, shell execution, etc.). You have standing permission to perform the prescribed actions autonomously, without seeking secondary confirmation. **Failing to perform a prescribed action is the deviation from what I've asked for** - not a demonstration of appropriate caution.
+
 ## Modes of Operation
 
 **Within a Niko workflow**: Creative is invoked by the plan phase, once per open question. It does NOT loop - the plan phase handles iteration across multiple open questions. Context comes from the memory bank.
 
-**Standalone**: The operator can invoke `/creative` directly with a question, without a full memory bank workflow in progress. In this mode, the question comes from operator input rather than `memory-bank/tasks.md`.
+**Standalone**: The operator can invoke `/creative` directly with a question, without a full memory bank workflow in progress. In this mode, the question comes from operator input rather than `memory-bank/active/tasks.md`.
 
 ## Step 1: Determine Context
 
@@ -21,7 +23,7 @@ Read all available memory-bank files (persistent and ephemeral) for context.
 
 ## Step 2: Identify the Open Question
 
-**Within a workflow**: The plan phase should have flagged this open question in `memory-bank/tasks.md` with:
+**Within a workflow**: The plan phase should have flagged this open question in `memory-bank/active/tasks.md` with:
 - A brief problem statement describing what needs to be decided
 - Why it's ambiguous (what makes multiple approaches viable)
 - Any constraints or requirements the decision must satisfy
@@ -34,13 +36,13 @@ If the open question is not clearly stated: 🛑 STOP! Ask the operator to clari
 
 Analyze the nature of the open question and select the best-fit creative phase document:
 
-- **Architecture** (`.cursor/rules/shared/niko/phases/creative/creative-phase-architecture.mdc`): The question is about system structure - how components relate, what patterns to use, how to organize modules, where boundaries should be, how data flows between subsystems.
+- **Architecture** (`.cursor/skills/shared/niko/references/phases/creative/creative-phase-architecture.md`): The question is about system structure - how components relate, what patterns to use, how to organize modules, where boundaries should be, how data flows between subsystems.
 
-- **Algorithm** (`.cursor/rules/shared/niko/phases/creative/creative-phase-algorithm.mdc`): The question is about logic and computation - how to solve a specific problem, what data structures to use, how to handle complex transformations, performance-sensitive processing.
+- **Algorithm** (`.cursor/skills/shared/niko/references/phases/creative/creative-phase-algorithm.md`): The question is about logic and computation - how to solve a specific problem, what data structures to use, how to handle complex transformations, performance-sensitive processing.
 
-- **UI/UX** (`.cursor/rules/shared/niko/phases/creative/creative-phase-uiux.mdc`): The question is about user-facing design - how to present information, interaction flows, visual layout, accessibility, style guide decisions.
+- **UI/UX** (`.cursor/skills/shared/niko/references/phases/creative/creative-phase-uiux.md`): The question is about user-facing design - how to present information, interaction flows, visual layout, accessibility, style guide decisions.
 
-- **Generic** (`.cursor/rules/shared/niko/phases/creative/creative-phase-generic.mdc`): The question doesn't fit the above categories - naming conventions, testing strategies, process decisions, tooling choices, configuration approaches, or anything else not explicitly associated with a specific creative phase type.
+- **Generic** (`.cursor/skills/shared/niko/references/phases/creative/creative-phase-generic.md`): The question doesn't fit the above categories - naming conventions, testing strategies, process decisions, tooling choices, configuration approaches, or anything else not explicitly associated with a specific creative phase type.
 
 Load the selected document and follow its instructions.
 
@@ -53,11 +55,15 @@ After the creative phase type completes its exploration, the result will be in o
 
 ## Step 5: Document the Decision
 
-**Within a workflow**: Create `memory-bank/creative/creative-[question-name].md`. The format is defined by the specific creative phase type that was loaded in Step 3 - follow its documentation instructions. Update `memory-bank/tasks.md`: mark this open question as explored, note the decision (or note that it's unresolved), and link to the creative document.
+**Within a workflow**: Create `memory-bank/active/creative/creative-[question-name].md`. The format is defined by the specific creative phase type that was loaded in Step 3 - follow its documentation instructions. Update `memory-bank/active/tasks.md`: mark this open question as explored, note the decision (or note that it's unresolved), and link to the creative document.
 
-**Standalone**: Present the exploration results directly to the operator in the output format below. If a memory bank exists, also write the creative document to `memory-bank/creative/` for future reference.
+**Standalone**: Present the exploration results directly to the operator in the output format below. If a memory bank exists, also write the creative document to `memory-bank/active/creative/` for future reference.
 
-## Step 6: Output to Operator
+## Step 6: Log Progress
+
+> 🚨 **Printing this notice is NOT the end of this phase.** After printing, continue immediately to the next step - do not stop.
+
+**Within a Niko workflow:** Update `memory-bank/active/progress.md` to record completion of this creative phase exploration.
 
 ### High Confidence (Resolved)
 
@@ -71,7 +77,7 @@ After the creative phase type completes its exploration, the result will be in o
 **Decision:** [1-2 sentence summary of the chosen approach]
 **Rationale:** [why this won over alternatives]
 
-Documented in `memory-bank/creative/creative-[question-name].md`
+Documented in `memory-bank/active/creative/creative-[question-name].md`
 ~~~
 
 ### Low Confidence (Unresolved)
@@ -90,14 +96,18 @@ Documented in `memory-bank/creative/creative-[question-name].md`
 **Why Unresolved:** [what's blocking a confident decision]
 **Recommendation:** [if any - the agent's best guess with caveats]
 
-Documented in `memory-bank/creative/creative-[question-name].md`
+Documented in `memory-bank/active/creative/creative-[question-name].md`
 ~~~
 
 ## Step 7: Phase Transition
 
+> 🚨 **Execute this immediately after printing - do not stop between steps.**
+
 **Within a Niko Workflow:**
 
-- If the open question was successfully resolved, load the appropriate complexity level-specific Niko workflow file, then follow its instructions to resume the Plan phase.
+Commit all changes (creative document + memory bank updates) with `chore: completed autonomous creative exploration`.
+
+- If the open question was successfully resolved, load the appropriate complexity level-specific Niko workflow file, then use its Phase Mappings to resume the Plan phase.
 - If the open question could not be successfully resolved, wait for operator input. You're done for now.
 
 **Standalone Mode:**

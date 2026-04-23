@@ -98,6 +98,34 @@ test_uppercase_md_files_ignored() {
 	test -f "$commands_dir/my-command.md" || fail "my-command.md SHOULD be copied"
 }
 
+# Test that .md files under rulesets/<r>/skills/ are NOT copied as flat commands
+# Expected: They stay inside the embedded skill tree (e.g. references/ for AgentSkills)
+test_md_under_skills_dir_not_deployed_as_flat_commands() {
+	mkdir -p "$REPO_DIR/rulesets/test-skill-refs/skills/niko/references/core"
+	echo "reference body" > "$REPO_DIR/rulesets/test-skill-refs/skills/niko/references/core/memory-bank-init.md"
+	printf '%s\n' "# Niko" > "$REPO_DIR/rulesets/test-skill-refs/skills/niko/SKILL.md"
+	echo "rule content" > "$REPO_DIR/rulesets/test-skill-refs/test-rule.mdc"
+	echo "real command" > "$REPO_DIR/rulesets/test-skill-refs/published-cmd.md"
+
+	cd "$REPO_DIR" || fail "Failed to change to repo directory"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add ruleset with skill references" >/dev/null 2>&1
+	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
+
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
+	cmd_add_ruleset "test-skill-refs" --commit
+	assertTrue "Should add ruleset successfully" $?
+
+	commands_dir=".cursor/commands/shared"
+	test ! -f "$commands_dir/memory-bank-init.md" || \
+		fail "memory-bank-init.md must not be a top-level command (it is skill reference material)"
+	test -f "$commands_dir/published-cmd.md" || fail "published-cmd.md should still sync as a command"
+
+	skills_ref=".cursor/skills/shared/niko/references/core/memory-bank-init.md"
+	test -f "$skills_ref" || fail "reference should deploy under skill tree: $skills_ref"
+	assertEquals "Reference content" "reference body" "$(cat "$skills_ref")"
+}
+
 # Test that multiple .md files in ruleset root are all copied flat
 # Expected: All .md files copied to commands dir root (not preserving subdirs)
 test_multiple_md_files_copied_flat() {

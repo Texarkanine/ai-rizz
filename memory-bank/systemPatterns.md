@@ -13,8 +13,8 @@ All routing happens in `copy_entry_to_target()`: file vs directory is branched f
 ## Magic Subdirectories in Rulesets
 
 Rulesets can have special subdirectories whose contents are routed differently:
-- `commands/` — `.md` files copied flat to `.cursor/commands/<mode>/` (actually: all `.md` files anywhere in the ruleset are commands, `commands/` is just organizational convention)
-- `skills/` — skill directories (each containing `SKILL.md`) copied to `.cursor/skills/<mode>/`
+- `commands/` — `.md` files copied flat to `.cursor/commands/<mode>/` (organizational convention; other `.md` outside `skills/` are also commands)
+- `skills/` — skill directories (each containing `SKILL.md`) copied to `.cursor/skills/<mode>/` via `cp -rL`. Any `*.md` under `rulesets/<r>/skills/` is excluded from the flat command pass so references and other skill-local markdown are not mistaken for Cursor slash-commands.
 
 ## Skill Definition Paths
 

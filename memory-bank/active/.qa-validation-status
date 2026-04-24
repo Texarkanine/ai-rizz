@@ -1,0 +1,5 @@
+PASS
+Task: ruleset-skills-cmd-routing
+Date: 2026-04-23
+Suite: tests/run_tests.sh — 33/33 passed
+Notes: Semantic review — implementation matches projectbrief; no blocking findings.

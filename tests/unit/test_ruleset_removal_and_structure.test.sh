@@ -2,9 +2,8 @@
 #
 # test_ruleset_removal_and_structure.test.sh - Ruleset removal and structure preservation test suite
 #
-# Tests for two bug fixes:
-# 1. Commands not removed when ruleset is removed
-# 2. File rules in subdirectories are flattened instead of preserving directory structure
+# Verifies lifecycle when rulesets are removed (deployed commands and rules cleared or resynced)
+# and how file rules and symlinked rules deploy (subdirectory preservation vs flat copy).
 #
 # Test Coverage:
 # - Commands removed when ruleset removed
@@ -24,7 +23,7 @@
 source_ai_rizz
 
 # ============================================================================
-# BUG 1: COMMANDS NOT REMOVED WHEN RULESET REMOVED
+# COMMAND LIFECYCLE ON RULESET REMOVAL
 # ============================================================================
 
 # Test that commands are removed when ruleset is removed
@@ -101,7 +100,7 @@ test_commands_removed_even_with_conflicts() {
 }
 
 # ============================================================================
-# BUG 2: FILE RULES IN SUBDIRECTORIES FLATTENED
+# DIRECTORY STRUCTURE PRESERVATION FOR FILE RULES
 # ============================================================================
 
 # Test that file rules in subdirectories preserve directory structure
@@ -124,7 +123,6 @@ test_file_rules_in_subdirectories_preserve_structure() {
 	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rootrule.mdc" || fail "Root rule should be copied"
 	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/supporting/subrule.mdc" || fail "Subdirectory file rule should preserve structure"
 	test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/subrule.mdc" || fail "Subdirectory file rule should NOT be flattened"
-	# CURRENTLY FAILS: Rules are flattened to root level
 }
 
 # Test that symlinked rules in subdirectories are copied flat

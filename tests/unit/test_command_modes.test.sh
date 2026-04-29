@@ -184,21 +184,6 @@ test_ruleset_with_commands_can_be_added_global() {
     teardown_global_test_environment
 }
 
-# ============================================================================
-# RESTRICTION REMOVAL VERIFICATION
-# ============================================================================
-
-test_show_ruleset_commands_error_removed() {
-    # Test: The show_ruleset_commands_error function should be removed or unused
-    # Expected: Function doesn't exist or isn't called
-    
-    # Verify function is removed by trying to call it
-    # This should fail if the function is removed
-    if type show_ruleset_commands_error >/dev/null 2>&1; then
-        fail "show_ruleset_commands_error function should be removed"
-    fi
-}
-
 # Load and run shunit2
 # shellcheck disable=SC1090
 . "$(dirname "$0")/../../shunit2"

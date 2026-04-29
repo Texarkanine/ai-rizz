@@ -1,25 +1,19 @@
 #!/bin/sh
 #
-# test_ruleset_bug_fixes.test.sh - Regression tests for ruleset bug fixes
+# test_ruleset_list_display.test.sh - Ruleset list output and flat command deploy
 #
-# Tests for 4 bugs in commands subdirectory implementation:
-# 1. Subdirectory rules don't show up in mode list
-# 2. Commands not copied recursively (only top-level)
-# 3. List doesn't show tree for rulesets without commands
-# 4. List doesn't show .mdc files in rulesets
+# Verifies cmd_list tree shape, flat deployment of ruleset .md commands to
+# .cursor/commands/shared/, how subdirectory rules appear in list output versus
+# on disk, and .mdc visibility in list output.
 #
-# These tests are designed to FAIL with current implementation and PASS after fixes.
-# Following TDD workflow: write failing tests first, then fix bugs.
-#
-# Test Coverage:
-# - Recursive command copying (commands in subdirectories)
-# - Subdirectory rules visible in list
-# - Tree display for all rulesets (not just those with commands)
-# - .mdc files visible in list output
-# - Complex ruleset with all features
+# Test coverage:
+# - Commands sourced from nested paths under ruleset commands/ deploy flat into shared commands
+# - List shows ruleset subtree: top-level rules and subdirectory names without listing children
+# - Tree output for rulesets that have only .mdc rules (no commands subdirs)
+# - Only .mdc files listed where applicable; complex ruleset exercising several behaviors together
 #
 # Dependencies: shunit2, common test utilities
-# Usage: sh test_ruleset_bug_fixes.test.sh
+# Usage: sh test_ruleset_list_display.test.sh
 
 # Load common test utilities
 # shellcheck disable=SC1091
@@ -29,12 +23,12 @@
 source_ai_rizz
 
 # ============================================================================
-# UNIFIED COMMAND HANDLING TESTS
+# COMMANDS FLAT COPY
 # ============================================================================
 
 # Test that all .md commands in ruleset are copied FLAT (unified handling)
 # Expected: All .md files copied to commands dir without preserving structure
-test_commands_copied_recursively() {
+test_commands_from_nested_dirs_copied_flat() {
 	# Setup: Create ruleset with .md files in various locations
 	mkdir -p "$REPO_DIR/rulesets/test-recursive/commands/subdir"
 	echo "nested command content" > "$REPO_DIR/rulesets/test-recursive/commands/subdir/nested.md"
@@ -67,13 +61,12 @@ test_commands_copied_recursively() {
 }
 
 # ============================================================================
-# BUG 1: SUBDIRECTORY RULES VISIBLE IN LIST
+# RULESET TREE DISPLAY
 # ============================================================================
 
-# Test that rules in subdirectories are NOT visible in list output (subdir contents hidden)
-# Expected: Top-level rules visible, subdirs shown but NOT their contents
-# Per Phase 3: List display shows top-level only, subdir contents are NOT shown
-test_subdirectory_rules_visible_in_list() {
+# Test that subdirectory rule files are not enumerated in list (subdir appears; children hidden)
+# Expected: Top-level rules visible; subdirs shown as entries but NOT their contents in list output
+test_list_shows_subdirs_as_entries_but_hides_their_contents() {
 	# Setup: Create ruleset with rules in subdirectory
 	mkdir -p "$REPO_DIR/rulesets/test-subdir/supporting"
 	echo "subdir rule content" > "$REPO_DIR/rulesets/test-subdir/supporting/subrule.mdc"
@@ -94,28 +87,22 @@ test_subdirectory_rules_visible_in_list() {
 	
 	output=$(cmd_list)
 	
-	# Expected: Top-level rule visible, subdir shown but NOT its contents
+	# Expected: Top-level rule visible, subdir shown but NOT its contents in list
 	echo "$output" | grep -q "rootrule.mdc" || fail "Root rule should appear in list (top-level)"
 	echo "$output" | grep -q "supporting" || fail "Supporting directory should appear in list (top-level subdir)"
-	# Subdirectory contents should NOT appear (per Phase 3 requirements)
+	# Subdirectory contents should NOT appear in list output (top-level-only listing under each ruleset)
 	if echo "$output" | grep -A 10 "test-subdir" | grep -A 5 "supporting" | grep -q "subrule.mdc"; then
 		fail "Subdirectory rule should NOT appear in list (subdir contents are not shown)"
 	fi
 	
-	# Verify rules were copied (they should be, issue is only display)
-	# File rules in subdirectories preserve structure (per Bug 2 fix)
+	# Verify rules were deployed preserving subdirectory paths on disk (separate from list display)
 	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/rootrule.mdc" || fail "Root rule should be copied"
 	test -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/supporting/subrule.mdc" || fail "Subdirectory rule should be copied (preserving structure)"
 	test ! -f "$TEST_TARGET_DIR/$TEST_SHARED_DIR/subrule.mdc" || fail "Subdirectory rule should NOT be flattened"
 }
 
-# ============================================================================
-# BUG 3: TREE SHOWS FOR ALL RULESETS
-# ============================================================================
-
 # Test that list shows tree structure for rulesets without commands or subdirectories
 # Expected: All rulesets show tree with their .mdc files
-# Currently: FAILS - rulesets with only .mdc files don't show tree
 test_list_shows_tree_for_all_rulesets() {
 	# Setup: Create ruleset with only .mdc files (no commands, no subdirs)
 	mkdir -p "$REPO_DIR/rulesets/test-simple"
@@ -143,12 +130,11 @@ test_list_shows_tree_for_all_rulesets() {
 }
 
 # ============================================================================
-# BUG 4: .MDC FILES VISIBLE IN LIST
+# .MDC FILE VISIBILITY
 # ============================================================================
 
 # Test that .mdc files are visible in list output
 # Expected: .mdc files appear in tree, non-.mdc files are excluded
-# Currently: FAILS - .mdc files not shown (ignore pattern excludes all files)
 test_mdc_files_visible_in_list() {
 	# Setup: Create ruleset with .mdc files and other files
 	mkdir -p "$REPO_DIR/rulesets/test-mdc"
@@ -182,11 +168,11 @@ test_mdc_files_visible_in_list() {
 }
 
 # ============================================================================
-# COMBINED TEST - ALL BUGS
+# COMPLEX RULESET (LIST OUTPUT AND FLAT COMMANDS)
 # ============================================================================
 
 # Test complex ruleset with commands, subdirs, and .mdc files
-# Expected: All components visible and commands copied FLAT
+# Expected: Top-level list entries and commands copied FLAT
 test_complex_ruleset_display() {
 	# Setup: Create ruleset matching temp-test structure
 	mkdir -p "$REPO_DIR/rulesets/test-complex/commands/subs"
@@ -216,7 +202,6 @@ test_complex_ruleset_display() {
 	echo "$output" | grep -A 10 "test-complex" | grep -q "commands" || fail ".cursor/commands/shared/ should appear"
 	echo "$output" | grep -A 10 "test-complex" | grep -q "test-complex.mdc" || fail "Root .mdc should appear"
 	echo "$output" | grep -A 10 "test-complex" | grep -q "supporting" || fail "supporting/ should appear (top-level subdir)"
-	# Subdirectory contents should NOT appear (per Phase 3 requirements)
 	if echo "$output" | grep -A 15 "test-complex" | grep -A 5 "supporting" | grep -q "subrule.mdc"; then
 		fail "Subdirectory .mdc should NOT appear in list (subdir contents are not shown)"
 	fi

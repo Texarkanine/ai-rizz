@@ -678,9 +678,13 @@ test_remove_ruleset_global_flag_mode_specific() {
 	cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --local
 	cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
 	
-	# Add to both modes
-	cmd_add_ruleset "ruleset1" --local
+	# Add to global first, then local (adding to local migrates from global)
 	cmd_add_ruleset "ruleset1" --global
+	cmd_add_ruleset "ruleset1" --local
+	
+	# Re-add to global manifest directly to get entry in both manifests
+	# (cmd_add_ruleset would trigger migration; we need both populated to test remove isolation)
+	add_manifest_entry_to_file "$GLOBAL_MANIFEST_FILE" "rulesets/ruleset1"
 	
 	# Verify in both manifests
 	grep -q "rulesets/ruleset1" "$LOCAL_MANIFEST_FILE" || fail "Ruleset should be in local manifest"

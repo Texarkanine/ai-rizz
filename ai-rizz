@@ -2495,7 +2495,7 @@ get_repo_dir_for_mode() {
 #
 # Arguments:
 #   $1 - Item path to migrate
-#   $2 - Target mode ("local" or "commit")
+#   $2 - Target mode ("local", "commit", or "global")
 #   $3 - Lazy initialization occurred flag ("true" or "false")
 #
 # Outputs:
@@ -2509,43 +2509,72 @@ migrate_from_opposite_mode() {
 	mfom_target_mode="${2}"
 	mfom_lazy_init_occurred="${3}"
 	
-	# Check if item exists in opposite mode (conflict resolution)
+	# Check if item exists in other modes (conflict resolution)
 	# Skip migration check if we just lazy-initialized the target mode (it's empty)
 	if [ "${mfom_lazy_init_occurred}" = "false" ]; then
 		case "${mfom_target_mode}" in
 			local)
 				if [ "$(is_mode_active commit)" = "true" ]; then
 					if read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
-						# Remove from commit mode, add to local mode
 						remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${mfom_item_path}"
+					fi
+				fi
+				if [ "$(is_mode_active global)" = "true" ]; then
+					if read_manifest_entries "${GLOBAL_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
+						remove_manifest_entry_from_file "${GLOBAL_MANIFEST_FILE}" "${mfom_item_path}"
 					fi
 				fi
 				;;
 			commit)
 				if [ "$(is_mode_active local)" = "true" ]; then
 					if read_manifest_entries "${LOCAL_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
-						# Remove from local mode, add to commit mode
 						remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${mfom_item_path}"
 					fi
 				fi
+				if [ "$(is_mode_active global)" = "true" ]; then
+					if read_manifest_entries "${GLOBAL_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
+						remove_manifest_entry_from_file "${GLOBAL_MANIFEST_FILE}" "${mfom_item_path}"
+					fi
+				fi
 				;;
-		esac
-	else
-		# Lazy initialization occurred - need to migrate from opposite mode
-		case "${mfom_target_mode}" in
-			local)
-				# We just created local mode, migrate from commit mode if item exists there
+			global)
+				if [ "$(is_mode_active local)" = "true" ]; then
+					if read_manifest_entries "${LOCAL_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
+						remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${mfom_item_path}"
+					fi
+				fi
 				if [ "$(is_mode_active commit)" = "true" ]; then
 					if read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
 						remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${mfom_item_path}"
 					fi
 				fi
 				;;
+		esac
+	else
+		# Lazy initialization occurred - need to migrate from opposite mode
+		# (global mode does not lazy-init, so no global target case here)
+		case "${mfom_target_mode}" in
+			local)
+				if [ "$(is_mode_active commit)" = "true" ]; then
+					if read_manifest_entries "${COMMIT_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
+						remove_manifest_entry_from_file "${COMMIT_MANIFEST_FILE}" "${mfom_item_path}"
+					fi
+				fi
+				if [ "$(is_mode_active global)" = "true" ]; then
+					if read_manifest_entries "${GLOBAL_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
+						remove_manifest_entry_from_file "${GLOBAL_MANIFEST_FILE}" "${mfom_item_path}"
+					fi
+				fi
+				;;
 			commit)
-				# We just created commit mode, migrate from local mode if item exists there
 				if [ "$(is_mode_active local)" = "true" ]; then
 					if read_manifest_entries "${LOCAL_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
 						remove_manifest_entry_from_file "${LOCAL_MANIFEST_FILE}" "${mfom_item_path}"
+					fi
+				fi
+				if [ "$(is_mode_active global)" = "true" ]; then
+					if read_manifest_entries "${GLOBAL_MANIFEST_FILE}" | grep -q "^${mfom_item_path}$"; then
+						remove_manifest_entry_from_file "${GLOBAL_MANIFEST_FILE}" "${mfom_item_path}"
 					fi
 				fi
 				;;

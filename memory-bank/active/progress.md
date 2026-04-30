@@ -9,3 +9,6 @@ Fix silent failure when `ai-rizz add rule --global` is used without global mode 
 - Fix: Added `warn` call before `return 1` with actionable message directing user to `ai-rizz init <repo> --global`
 - Test: Added integration test `test_add_rule_global_without_init_shows_error` in `test_cli_add_remove.test.sh`
 - Full suite: 33/33 tests pass (26 unit + 7 integration)
+
+## QA Phase
+- PASS — all semantic constraints satisfied. Minimal, pattern-consistent fix.

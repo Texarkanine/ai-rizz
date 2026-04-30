@@ -1065,6 +1065,7 @@ sync_global_repo() {
 	sgr_source_repo=$(get_global_source_repo)
 	
 	if [ -z "${sgr_source_repo}" ]; then
+		warn "Global mode is not initialized. Run 'ai-rizz init <repo> --global' to set up global mode."
 		return 1
 	fi
 	

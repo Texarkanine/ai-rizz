@@ -340,6 +340,57 @@ test_remove_nonexistent_rule_graceful() {
     assertTrue "Should handle nonexistent rule removal" "[ $exit_code -eq 0 ] || echo '$output' | grep -q 'not found\|warning'"
 }
 
+# Test: ai-rizz add rule <rule> --global migrates from local
+# Expected: Rule should be removed from local manifest and local directory
+test_add_rule_global_migrates_from_local() {
+    # Initialize both local and global modes
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    assertEquals "Local init should succeed" 0 $?
+    run_ai_rizz init "file://$MOCK_REPO_DIR" --global
+    assertEquals "Global init should succeed" 0 $?
+    
+    # Add rule locally first
+    run_ai_rizz add rule rule1 --local
+    assertEquals "Local add should succeed" 0 $?
+    assert_manifest_contains "ai-rizz.local.skbd" "rules/rule1.mdc"
+    assert_rule_deployed ".cursor/rules/local" "rule1"
+    
+    # Now add the same rule globally
+    run_ai_rizz add rule rule1 --global
+    assertEquals "Global add should succeed" 0 $?
+    
+    # Rule should be in global manifest
+    assert_manifest_contains "$HOME/ai-rizz.skbd" "rules/rule1.mdc"
+    
+    # Rule should be removed from local manifest
+    assert_manifest_not_contains "ai-rizz.local.skbd" "rules/rule1.mdc"
+    
+    # Rule should be removed from local directory after sync
+    assert_rule_not_deployed ".cursor/rules/local" "rule1"
+    
+    return 0
+}
+
+# Test: ai-rizz add rule <rule> --global without global init
+# Expected: Should fail with actionable error message, not silently
+test_add_rule_global_without_init_shows_error() {
+    # Initialize local mode only (so ensure_initialized_and_valid passes)
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    assertEquals "Local init should succeed" 0 $?
+    
+    # Try to add rule in global mode without initializing global mode
+    output=$(run_ai_rizz add rule rule1 --global 2>&1)
+    exit_code=$?
+    
+    # Should fail (exit code non-zero)
+    assertNotEquals "Add --global without init should fail" 0 $exit_code
+    
+    # Should produce an actionable error message mentioning initialization
+    assert_output_contains "$output" "not initialized\|init.*--global"
+    
+    return 0
+}
+
 # Load and run shunit2
 # shellcheck disable=SC1090
 . "$(dirname "$0")/../../shunit2" 

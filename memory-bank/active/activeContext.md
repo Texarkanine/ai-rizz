@@ -6,7 +6,7 @@
 
 ## Phase
 
-**QA — COMPLETE**
+**Reflect — COMPLETE**
 
 ## What Was Done
 
@@ -16,7 +16,8 @@
 - `cmd_sync` / `cmd_list` paths that call `error()` are invoked inside subshells in tests so `exit` does not terminate the shunit2 runner.
 - Semantic redundancy: removed overlapping tests from `test_command_modes.test.sh`; kept global ruleset-with-commands case; strengthened `test_command_sync` add paths with explicit exit checks.
 - **`make test`** (26 unit + 7 integration suites) passes.
+- **Reflect:** `memory-bank/active/reflection/reflection-slobac-audit-fixes-2-m1.md` written; persistent memory bank files unchanged (test-only milestone). Reconcile scan: no updates required to `productContext`, `systemPatterns`, or `techContext`.
 
 ## Next Step
 
-Run **`/niko-reflect`** for post-QA reflection. Preflight advisory (optional deletion→canonical checklist in M1 reflection) still applies only if useful when writing reflection.
+Run **`/niko`** to advance the L4 milestone (check off M1 per `/niko` Step 2a) and continue toward M2/M3 per **`memory-bank/active/milestones.md`**.

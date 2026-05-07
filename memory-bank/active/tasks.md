@@ -83,6 +83,10 @@ No new technology — validation not required.
 
 - Advisory only: diff-review guardrail for `test_*()` bodies (see `.preflight-status`).
 
+## QA (2026-05-07)
+
+- **PASS** — Scope matches plan; semantic review confirms comment-only refactor; full suite green.
+
 ## Status
 
 - [x] Initialization complete
@@ -91,4 +95,4 @@ No new technology — validation not required.
 - [x] Technology validation complete
 - [x] Preflight
 - [x] Build
-- [ ] QA
+- [x] QA

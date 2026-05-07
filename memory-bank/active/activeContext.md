@@ -2,20 +2,16 @@
 
 ## Current Task
 
-**M2 — slobac-audit-fixes-2** (SLOBAC **finding 15**, skill test regrouping).
+**M2 — slobac-audit-fixes-2** (SLOBAC **finding 15**).
 
 ## Phase
 
-**BUILD — COMPLETE**
+**Reflect — COMPLETE**
 
 ## What Was Done
 
-- Replaced plan-style “BEHAVIOR N” / numbered coverage blocks with capability-oriented headers in:
-  - `/home/mobaxterm/git/ai-rizz/tests/unit/test_skill_detection.test.sh`
-  - `/home/mobaxterm/git/ai-rizz/tests/unit/test_skill_sync.test.sh`
-  - `/home/mobaxterm/git/ai-rizz/tests/unit/test_skill_list_display.test.sh`
-- Per-suite regression runs after each file; full `make test` passes. No deviations from plan.
+- M2 build + QA + reflection complete. Reflection: `memory-bank/active/reflection/reflection-slobac-audit-fixes-2-m2.md`. Reconcile persistent memory bank: **no updates** (test-only comment changes; `productContext` / `systemPatterns` / `techContext` still accurate).
 
 ## Next Step
 
-QA phase (`niko-qa`) — checkpoint commit `chore: saving work before qa phase` first.
+Run **`/niko`** to execute L4 Step 2a (check off M2 in `milestones.md`, clear sub-run ephemera) and classify **M3** next.

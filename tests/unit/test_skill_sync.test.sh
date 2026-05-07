@@ -6,23 +6,15 @@
 # add/sync operations for both standalone skills (manifest entries) and
 # embedded skills (inside rulesets' skills/ subdir).
 #
-# Test Coverage (behaviors 8-15, 22-27 from the skill-support plan):
-#   8.  Standalone skill (rules/<name> in manifest) copied to .cursor/skills/<mode>/<name>/
-#   9.  Standalone skill contents preserved (SKILL.md + other files all copied)
-#   10. Ruleset with skills/<name>/SKILL.md → skill copied to .cursor/skills/<mode>/<name>/
-#   11. Ruleset with skills/<name>/SKILL.md + other files → all contents copied
-#   12. Ruleset with no skills/ subdir → no change in behavior (regression)
-#   13. Ruleset with skills/<name> but no SKILL.md → NOT copied as skill
-#   14. Ruleset with both .mdc rules and skills/ → both deployed correctly
-#   15. Ruleset with .mdc rules, .md commands, and skills/ → all three types deployed
-#   22. Skills directory cleared and rebuilt on sync (standalone skills re-deployed)
-#   23. Embedded skills re-deployed when parent ruleset is synced
-#   24. Deinit --local removes .cursor/skills/local/
-#   25. Deinit --commit removes .cursor/skills/shared/
-#   26. Deinit --global removes GLOBAL_SKILLS_DIR
-#   27. Standalone skill with symlink pointing outside repo is NOT deployed (security)
-#   28. Embedded skill with symlink pointing outside repo is NOT deployed (security)
-#   29. Skills cleanup removes stale plain files, not just stale directories
+# Capability coverage (skill deploy / sync / deinit / security):
+#   - Standalone skills: deploy to .cursor/skills/<mode>/<name>/, preserve all files
+#   - Embedded skills: deploy from rulesets/.../skills/, preserve all files
+#   - Rulesets without skills/, and skills/<name> without SKILL.md: correct non-deploy / regression
+#   - Mixed rulesets: rules + skills; rules + commands + skills
+#   - Sync: skills target cleared/rebuilt; embedded skills restored with parent ruleset
+#   - Deinit: local, commit, and global modes remove the corresponding skills trees
+#   - Symlink security: standalone and embedded paths reject external symlinks (incl. top-level skill dir, external skills/ subdir)
+#   - Cleanup: stale plain files under skills target removed on sync
 #
 # Dependencies: shunit2, common test utilities
 # Usage: sh test_skill_sync.test.sh
@@ -35,7 +27,7 @@
 source_ai_rizz
 
 # ============================================================================
-# BEHAVIOR 8: Standalone skill copied to .cursor/skills/<mode>/<name>/
+# Standalone deployment: skill directory copied to .cursor/skills/<mode>/
 # ============================================================================
 
 test_standalone_skill_deployed_to_skills_dir() {
@@ -68,7 +60,7 @@ test_standalone_skill_deployed_to_skills_dir() {
 }
 
 # ============================================================================
-# BEHAVIOR 9: Standalone skill contents preserved
+# Standalone deployment: all skill files preserved
 # ============================================================================
 
 test_standalone_skill_contents_preserved() {
@@ -99,7 +91,7 @@ test_standalone_skill_contents_preserved() {
 }
 
 # ============================================================================
-# BEHAVIOR 10: Embedded skill copied from ruleset skills/ subdir
+# Embedded deployment: skill copied from ruleset skills/ subdir
 # ============================================================================
 
 test_embedded_skill_deployed_when_ruleset_added() {
@@ -127,7 +119,7 @@ test_embedded_skill_deployed_when_ruleset_added() {
 }
 
 # ============================================================================
-# BEHAVIOR 11: Embedded skill contents preserved
+# Embedded deployment: all skill files preserved
 # ============================================================================
 
 test_embedded_skill_contents_all_copied() {
@@ -157,7 +149,7 @@ test_embedded_skill_contents_all_copied() {
 }
 
 # ============================================================================
-# BEHAVIOR 12: Ruleset without skills/ subdir — no regression
+# Ruleset without skills/: rules still deploy; no skills tree created
 # ============================================================================
 
 test_ruleset_without_skills_subdir_unchanged() {
@@ -186,7 +178,7 @@ test_ruleset_without_skills_subdir_unchanged() {
 }
 
 # ============================================================================
-# BEHAVIOR 13: Ruleset with skills/<name> but no SKILL.md — not copied
+# Non-skill: skills/<name> without SKILL.md is not deployed
 # ============================================================================
 
 test_skills_subdir_without_skill_md_not_deployed() {
@@ -211,7 +203,7 @@ test_skills_subdir_without_skill_md_not_deployed() {
 }
 
 # ============================================================================
-# BEHAVIOR 14: Ruleset with .mdc rules AND skills/ — both deployed
+# Mixed ruleset: .mdc rules and skills/ both deployed
 # ============================================================================
 
 test_ruleset_with_rules_and_skills_deploys_both() {
@@ -241,7 +233,7 @@ test_ruleset_with_rules_and_skills_deploys_both() {
 }
 
 # ============================================================================
-# BEHAVIOR 15: Ruleset with .mdc, .md commands, AND skills/ — all three deployed
+# Mixed ruleset: .mdc rules, .md commands, and skills/ all deployed
 # ============================================================================
 
 test_ruleset_with_rules_commands_and_skills_deploys_all() {
@@ -273,7 +265,7 @@ test_ruleset_with_rules_commands_and_skills_deploys_all() {
 }
 
 # ============================================================================
-# BEHAVIOR 22: Skills directory cleared and rebuilt on sync
+# Sync: skills target cleared and rebuilt (stale dirs removed)
 # ============================================================================
 
 test_skills_dir_cleared_on_sync() {
@@ -314,7 +306,7 @@ test_skills_dir_cleared_on_sync() {
 }
 
 # ============================================================================
-# BEHAVIOR 23: Embedded skills re-deployed when parent ruleset is synced
+# Sync: embedded skills re-deployed with parent ruleset
 # ============================================================================
 
 test_embedded_skills_redeployed_on_sync() {
@@ -349,7 +341,7 @@ test_embedded_skills_redeployed_on_sync() {
 }
 
 # ============================================================================
-# BEHAVIOR 24: Deinit local mode removes .cursor/skills/local/
+# Deinit --local: removes .cursor/skills/local/
 # ============================================================================
 
 test_deinit_local_removes_skills_dir() {
@@ -377,7 +369,7 @@ test_deinit_local_removes_skills_dir() {
 }
 
 # ============================================================================
-# BEHAVIOR 25: Deinit commit mode removes .cursor/skills/shared/
+# Deinit --commit: removes .cursor/skills/shared/
 # ============================================================================
 
 test_deinit_commit_removes_skills_dir() {
@@ -405,7 +397,7 @@ test_deinit_commit_removes_skills_dir() {
 }
 
 # ============================================================================
-# BEHAVIOR 26: Deinit global mode removes GLOBAL_SKILLS_DIR
+# Deinit --global: removes GLOBAL_SKILLS_DIR
 # ============================================================================
 
 test_deinit_global_removes_skills_dir() {
@@ -437,7 +429,7 @@ test_deinit_global_removes_skills_dir() {
 }
 
 # ============================================================================
-# BEHAVIOR 27: Standalone skill with symlink pointing outside repo is NOT deployed
+# Symlink security: standalone skill with symlink outside repo — not deployed
 # ============================================================================
 
 test_standalone_skill_with_external_symlink_not_deployed() {
@@ -470,8 +462,7 @@ test_standalone_skill_with_external_symlink_not_deployed() {
 }
 
 # ============================================================================
-# BEHAVIOR 27b: Standalone skill whose top-level directory IS a symlink pointing
-#               outside the repo is NOT deployed
+# Symlink security: standalone top-level skill dir is external symlink — not deployed
 # ============================================================================
 
 test_standalone_skill_toplevel_external_symlink_not_deployed() {
@@ -503,7 +494,7 @@ test_standalone_skill_toplevel_external_symlink_not_deployed() {
 }
 
 # ============================================================================
-# BEHAVIOR 28: Embedded skill with symlink pointing outside repo is NOT deployed
+# Symlink security: embedded skill with symlink outside repo — not deployed
 # ============================================================================
 
 test_embedded_skill_with_external_symlink_not_deployed() {
@@ -540,8 +531,7 @@ test_embedded_skill_with_external_symlink_not_deployed() {
 }
 
 # ============================================================================
-# BEHAVIOR 28b: Embedded skill NOT deployed when ruleset skills/ subdir is an
-#               external symlink
+# Symlink security: ruleset skills/ subdir is external symlink — not deployed
 # ============================================================================
 
 test_embedded_skills_subdir_external_symlink_not_deployed() {
@@ -574,7 +564,7 @@ test_embedded_skills_subdir_external_symlink_not_deployed() {
 }
 
 # ============================================================================
-# BEHAVIOR 29: Skills cleanup removes stale files, not just stale directories
+# Cleanup: stale plain files under skills target removed on sync
 # ============================================================================
 
 test_skills_cleanup_removes_stale_files_not_just_dirs() {

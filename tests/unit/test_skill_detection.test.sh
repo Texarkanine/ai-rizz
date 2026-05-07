@@ -6,14 +6,10 @@
 # a skill directory (containing SKILL.md). Covers both valid skill paths and
 # all the invalid / edge-case paths that must return "false".
 #
-# Test Coverage (behaviors 1-7 from the skill-support plan):
-#   1. rules/<name> with SKILL.md → "true"  (standalone skill)
-#   2. rules/<name> without SKILL.md → "false"  (plain dir, not a skill)
-#   3. rules/<a>/<b> (nested) → "false"  (nesting not allowed)
-#   4. rulesets/<r>/skills/<name> with SKILL.md → "true"  (embedded skill)
-#   5. rulesets/<r>/skills/<name> without SKILL.md → "false"
-#   6. rulesets/<r>/skills/<a>/<b> (nested) → "false"
-#   7. Non-matching paths → "false"  (e.g. rulesets/skills/<name>, bare rulesets/<name>)
+# Capability coverage (is_skill):
+#   - Standalone paths under rules/ — valid skill, directory without SKILL.md, disallowed nesting
+#   - Embedded paths under rulesets/<r>/skills/<name>/ — valid skill, directory without SKILL.md, disallowed nesting
+#   - Invalid layout — rulesets/skills/ without ruleset level, bare rulesets/<name>, empty or unrecognized paths
 #
 # Dependencies: shunit2, common test utilities
 # Usage: sh test_skill_detection.test.sh
@@ -33,7 +29,7 @@ source_ai_rizz
 # ============================================================================
 
 # ============================================================================
-# BEHAVIOR 1: rules/<name> with SKILL.md → "true"
+# Standalone: valid skill (rules/<name> with SKILL.md)
 # ============================================================================
 
 test_standalone_skill_with_skill_md_returns_true() {
@@ -49,7 +45,7 @@ test_standalone_skill_with_skill_md_returns_true() {
 }
 
 # ============================================================================
-# BEHAVIOR 2: rules/<name> without SKILL.md → "false"
+# Standalone: directory without SKILL.md is not a skill
 # ============================================================================
 
 test_standalone_dir_without_skill_md_returns_false() {
@@ -65,7 +61,7 @@ test_standalone_dir_without_skill_md_returns_false() {
 }
 
 # ============================================================================
-# BEHAVIOR 3: rules/<a>/<b> (nested path) → "false"
+# Standalone: nested path under rules/ is rejected
 # ============================================================================
 
 test_nested_rules_path_returns_false() {
@@ -81,7 +77,7 @@ test_nested_rules_path_returns_false() {
 }
 
 # ============================================================================
-# BEHAVIOR 4: rulesets/<r>/skills/<name> with SKILL.md → "true"
+# Embedded: valid skill (rulesets/<r>/skills/<name> with SKILL.md)
 # ============================================================================
 
 test_embedded_skill_with_skill_md_returns_true() {
@@ -97,7 +93,7 @@ test_embedded_skill_with_skill_md_returns_true() {
 }
 
 # ============================================================================
-# BEHAVIOR 5: rulesets/<r>/skills/<name> without SKILL.md → "false"
+# Embedded: directory without SKILL.md is not a skill
 # ============================================================================
 
 test_embedded_dir_without_skill_md_returns_false() {
@@ -113,7 +109,7 @@ test_embedded_dir_without_skill_md_returns_false() {
 }
 
 # ============================================================================
-# BEHAVIOR 6: rulesets/<r>/skills/<a>/<b> (nested) → "false"
+# Embedded: nested path under skills/ is rejected
 # ============================================================================
 
 test_nested_embedded_skill_path_returns_false() {
@@ -129,7 +125,7 @@ test_nested_embedded_skill_path_returns_false() {
 }
 
 # ============================================================================
-# BEHAVIOR 7: Non-matching paths → "false"
+# Invalid paths and unrecognized entries
 # ============================================================================
 
 test_rulesets_skills_top_level_returns_false() {

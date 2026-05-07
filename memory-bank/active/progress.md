@@ -15,3 +15,7 @@ Sub-run for **L4 milestone M2**: regroup skill tests by durable product capabili
 ## 2026-05-07 — PREFLIGHT COMPLETE
 
 - **PASS** — TDD ordering explicit per file; scope and conventions verified; advisory: diff-review for test bodies. Status in `memory-bank/active/.preflight-status`.
+
+## 2026-05-07 — BUILD COMPLETE
+
+- M2 applied: capability-oriented section banners + file headers in `tests/unit/test_skill_detection.test.sh`, `test_skill_sync.test.sh`, `test_skill_list_display.test.sh`; no `test_*` logic changes. `make test` green (26 unit + 7 integration).

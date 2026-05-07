@@ -6,12 +6,16 @@
 
 ## Phase
 
-**PREFLIGHT — COMPLETE** (PASS; see `memory-bank/active/.preflight-status`)
+**BUILD — COMPLETE**
 
 ## What Was Done
 
-- Preflight validated TDD ordering, conventions, completeness; advisory documented for diff review of `test_*` bodies.
+- Replaced plan-style “BEHAVIOR N” / numbered coverage blocks with capability-oriented headers in:
+  - `/home/mobaxterm/git/ai-rizz/tests/unit/test_skill_detection.test.sh`
+  - `/home/mobaxterm/git/ai-rizz/tests/unit/test_skill_sync.test.sh`
+  - `/home/mobaxterm/git/ai-rizz/tests/unit/test_skill_list_display.test.sh`
+- Per-suite regression runs after each file; full `make test` passes. No deviations from plan.
 
 ## Next Step
 
-Level 2 **Build** — checkpoint commit `chore: saving work before build phase`, then apply comment/banner regrouping in the three skill test files per `tasks.md`.
+QA phase (`niko-qa`) — checkpoint commit `chore: saving work before qa phase` first.

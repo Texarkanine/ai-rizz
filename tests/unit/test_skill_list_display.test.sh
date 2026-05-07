@@ -7,17 +7,13 @@
 # renders skills/ as a magic subdir in the ruleset tree, and places
 # "Available rulesets:" after "Available skills:".
 #
-# Test Coverage:
-#   16. Skills from rules/<name> appear in "Available skills:" section with trailing "/"
-#   17. Embedded-only skills (rulesets/<r>/skills/<name>) do NOT appear in
-#       "Available skills:" — they are visible in the ruleset tree but cannot
-#       be installed individually
-#   18. Standalone skill shows correct installed status glyph
-#   20. Deduplication: skill in both rules/ and a ruleset's skills/ shown once
-#       (from the standalone path)
-#   21. Ruleset tree rendering shows skills/ as magic subdir with expanded contents
-#   23. Ruleset tree skills/ expansion only shows dirs that contain SKILL.md
-#   24. "Available rulesets:" section appears after "Available skills:" in output
+# Capability coverage (cmd_list — skills in list output):
+#   - "Available skills:" lists standalone rules/<name> entries with trailing "/"
+#   - Embedded-only skills (rulesets only) stay out of that section but appear in the ruleset tree
+#   - Installed vs uninstalled glyphs (● / ○)
+#   - Deduplication when the same skill name exists under rules/ and under a ruleset's skills/
+#   - Ruleset tree: skills/ as magic subdir, one-level expansion, dirs without SKILL.md omitted
+#   - Section order: "Available skills:" appears before "Available rulesets:" when both exist
 #
 # Dependencies: shunit2, common test utilities
 # Usage: sh test_skill_list_display.test.sh
@@ -30,7 +26,7 @@
 source_ai_rizz
 
 # ============================================================================
-# BEHAVIOR 16: Standalone skills appear in "Available skills:" with trailing "/"
+# List: standalone skills in "Available skills:" with trailing "/"
 # ============================================================================
 
 test_standalone_skill_appears_in_skills_section() {
@@ -55,7 +51,7 @@ test_standalone_skill_appears_in_skills_section() {
 }
 
 # ============================================================================
-# BEHAVIOR 17: Embedded-only skills do NOT appear in "Available skills:"
+# List: embedded-only skills omitted from "Available skills:"
 # ============================================================================
 
 test_embedded_skill_not_in_skills_section() {
@@ -86,7 +82,7 @@ test_embedded_skill_not_in_skills_section() {
 }
 
 # ============================================================================
-# BEHAVIOR 18: Standalone skill shows correct installed status glyph
+# List: install status glyphs for standalone skills
 # ============================================================================
 
 test_standalone_skill_installed_glyph() {
@@ -116,7 +112,7 @@ test_standalone_skill_installed_glyph() {
 }
 
 # ============================================================================
-# BEHAVIOR 20: Deduplication — skill in both rules/ and ruleset shown once
+# List: deduplication when skill exists under rules/ and ruleset skills/
 # ============================================================================
 
 test_skill_deduplicated_when_in_both_paths() {
@@ -142,7 +138,7 @@ test_skill_deduplicated_when_in_both_paths() {
 }
 
 # ============================================================================
-# BEHAVIOR 21: Ruleset tree shows skills/ as magic subdir with expanded contents
+# Ruleset tree: skills/ magic subdir with expanded contents
 # ============================================================================
 
 test_ruleset_tree_expands_skills_subdir() {
@@ -176,7 +172,7 @@ test_ruleset_tree_expands_skills_subdir() {
 }
 
 # ============================================================================
-# BEHAVIOR 23: Ruleset tree skills/ expansion filters to valid skills only
+# Ruleset tree: skills/ expansion lists only dirs that contain SKILL.md
 # ============================================================================
 
 test_ruleset_tree_skills_subdir_shows_only_valid_skills() {
@@ -208,7 +204,7 @@ test_ruleset_tree_skills_subdir_shows_only_valid_skills() {
 }
 
 # ============================================================================
-# BEHAVIOR 24: "Available rulesets:" section appears after "Available skills:"
+# Section order: "Available rulesets:" after "Available skills:"
 # ============================================================================
 
 test_rulesets_section_comes_after_skills_section() {

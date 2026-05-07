@@ -1,13 +1,11 @@
-# Progress: slobac-audit-fixes-2
+# Progress: M1 — slobac-audit-fixes-2
 
-**Complexity:** Level 4
+**Complexity:** Level 3
 
 ## Summary
 
-Remediate all 16 findings in [`slobac-audit-2.md`](../../slobac-audit-2.md): 7 naming-lies, 3 rotten-green, 2 semantic-redundancy, 1 conditional-logic, 1 vacuous-assertion, 1 deliverable-fossils, 1 wrong-level. The work spans test logic fixes, skill-test commentary regrouping, and a test-directory tier reorganization.
+Sub-run for **L4 milestone M1**: remediate SLOBAC audit findings **1–14** from [`slobac-audit-2.md`](../../slobac-audit-2.md) across nine test files (integration + unit). Test-only changes; canonical copies retained per findings 13–14.
 
 ## Phase History
 
-- 2026-05-07 — COMPLEXITY-ANALYSIS COMPLETE — classified as Level 4. Operator concurred that finding 16 (`wrong-level`) warrants its own milestone, motivating an L4 decomposition.
-- 2026-05-07 — PLAN COMPLETE — 3 milestones generated (M1 per-test fixes L3, M2 skill regrouping L2, M3 tier reorg L3); 5 cross-milestone invariants captured.
-- 2026-05-07 — PREFLIGHT PASS — milestone list validated. M3 scope amended to include doc updates (techContext, systemPatterns, ai-rizz-development.mdc, README) per the milestone-doc-coupling rule. One advisory finding (add SLOBAC linter to CI to prevent regressions) was deferred as out-of-scope.
+- 2026-05-07 — **COMPLEXITY-ANALYSIS COMPLETE** — First unchecked milestone (M1) classified as **Level 3** (multi-file test remediation, prescribed oracles, redundancy deletion with coverage preservation).

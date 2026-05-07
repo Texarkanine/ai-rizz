@@ -1,32 +1,41 @@
-# Project Brief: slobac-audit-fixes-2
+# Project Brief: M1 — slobac-audit-fixes-2
 
 ## User Story
 
-As an ai-rizz maintainer, I want the test suite to be free of the smells identified in [`slobac-audit-2.md`](../../slobac-audit-2.md), so that the suite genuinely tests the behaviors its names and structure claim to test, and is organized at the correct test tier.
+As an ai-rizz maintainer, I want **Milestone 1** of the SLOBAC remediation (audit findings **1–14** in [`slobac-audit-2.md`](../../slobac-audit-2.md)) applied to the test suite, so that named tests match their assertions, rotten-green `grep ... || true` oracles are replaced, conditional assertions are unconditional where required, and redundant command/ruleset tests are removed without losing coverage.
 
 ## Source of Requirements
 
-The authoritative source for this work is [`slobac-audit-2.md`](../../slobac-audit-2.md) at the repo root. It contains 16 findings across 7 smell types, each with location, rationale, prescribed remediation, and a "why this isn't a false positive" justification.
+- [`slobac-audit-2.md`](../../slobac-audit-2.md) — findings **1–14** only (see Findings section).
+- [`memory-bank/active/milestones.md`](milestones.md) — M1 scope and cross-milestone invariants.
 
-## Scope
+## Scope (M1)
 
-All 16 findings in the audit must be remediated as prescribed:
+Per [`slobac-audit-2.md`](../../slobac-audit-2.md):
 
-- **7 `naming-lies`**: rename or strengthen tests where the name promises behavior the body doesn't verify.
-- **3 `rotten-green`**: replace `grep ... || true` patterns with real assertions.
-- **2 `semantic-redundancy`**: delete the weaker duplicates in `test_command_modes.test.sh`, keeping the canonical versions.
-- **1 `conditional-logic`**: assert the failure contract unconditionally in `test_add_rule_with_invalid_repository`.
-- **1 `vacuous-assertion`**: strengthen `test_init_mode_defaults` (overlaps with naming-lies on the same test).
-- **1 `deliverable-fossils`**: regroup/retitle skill tests by durable capabilities instead of "behavior N" plan numbers.
-- **1 `wrong-level`**: relocate filesystem/git-using tests out of `unit/` into a new integration/component tier.
+| # | File(s) | Smell | Test |
+|---|---------|-------|------|
+| 1 | `integration/test_cli_add_remove.test.sh` | conditional-logic | `test_add_rule_with_invalid_repository` |
+| 2–3 | `integration/test_cli_init.test.sh` | naming-lies, vacuous-assertion | `test_init_mode_defaults` |
+| 4 | `integration/test_help_and_usage.test.sh` | naming-lies | `test_help_mentions_key_commands` |
+| 5 | `unit/test_deinit_modes.test.sh` | naming-lies | `test_deinit_confirmation_prompts` |
+| 6 | `unit/test_deinit_modes.test.sh` | rotten-green | `test_deinit_partial_cleanup_on_error` |
+| 7 | `unit/test_error_handling.test.sh` | rotten-green | `test_graceful_empty_repository` |
+| 8–9 | `unit/test_hook_based_local_mode.test.sh` | naming-lies | custom manifest / custom target hook tests |
+| 10 | `unit/test_list_display.test.sh` | naming-lies | `test_list_handles_empty_commands_directory` |
+| 11 | `unit/test_ruleset_management.test.sh` | naming-lies | `test_prevent_downgrade_from_local_ruleset` |
+| 12 | `unit/test_sync_operations.test.sh` | rotten-green | `test_sync_handles_missing_manifests` |
+| 13 | `unit/test_command_modes.test.sh` vs `unit/test_command_sync.test.sh` | semantic-redundancy | command-add clusters |
+| 14 | `unit/test_command_modes.test.sh` vs `unit/test_ruleset_commands.test.sh` | semantic-redundancy | ruleset-command clusters |
 
-## Out of Scope
+## Out of Scope (defer to M2/M3)
 
-- Changes to ai-rizz production code (`ai-rizz` script). This work touches only tests, test infrastructure (`Makefile`, `tests/common.sh`), and test directory layout.
-- Findings or smells not listed in `slobac-audit-2.md`.
+- Finding **15** (skill test deliverable-fossils) — **M2**.
+- Finding **16** (wrong-level / tier reorg) — **M3**.
+- Any change to production script `ai-rizz` (cross-milestone invariant).
 
-## Definition of Done
+## Definition of Done (M1)
 
-- Every finding in `slobac-audit-2.md` is either fixed as prescribed or has a documented justification for deviating from the prescription.
-- The full test suite (`make test`) passes.
-- No production code (`ai-rizz`) is modified.
+- Findings **1–14** remediated as prescribed in `slobac-audit-2.md`, or deviation documented with rationale in the M1 reflection.
+- **`make test`** exits 0.
+- Cross-milestone invariants in `milestones.md` respected (coverage preserved when deleting tests, no new SLOBAC smells traded in).

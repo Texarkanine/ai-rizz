@@ -102,10 +102,14 @@ test_list_handles_empty_commands_directory() {
 	# Action: Run cmd_list
 	output=$(cmd_list)
 	
-	# Expected: commands/ shown but no contents listed
+	# Expected: commands/ shown but no command files listed beneath it (SLOBAC: oracle on cmd_list output)
 	echo "$output" | grep -q "commands" || fail "Should show commands/ directory"
-	assertEquals "Repo ruleset commands/ dir should contain no files" "0" \
-		"$(find "$REPO_DIR/rulesets/test-empty/commands" -type f 2>/dev/null | wc -l | tr -d ' ')"
+	echo "$output" | grep -q "test-empty" || fail "Should show test-empty ruleset"
+	# Slice: test-empty ruleset subtree; under the commands/ line there must be no *.md command entries
+	# (use /\.md$ so rule1.mdc does not match as "contains .md")
+	if echo "$output" | grep -A 50 "test-empty" | grep -A 15 "commands" | grep -qE '\.md$'; then
+		fail "cmd_list should not list .md command files under empty commands/; output was: $output"
+	fi
 }
 
 # ============================================================================

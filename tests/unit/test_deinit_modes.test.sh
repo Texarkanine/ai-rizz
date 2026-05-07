@@ -187,8 +187,12 @@ test_deinit_all_with_yes_flag_skips_prompt() {
     cmd_add_rule "rule2.mdc" --commit
     
     # Test: Deinit all with --yes skips interactive confirmation
-    cmd_deinit --all -y 2>&1
-    
+    _tdawyf_tmp=$(mktemp)
+    ( cmd_deinit --all -y >"$_tdawyf_tmp" 2>&1 )
+    tdawyf_exit=$?
+    rm -f "$_tdawyf_tmp"
+    assertEquals "cmd_deinit --all -y should succeed" 0 "$tdawyf_exit"
+
     # Expected: Full cleanup without interactive prompts when -y is passed
     assert_no_modes_exist
 }

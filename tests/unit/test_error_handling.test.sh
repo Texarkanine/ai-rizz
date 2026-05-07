@@ -269,7 +269,9 @@ test_graceful_empty_repository() {
     rm -f "${TEST_DIR}/empty_list_out.txt"
     
     assertEquals "cmd_list should succeed after init from an empty source repo" 0 "$list_exit"
-    echo "$output" | grep -Eiq "fatal:|error:" && fail "List should not emit hard errors: $output" || true
+    if echo "$output" | grep -Eiq "fatal:|error:"; then
+        fail "List should not emit hard errors: $output"
+    fi
 }
 
 # Load and run shunit2

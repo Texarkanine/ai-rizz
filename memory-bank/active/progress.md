@@ -9,3 +9,4 @@ Remediate all 16 findings in [`slobac-audit-2.md`](../../slobac-audit-2.md): 7 n
 ## Phase History
 
 - 2026-05-07 — COMPLEXITY-ANALYSIS COMPLETE — classified as Level 4. Operator concurred that finding 16 (`wrong-level`) warrants its own milestone, motivating an L4 decomposition.
+- 2026-05-07 — PLAN COMPLETE — 3 milestones generated (M1 per-test fixes L3, M2 skill regrouping L2, M3 tier reorg L3); 5 cross-milestone invariants captured.

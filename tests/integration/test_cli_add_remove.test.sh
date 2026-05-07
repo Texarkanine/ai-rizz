@@ -315,14 +315,19 @@ test_add_rule_with_invalid_repository() {
     # Corrupt the manifest to point to invalid repository
     echo "invalid://nonexistent	.cursor/rules	rules	rulesets" > ai-rizz.local.skbd
     
-    # Try to add rule from corrupted repository
-    output=$(run_ai_rizz add rule rule1 --local 2>&1 || echo "ADD_FAILED")
-    exit_code=$?
+    # Drop cached clones so the next operation cannot succeed using a previously valid checkout
+    rm -rf "${HOME}/.config/ai-rizz/repos"
     
-    # Should fail gracefully
-    if [ $exit_code -ne 0 ]; then
-        assert_output_contains "$output" "ADD_FAILED\|repository\|failed\|error"
-    fi
+    # Try to add rule — must surface repository/source failure (capture exit without masking it)
+    _tiar_tmp=$(mktemp)
+    run_ai_rizz add rule rule1 --local >"$_tiar_tmp" 2>&1
+    exit_code=$?
+    output=$(cat "$_tiar_tmp")
+    rm -f "$_tiar_tmp"
+    
+    assertNotEquals "Add should fail when manifest source URL is invalid and cache is cleared" 0 "$exit_code"
+    echo "$output" | grep -Eq "repository|failed|error|invalid|unavailable|clone|fetch|Could not|unable|Unable" || \
+        fail "Expected repository/sync diagnostic on stderr: $output"
 }
 
 # Test: ai-rizz remove rule with graceful handling

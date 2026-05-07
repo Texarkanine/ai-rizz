@@ -201,14 +201,19 @@ test_sync_handles_missing_manifests() {
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     
-    # Corrupt one manifest to test graceful handling
+    # Remove local manifest to exercise missing-manifest sync path
     rm -f "$TEST_LOCAL_MANIFEST_FILE"
     
-    # Test: Sync should handle missing manifest gracefully
-    output=$(cmd_sync 2>&1 || echo "ERROR_OCCURRED")
+    _tsmm_tmp=$(mktemp)
+    ( cmd_sync >"$_tsmm_tmp" 2>&1 )
+    sync_exit=$?
+    output=$(cat "$_tsmm_tmp")
+    rm -f "$_tsmm_tmp"
     
-    # Expected: Should not fail catastrophically
-    echo "$output" | grep -q "error\|not found" || true  # May warn, but shouldn't crash
+    # Expected: Sync reports the problem (warning/error), non-success exit
+    assertNotEquals "Sync should fail when required manifest is missing" 0 "$sync_exit"
+    echo "$output" | grep -Eq "manifest|configuration|found|missing|No ai-rizz|not found|error" || \
+        fail "Sync output should describe missing configuration/manifest: $output"
 }
 
 test_sync_handles_missing_target_directories() {

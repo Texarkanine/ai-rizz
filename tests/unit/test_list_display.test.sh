@@ -102,15 +102,14 @@ test_list_handles_empty_commands_directory() {
 	# Action: Run cmd_list
 	output=$(cmd_list)
 	
-	# Expected: commands/ shown but no contents listed
+	# Expected: commands/ shown but no command files listed beneath it (SLOBAC: oracle on cmd_list output)
 	echo "$output" | grep -q "commands" || fail "Should show commands/ directory"
-	# Should not show any files under commands/ (directory is empty)
-	# Count lines after "commands" that would indicate contents
-	commands_section=$(echo "$output" | grep -A 10 "test-empty" | grep -A 10 "commands")
-	# After commands/, should only see next ruleset item or end, not file contents
-	# This is a bit tricky to test precisely, but we can verify commands appears
-	# and that no files are listed as being inside commands/
-	assertTrue "commands/ should be shown" true
+	echo "$output" | grep -q "test-empty" || fail "Should show test-empty ruleset"
+	# Slice: test-empty ruleset subtree; under the commands/ line there must be no *.md command entries
+	# (use /\.md$ so rule1.mdc does not match as "contains .md")
+	if echo "$output" | grep -A 50 "test-empty" | grep -A 15 "commands" | grep -qE '\.md$'; then
+		fail "cmd_list should not list .md command files under empty commands/; output was: $output"
+	fi
 }
 
 # ============================================================================

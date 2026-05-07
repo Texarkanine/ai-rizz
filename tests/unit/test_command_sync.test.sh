@@ -42,7 +42,13 @@ test_command_syncs_to_local_commands_dir() {
     
     # Initialize and add command in local mode
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --local
-    cmd_add_rule "test-cmd.md" --local
+    _tcslo=$(mktemp)
+    cmd_add_rule "test-cmd.md" --local >"$_tcslo" 2>&1
+    add_exit=$?
+    output=$(cat "$_tcslo")
+    rm -f "$_tcslo"
+    assertEquals "Add command should succeed" 0 "$add_exit"
+    echo "$output" | grep -qi "error" && fail "Add should not emit error on stderr: $output"
     
     # Verify command is in commands directory, not rules directory
     assertTrue "Command should be in .cursor/commands/local/" \
@@ -77,7 +83,13 @@ test_command_syncs_to_commit_commands_dir() {
     
     # Initialize and add command in commit mode
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
-    cmd_add_rule "test-cmd.md" --commit
+    _tcsco=$(mktemp)
+    cmd_add_rule "test-cmd.md" --commit >"$_tcsco" 2>&1
+    add_exit=$?
+    output=$(cat "$_tcsco")
+    rm -f "$_tcsco"
+    assertEquals "Add command should succeed" 0 "$add_exit"
+    echo "$output" | grep -qi "error" && fail "Add should not emit error on stderr: $output"
     
     # Verify command is in commands directory
     assertTrue "Command should be in .cursor/commands/shared/" \
@@ -110,7 +122,13 @@ test_command_syncs_to_global_commands_dir() {
         
         # Initialize and add command in global mode
         cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
-        cmd_add_rule "test-cmd.md" --global
+        _tcsgl=$(mktemp)
+        cmd_add_rule "test-cmd.md" --global >"$_tcsgl" 2>&1
+        add_exit=$?
+        output=$(cat "$_tcsgl")
+        rm -f "$_tcsgl"
+        assertEquals "Add command should succeed" 0 "$add_exit"
+        echo "$output" | grep -qi "error" && fail "Add should not emit error on stderr: $output"
         
         # Verify command is in global commands directory
         assertTrue "Command should be in global commands dir" \

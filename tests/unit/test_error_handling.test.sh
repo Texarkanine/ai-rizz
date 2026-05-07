@@ -262,11 +262,16 @@ test_graceful_empty_repository() {
     # Test: Init with empty repo
     cmd_init "$empty_repo" -d "$TEST_TARGET_DIR" --local
     
-    # Test: List should handle empty repo
-    output=$(cmd_list 2>&1)
+    # Test: List should handle empty repo (cmd_list may error(); run in subshell when probing)
+    ( cmd_list >"${TEST_DIR}/empty_list_out.txt" 2>&1 )
+    list_exit=$?
+    output=$(cat "${TEST_DIR}/empty_list_out.txt")
+    rm -f "${TEST_DIR}/empty_list_out.txt"
     
-    # Expected: Should work but show no rules
-    echo "$output" | grep -q "No rules available\|empty\|found" || true  # May show empty state
+    assertEquals "cmd_list should succeed after init from an empty source repo" 0 "$list_exit"
+    if echo "$output" | grep -Eiq "fatal:|error:"; then
+        fail "List should not emit hard errors: $output"
+    fi
 }
 
 # Load and run shunit2

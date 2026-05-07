@@ -81,7 +81,7 @@ No new technology — validation not required.
 
 ## Preflight amendments
 
-*(Populated after preflight — see `.preflight-status`.)*
+- Advisory only: diff-review guardrail for `test_*()` bodies (see `.preflight-status`).
 
 ## Status
 
@@ -89,6 +89,6 @@ No new technology — validation not required.
 - [x] Test planning complete (TDD)
 - [x] Implementation plan complete
 - [x] Technology validation complete
-- [ ] Preflight
+- [x] Preflight
 - [ ] Build
 - [ ] QA

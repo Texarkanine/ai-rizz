@@ -11,3 +11,7 @@ Sub-run for **L4 milestone M2**: regroup skill tests by durable product capabili
 ## 2026-05-07 — PLAN COMPLETE
 
 - `tasks.md` populated with TDD regression plan, per-file capability groupings, challenges/mitigations, and status checklist through technology validation.
+
+## 2026-05-07 — PREFLIGHT COMPLETE
+
+- **PASS** — TDD ordering explicit per file; scope and conventions verified; advisory: diff-review for test bodies. Status in `memory-bank/active/.preflight-status`.

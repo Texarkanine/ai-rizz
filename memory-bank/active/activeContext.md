@@ -6,12 +6,12 @@
 
 ## Phase
 
-**PLAN — COMPLETE**
+**PREFLIGHT — COMPLETE** (PASS; see `memory-bank/active/.preflight-status`)
 
 ## What Was Done
 
-- Level 2 plan written to `memory-bank/active/tasks.md`: regression-first TDD per file, capability-oriented section map for `test_skill_detection`, `test_skill_sync`, and `test_skill_list_display`, full-suite gate.
+- Preflight validated TDD ordering, conventions, completeness; advisory documented for diff review of `test_*` bodies.
 
 ## Next Step
 
-Preflight (`niko-preflight` / `.preflight-status`) per Level 2 workflow — checkpoint commit `chore: saving work before preflight phase` first.
+Level 2 **Build** — checkpoint commit `chore: saving work before build phase`, then apply comment/banner regrouping in the three skill test files per `tasks.md`.

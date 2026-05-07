@@ -98,7 +98,7 @@ test_allow_rule_upgrade_to_local_ruleset() {
     echo "$list_output" | grep -q "$LOCAL_GLYPH.*ruleset1" || fail "Ruleset1 should show local glyph"
 }
 
-test_prevent_downgrade_from_local_ruleset() {
+test_allow_rule_upgrade_from_local_ruleset_to_commit() {
     # Setup: Local ruleset with rule1 and rule2
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_ruleset "ruleset1" --local

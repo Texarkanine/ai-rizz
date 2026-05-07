@@ -84,12 +84,13 @@ test_help_mentions_key_commands() {
     # Help command should succeed
     assertEquals "Help command should succeed" 0 $exit_code
     
-    # Should mention some key commands (loose check for at least one)
-    if echo "$output" | grep -q "init\|add\|remove\|list\|sync\|deinit"; then
-        : # Test passes - found at least one expected command
-    else
-        fail "Help should mention at least one key command (init, add, remove, list, sync, deinit)"
-    fi
+    # Each primary command should appear (names match public CLI surface)
+    assert_output_contains "$output" "init"
+    assert_output_contains "$output" "add"
+    assert_output_contains "$output" "remove"
+    assert_output_contains "$output" "list"
+    assert_output_contains "$output" "sync"
+    assert_output_contains "$output" "deinit"
 }
 
 # Test: Help is accessible from any directory

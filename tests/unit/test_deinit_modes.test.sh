@@ -180,16 +180,16 @@ test_deinit_all_with_single_mode() {
     assertFalse "Shared subdirectory should be removed" "[ -d '$TEST_TARGET_DIR/$TEST_SHARED_DIR' ]"
 }
 
-test_deinit_confirmation_prompts() {
+test_deinit_all_with_yes_flag_skips_prompt() {
     # Setup: Both modes with rules
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --commit
     
-    # Test: Deinit all should prompt for confirmation (or accept -y flag)
-    output=$(cmd_deinit --all -y 2>&1 || echo "ERROR_OCCURRED")
+    # Test: Deinit all with --yes skips interactive confirmation
+    cmd_deinit --all -y 2>&1
     
-    # Expected: Should proceed without prompting due to -y flag
+    # Expected: Full cleanup without interactive prompts when -y is passed
     assert_no_modes_exist
 }
 
@@ -199,21 +199,24 @@ test_deinit_partial_cleanup_on_error() {
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --commit
     
-    # Make local manifest read-only to simulate error (only if it exists)
-    if [ -f "$TEST_LOCAL_MANIFEST_FILE" ]; then
-        chmod 444 "$TEST_LOCAL_MANIFEST_FILE"
-    fi
+    # Deny write on deployed rule tree — deinit must still remove local manifest or surface failure
+    chmod -R a-w "$TEST_TARGET_DIR"
     
-    # Test: Deinit local mode with permission error
-    output=$(cmd_deinit --local -y 2>&1 || echo "ERROR_OCCURRED")
+    _tdpc_tmp=$(mktemp)
+    ( cmd_deinit --local -y >"$_tdpc_tmp" 2>&1 )
+    deinit_exit=$?
+    output=$(cat "$_tdpc_tmp")
+    rm -f "$_tdpc_tmp"
     
-    # Expected: Should handle error gracefully
-    echo "$output" | grep -q "error\|permission\|failed" || true
+    chmod -R u+w "$TEST_TARGET_DIR"
     
-    # Restore permissions for cleanup (only if file exists)
-    if [ -f "$TEST_LOCAL_MANIFEST_FILE" ]; then
-        chmod 644 "$TEST_LOCAL_MANIFEST_FILE"
-    fi
+    assertTrue "Commit mode should remain after local deinit in dual-mode repo" \
+        "[ -f '$TEST_COMMIT_MANIFEST_FILE' ]"
+    assertFalse "Local manifest should be gone after successful local deinit" \
+        "[ -f '$TEST_LOCAL_MANIFEST_FILE' ]"
+    echo "$output" | grep -Eq "Removed|removed|error|permission|fail|warn" || \
+        fail "Deinit should report outcome when deploy tree was read-only: $output"
+    assertEquals "Local deinit should complete (exit 0) when removal is best-effort" 0 "$deinit_exit"
 }
 
 test_deinit_removes_empty_directories() {

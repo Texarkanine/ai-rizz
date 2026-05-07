@@ -6,13 +6,17 @@
 
 ## Phase
 
-**PREFLIGHT — PASS (with advisory)**
+**BUILD — COMPLETE**
 
 ## What Was Done
 
-- Preflight validated the M1 plan: TDD ordering documented for test-only work, suite paths match project conventions, findings 1–14 mapped to concrete steps.
-- Advisory captured in `memory-bank/active/tasks.md` (optional reflection checklist for semantic-redundancy deletions).
+- Implemented M1 test remediation: integration suites (`test_cli_add_remove`, `test_cli_init`, `test_help_and_usage`) and unit suites (`test_deinit_modes`, `test_error_handling`, `test_hook_based_local_mode`, `test_list_display`, `test_ruleset_management`, `test_sync_operations`, `test_command_sync`, `test_command_modes`).
+- Invalid-repository integration test clears `${HOME}/.config/ai-rizz/repos` before `add` so the failure path is exercised without relying on a stale clone cache.
+- Sourced-hook tests set custom manifest names via `parse_manifest_filename_argument` (CLI `-f` is not wired for sourced `cmd_init`).
+- `cmd_sync` / `cmd_list` paths that call `error()` are invoked inside subshells in tests so `exit` does not terminate the shunit2 runner.
+- Semantic redundancy: removed overlapping tests from `test_command_modes.test.sh`; kept global ruleset-with-commands case; strengthened `test_command_sync` add paths with explicit exit checks.
+- **`make test`** (26 unit + 7 integration suites) passes.
 
 ## Next Step
 
-Run **`/niko-build`** to enter the Build phase for M1. `memory-bank/active/.preflight-status` is **`PASS WITH ADVISORY`** (gates build per Level 3 workflow).
+Run **`/niko-qa`** for post-build semantic review. Preflight remains **`PASS WITH ADVISORY`** (optional reflection checklist for redundancy deletions).

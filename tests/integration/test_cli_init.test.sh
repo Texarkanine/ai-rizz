@@ -228,13 +228,18 @@ test_init_with_spaces_in_manifest_name() {
     assertEquals "Manifest header incorrect" "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
 
-# Test: ai-rizz init with target but no mode (should prompt and set default)
+# Test: ai-rizz init with target but no mode (prompted commit selection)
 test_init_mode_defaults() {
-    # Execute ai-rizz init with target but no mode (should prompt and set default)
+    # Execute ai-rizz init with target but no mode; answer prompt with commit mode
     output=$(printf "commit\n" | run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules 2>&1)
 
-    # Should succeed and default to local mode
-    assertEquals "Init should succeed with default mode" 0 $?
+    assertEquals "Init should succeed with prompted commit mode" 0 $?
+    assertTrue "Commit manifest should exist" "[ -f 'ai-rizz.skbd' ]"
+    assertTrue "Shared rules directory should exist" "[ -d '.cursor/rules/shared' ]"
+    assertFalse "Local manifest should not exist for commit-only selection" "[ -f 'ai-rizz.local.skbd' ]"
+    first_line=$(head -n1 ai-rizz.skbd)
+    assertEquals "Commit manifest header incorrect" \
+        "file://$MOCK_REPO_DIR	.cursor/rules	rules	rulesets" "$first_line"
 }
 
 # Load and run shunit2

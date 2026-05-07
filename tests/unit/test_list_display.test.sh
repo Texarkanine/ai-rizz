@@ -104,13 +104,8 @@ test_list_handles_empty_commands_directory() {
 	
 	# Expected: commands/ shown but no contents listed
 	echo "$output" | grep -q "commands" || fail "Should show commands/ directory"
-	# Should not show any files under commands/ (directory is empty)
-	# Count lines after "commands" that would indicate contents
-	commands_section=$(echo "$output" | grep -A 10 "test-empty" | grep -A 10 "commands")
-	# After commands/, should only see next ruleset item or end, not file contents
-	# This is a bit tricky to test precisely, but we can verify commands appears
-	# and that no files are listed as being inside commands/
-	assertTrue "commands/ should be shown" true
+	assertEquals "Repo ruleset commands/ dir should contain no files" "0" \
+		"$(find "$REPO_DIR/rulesets/test-empty/commands" -type f 2>/dev/null | wc -l | tr -d ' ')"
 }
 
 # ============================================================================

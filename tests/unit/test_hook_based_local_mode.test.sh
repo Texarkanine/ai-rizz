@@ -471,23 +471,55 @@ test_sync_preserves_managed_subdirs() {
 # ============================================================================
 
 test_hook_works_with_custom_manifest_name() {
-    # Setup: Custom manifest name
-    export AI_RIZZ_MANIFEST="custom-rules"
+    # Sourced tests do not process -f/--manifest on the CLI; set manifest filenames like main + AI_RIZZ_MANIFEST would
+    _thwc_mn=$(parse_manifest_filename_argument "crhooktest.skbd")
+    COMMIT_MANIFEST_FILE=$(echo "$_thwc_mn" | cut -f1 -d"	")
+    LOCAL_MANIFEST_FILE=$(echo "$_thwc_mn" | cut -f2 -d"	")
+    
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local --hook-based-ignore
     
-    # Test: Hook should find custom manifest
-    assertTrue "Hook should exist" "[ -f '.git/hooks/pre-commit' ]"
-    # Hook should dynamically find manifest, so it should work
+    assertTrue "Custom local manifest should exist" "[ -f 'crhooktest.local.skbd' ]"
+    
+    cmd_add_rule "command1.md" --local
+    
+    assert_file_exists ".cursor/commands/local/command1.md"
+    
+    git add ".cursor/commands/local/command1.md" "crhooktest.local.skbd"
+    staged_before=$(git diff --cached --name-only)
+    assertTrue "Command should be staged before hook" \
+        "echo '$staged_before' | grep -q '.cursor/commands/local/command1.md'"
+    
+    .git/hooks/pre-commit
+    
+    staged_after=$(git diff --cached --name-only)
+    assertFalse "Hook should unstage local command when using custom manifest basename" \
+        "echo '$staged_after' | grep -q '.cursor/commands/local/command1.md'"
+    assertFalse "Hook should unstage custom local manifest when staged" \
+        "echo '$staged_after' | grep -q 'crhooktest.local.skbd'"
+    
+    COMMIT_MANIFEST_FILE="ai-rizz.skbd"
+    LOCAL_MANIFEST_FILE="ai-rizz.local.skbd"
 }
 
 test_hook_works_with_custom_target_directory() {
-    # Setup: Custom target directory
+    # Rules deploy under custom_dir; commands still use .cursor/commands/local (product layout)
     custom_dir=".custom/rules"
     cmd_init "$TEST_SOURCE_REPO" -d "$custom_dir" --local --hook-based-ignore
+    cmd_add_rule "command1.md" --local
     
-    # Test: Hook should use custom target directory
-    assertTrue "Hook should exist" "[ -f '.git/hooks/pre-commit' ]"
-    # Hook reads from manifest, so it should work with custom dir
+    # Commands always deploy under .cursor/commands/; custom -d only affects rules tree layout
+    assert_file_exists ".cursor/commands/local/command1.md"
+    
+    git add ".cursor/commands/local/command1.md" "$TEST_LOCAL_MANIFEST_FILE"
+    staged_before=$(git diff --cached --name-only)
+    assertTrue "Command should be staged before hook" \
+        "echo '$staged_before' | grep -q '.cursor/commands/local/command1.md'"
+    
+    .git/hooks/pre-commit
+    
+    staged_after=$(git diff --cached --name-only)
+    assertFalse "Hook should unstage command files under default commands dir for custom rules target" \
+        "echo '$staged_after' | grep -q '.cursor/commands/local/command1.md'"
 }
 
 # Load and run shunit2

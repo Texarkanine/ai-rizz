@@ -87,6 +87,10 @@ None — implementation approach is clear from prescribed remediation text in `s
 
 ## Implementation Plan
 
+### TDD encoding (test-only milestone)
+
+All M1 “production” edits are **test file changes**. For each finding, use this order: (1) change the test so it encodes the audit-prescribed oracle (rename, stronger assertion, or — for 13–14 — identify the canonical test to rely on); (2) run the affected suite with `VERBOSE_TESTS=true ./tests/...` and confirm the intended red/green transition; (3) adjust fixtures/helpers **only under `tests/`** until green. For **findings 13–14**, explicitly confirm canonical coverage in `test_command_sync.test.sh` / `test_ruleset_commands.test.sh` **before** deleting duplicates from `test_command_modes.test.sh`; run **`make test`** after each deletion cluster.
+
 1. **`integration/test_cli_add_remove.test.sh` — finding 1**
    - **Files:** `integration/test_cli_add_remove.test.sh`
    - **Changes:** Restructure `test_add_rule_with_invalid_repository` so expected failure **and** unexpected-success cases both assert the documented contract (exit code + stderr/message/manifest), not only inside `if [ $exit_code -ne 0 ]`.
@@ -137,6 +141,14 @@ No new technology — validation not required.
 - **Hooks/custom paths (8–9):** Higher setup cost — reuse patterns from neighboring tests in the same file for temp dirs and git state.
 - **Flaky output matching (rotten-green fixes):** Prefer stable substrings / exit codes from existing CLI patterns used elsewhere in the suite.
 
+## Preflight (2026-05-07)
+
+- **TDD plan encoding:** PASS — ordered steps are test-file edits; explicit micro-loop above satisfies always-tdd for this milestone (no `ai-rizz` changes).
+- **Convention compliance:** PASS — paths under `tests/integration/` and `tests/unit/` match `techContext.md`.
+- **Dependency / conflicts:** PASS — touchpoints isolated to named suites; no duplicate utility proposals.
+- **Completeness:** PASS — findings 1–14 map to steps 1–10; global ruleset rule from finding 14 called out in step 10.
+- **Advisory:** Consider a one-time checklist row in the M1 reflection listing each deleted `test_command_modes` test name alongside the canonical test that subsumes it (cheap regression audit).
+
 ## Status
 
 - [x] Component analysis complete
@@ -144,6 +156,6 @@ No new technology — validation not required.
 - [x] Test planning complete (TDD)
 - [x] Implementation plan complete
 - [x] Technology validation complete
-- [ ] Preflight
+- [x] Preflight
 - [ ] Build
 - [ ] QA

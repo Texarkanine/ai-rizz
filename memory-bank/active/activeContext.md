@@ -6,13 +6,13 @@
 
 ## Phase
 
-**PLAN — COMPLETE**
+**PREFLIGHT — PASS (with advisory)**
 
 ## What Was Done
 
-- Level 3 **plan phase** complete: `memory-bank/active/tasks.md` contains component analysis, redundancy diagram (findings 13–14), TDD behaviors mapped to each finding, and an ordered implementation plan across nine test files.
-- **Open questions:** none — prescribed remediations are sufficient.
+- Preflight validated the M1 plan: TDD ordering documented for test-only work, suite paths match project conventions, findings 1–14 mapped to concrete steps.
+- Advisory captured in `memory-bank/active/tasks.md` (optional reflection checklist for semantic-redundancy deletions).
 
 ## Next Step
 
-Run **Preflight** (`niko-preflight` skill / Level 3 workflow) to validate the plan; on PASS, proceed to **Build** via `/niko-build`.
+Run **`/niko-build`** to enter the Build phase for M1. `memory-bank/active/.preflight-status` is **`PASS WITH ADVISORY`** (gates build per Level 3 workflow).

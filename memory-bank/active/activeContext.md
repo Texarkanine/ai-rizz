@@ -6,7 +6,7 @@
 
 ## Phase
 
-**BUILD — COMPLETE**
+**QA — COMPLETE**
 
 ## What Was Done
 
@@ -19,4 +19,4 @@
 
 ## Next Step
 
-Run **`/niko-qa`** for post-build semantic review. Preflight remains **`PASS WITH ADVISORY`** (optional reflection checklist for redundancy deletions).
+Run **`/niko-reflect`** for post-QA reflection. Preflight advisory (optional deletion→canonical checklist in M1 reflection) still applies only if useful when writing reflection.

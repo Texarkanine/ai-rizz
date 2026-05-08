@@ -6,13 +6,14 @@
 
 ## Phase
 
-**COMPLEXITY-ANALYSIS — COMPLETE**
+**PLAN — COMPLETE** (awaiting Preflight)
 
 ## What Was Done
 
 - L4 Step 2a: M2 checked off in `milestones.md`; prior M2 sub-run ephemera cleared.
-- First unchecked milestone (M3) classified **Level 3**: multi-file test infrastructure + docs; architectural taxonomy change but single bounded deliverable (matches `milestones.md` rationale).
+- M3 classified **Level 3**; `tasks.md` populated per `level3-plan.md` (component map, TDD verification gates per batch, implementation steps 1–8, challenges).
+- Plan chooses **`tests/integration/functions/`** for relocated suites; `find` under `tests/integration` already recurses — runner change likely unnecessary.
 
 ## Next Step
 
-Complete **Plan** phase (`level3-plan.md`): populate `tasks.md` with component analysis, TDD-oriented implementation ordering, and challenges; then commit and run **Preflight** (`/niko-preflight`).
+Run **`/niko-preflight`** to validate the plan; on PASS, run **`/niko-build`** for M3 implementation.

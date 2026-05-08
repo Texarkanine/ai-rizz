@@ -85,3 +85,15 @@ Initialize and stand up a properdocs documentation site for ai-rizz, migrate con
     - Do not fix substantive incompleteness in QA phase; record and route back per skill rules.
 * Insights
     - Premature /niko-qa invocation detected build not ready; reinforces need to complete full implementation before QA.
+
+## 2026-05-08 - QA - COMPLETE (PASS)
+* Work completed
+    - Full semantic review against plan: KISS, DRY, YAGNI, Completeness, Regression, Integrity, Documentation.
+    - Fixed broken anchor link in README.md (`#-hook-based-ignore-local-mode` → `#--hook-based-ignore-local-mode`).
+    - Updated `memory-bank/techContext.md` with docs-build toolchain section.
+    - Verified `properdocs build --strict` exit 0 and `make test` 32/32 post-fix.
+* Decisions made
+    - Pre-existing factual error in installation-options.md (wrong default path) noted as observation, not a QA fail — faithfully migrated from original README.
+    - Plan's mention of "Contributing" developer-guide section was aspirational; original README had no contributing content to migrate. Appropriate omission.
+* Insights
+    - External URL anchor links in README are not validated by `properdocs --strict` (it only checks internal relative links). Manual review caught the off-by-one dash.

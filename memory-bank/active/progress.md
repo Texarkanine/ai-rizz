@@ -40,3 +40,14 @@ Initialize and stand up a properdocs documentation site for ai-rizz, migrate con
     - Proceed to BUILD phase (no re-planning required).
 * Insights
     - The plan is solid and ready for implementation. Content migration will be the primary effort.
+
+## 2026-05-08 - PLAN REFINEMENT (post-preflight clarification)
+* Work completed
+    - Incorporated operator feedback on workflow architecture: retained the reusable-build + deploy split (even without release-please) because the build job will now also serve PR validation.
+    - Updated plan to add a `docs` job to the *existing* `.github/workflows/pr.yaml` (rather than a new workflow) for `properdocs --strict` checks on every PR. This is the preferred approach.
+    - Revised Component Analysis, Test Plan behaviors, and Implementation Plan step 5 accordingly. Status in tasks.md updated.
+* Decisions made
+    - PR doc validation via existing pr.yaml (consolidated checks).
+    - Reusable build is the single source of truth called from both PRs and main-push deploy.
+* Insights
+    - This makes the split valuable for ai-rizz's "merge-to-main = live" lifecycle while still giving contributors fast feedback on doc integrity in CI. Preflight remains valid (additive, no conflicts introduced).

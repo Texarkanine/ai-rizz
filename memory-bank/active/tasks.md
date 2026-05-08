@@ -18,8 +18,9 @@ The existing README ToC already provides an excellent logical outline. We will m
 - **`docs/` (new directory)**: New canonical home for all user/developer documentation. Will contain `index.md`, `getting-started.md`, `user-guide/`, `advanced/`, `developer-guide/`, and `reference.md` (or equivalent).
 - **`properdocs.yaml` (new, at root)**: Site configuration, strict mode, theme, plugins, validation. Modeled directly on slobac's working example.
 - **`pyproject.toml` (new or extended)**: Add `[project]` stub + `[dependency-groups] docs` (properdocs, mkdocs-material, pymdown-extensions, mkdocs-awesome-pages-plugin) using the same loose-pin style as slobac.
-- **`.github/workflows/reusable-docs-build.yml` (new)**: Reusable job that does `uv sync --group docs --frozen && uv run properdocs build --strict`. Optional Pages artifact upload.
-- **`.github/workflows/docs.yaml` (new)**: Main workflow triggered on `push: branches: [main]` + `workflow_dispatch`. Calls reusable build, then deploys to GitHub Pages. (Different trigger than slobac's release-based one.)
+- **`.github/workflows/reusable-docs-build.yml` (new)**: Reusable job that does `uv sync --group docs --frozen && uv run properdocs build --strict`. Optional Pages artifact upload. Called by both PR validation and the deploy workflow.
+- **`.github/workflows/docs.yaml` (new)**: Main workflow triggered on `push: branches: [main]` + `workflow_dispatch`. Calls reusable build (with artifact upload), then deploys to GitHub Pages. (Different trigger than slobac's release-based one; ai-rizz publishes docs on every merge to main.)
+- **`.github/workflows/pr.yaml` (existing)**: Add a new `docs` job that calls the reusable build workflow (upload-pages-artifact: false) to enforce `properdocs --strict` validation on every PR. This provides early feedback on doc link/anchor integrity without requiring separate workflow file. (Best practice per operator feedback — keeps all PR checks in one place.)
 - **Makefile (existing)**: Optional but recommended: add a `docs` target for local `uv run properdocs serve` convenience.
 - **Existing test/CI infrastructure**: Unaffected at runtime; `make test` must still pass. Docs build is a separate concern.
 
@@ -41,7 +42,8 @@ None — implementation approach is clear. The current README ToC provides a rea
 ### Behaviors to Verify
 - `uv sync --group docs --frozen && uv run properdocs build --strict` completes with exit code 0 and zero warnings (link/anchor validation passes).
 - Local `uv run properdocs serve` works for preview.
-- GitHub Actions workflow triggers on push to main, builds cleanly, and produces a deployable Pages artifact.
+- The reusable build is called from PR checks (via updated pr.yaml) and from the deploy workflow, providing strict validation on every PR and on every push to main.
+- GitHub Actions deploy workflow triggers on push to main, builds cleanly, and produces a deployable Pages artifact.
 - Root README remains useful: developer can install and run the first recipe in < 2 minutes.
 - All original information from the 721-line README is present in the docs site (no loss of content).
 
@@ -81,10 +83,11 @@ None — implementation approach is clear. The current README ToC provides a rea
    - Target length: ~60-80 lines.
    - Files: `README.md`
 
-5. **Add GitHub Actions workflows**
-   - Create `.github/workflows/reusable-docs-build.yml` (checkout, setup-uv, uv sync --group docs --frozen, properdocs build --strict, conditional artifact upload).
-   - Create `.github/workflows/docs.yaml` (trigger on push to main + workflow_dispatch, permissions for Pages, concurrency group, calls reusable build, then deploy-pages).
-   - Files: two new workflow YAMLs
+5. **Add GitHub Actions workflows** (split retained for reusability + PR validation)
+   - Create `.github/workflows/reusable-docs-build.yml` (checkout, setup-uv, uv sync --group docs --frozen, properdocs build --strict, conditional artifact upload). This is the single source of truth for the strict build.
+   - Create `.github/workflows/docs.yaml` (trigger on `push: branches: [main]` + `workflow_dispatch`, permissions for Pages, concurrency group, calls reusable build *with* artifact upload, then deploy-pages). This handles the production docs deployment on every merge to main.
+   - **Update existing `.github/workflows/pr.yaml`**: Add a `docs` job (after the existing shellcheck + tests jobs) that calls the reusable build workflow with `upload-pages-artifact: false`. This gives every PR immediate `properdocs --strict` feedback (link/anchor validation, build success) without a separate workflow file. (Preferred approach per clarification — keeps all PR checks consolidated.)
+   - Files: reusable + deploy workflows (new) + modification to pr.yaml (existing)
 
 6. **Optional convenience: Makefile target**
    - Add a `docs` target that runs the local preview command.
@@ -105,4 +108,4 @@ New technology: properdocs + uv + mkdocs-material stack (identical to the proven
 - **Challenge**: GitHub Pages environment/permissions must be enabled on the repo. **Mitigation**: Document the one-time repo setting in the developer guide; workflow uses standard `actions/deploy-pages`.
 
 ## Status
-PLAN - IN-PROGRESS (implementation plan drafted; ready for preflight validation)
+PLAN - COMPLETE (refined post-preflight for PR doc validation via existing pr.yaml; preflight still valid — additive change only)

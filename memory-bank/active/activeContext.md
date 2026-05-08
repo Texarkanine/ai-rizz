@@ -2,16 +2,17 @@
 
 ## Current Task
 
-**M2 — slobac-audit-fixes-2** (SLOBAC **finding 15**).
+**M3 — slobac-audit-fixes-2** (SLOBAC **finding 16**): wrong-level tests relocated to an integration sub-tier.
 
 ## Phase
 
-**Reflect — COMPLETE**
+**COMPLEXITY-ANALYSIS — COMPLETE**
 
 ## What Was Done
 
-- M2 build + QA + reflection complete. Reflection: `memory-bank/active/reflection/reflection-slobac-audit-fixes-2-m2.md`. Reconcile persistent memory bank: **no updates** (test-only comment changes; `productContext` / `systemPatterns` / `techContext` still accurate).
+- L4 Step 2a: M2 checked off in `milestones.md`; prior M2 sub-run ephemera cleared.
+- First unchecked milestone (M3) classified **Level 3**: multi-file test infrastructure + docs; architectural taxonomy change but single bounded deliverable (matches `milestones.md` rationale).
 
 ## Next Step
 
-Run **`/niko`** to execute L4 Step 2a (check off M2 in `milestones.md`, clear sub-run ephemera) and classify **M3** next.
+Complete **Plan** phase (`level3-plan.md`): populate `tasks.md` with component analysis, TDD-oriented implementation ordering, and challenges; then commit and run **Preflight** (`/niko-preflight`).

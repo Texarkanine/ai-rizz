@@ -1,31 +1,28 @@
-# Project Brief: M2 — slobac-audit-fixes-2
+# Project Brief: M3 — slobac-audit-fixes-2
 
 ## User Story
 
-As an ai-rizz maintainer, I want **Milestone 2** of the SLOBAC remediation (**finding 15** in [`slobac-audit-2.md`](../../slobac-audit-2.md)) applied to the skill test suites, so that tests are grouped by durable product capability instead of plan-style “behavior N” numbering, without changing test logic.
+As an ai-rizz maintainer, I want **Milestone 3** of the SLOBAC remediation (**finding 16** in [`slobac-audit-2.md`](../../slobac-audit-2.md)) implemented, so that tests that exercise real filesystem, git, and symlink behavior no longer live under the `unit/` label, while fast pure-helper tests stay in `tests/unit/`, and project docs and runners match the new taxonomy.
 
 ## Source of Requirements
 
-- [`slobac-audit-2.md`](../../slobac-audit-2.md) — **finding 15** (skill test deliverable-fossils / grouping).
-- [`memory-bank/active/milestones.md`](milestones.md) — M2 scope and cross-milestone invariants.
+- [`slobac-audit-2.md`](../../slobac-audit-2.md) — **finding 16** (`wrong-level`).
+- [`memory-bank/active/milestones.md`](milestones.md) — M3 scope and cross-milestone invariants.
 
-## Scope (M2)
+## Scope (M3)
 
-In these files only:
-
-- `tests/unit/test_skill_detection.test.sh`
-- `tests/unit/test_skill_sync.test.sh`
-- `tests/unit/test_skill_list_display.test.sh`
-
-Replace “behavior N” plan-numbered grouping with **capability-oriented** section groupings (for example: detection, deployment, list rendering, cleanup, symlink security — exact names to follow file content). Strip plan-behavior numbers from comments. **No changes to test logic or assertions** — structure and comments only.
+- Design a dedicated tier directory under integration for **direct-function** tests that perform real temp dirs, `git`, symlinks, and on-disk deployment assertions (per audit).
+- Inventory `tests/unit/*.test.sh`: classify each file (or split where needed) into **stay in unit** vs **relocate**; relocate targets into the new directory.
+- Update [`Makefile`](../../Makefile), [`tests/run_tests.sh`](../../tests/run_tests.sh), and [`tests/common.sh`](../../tests/common.sh) only where path assumptions or discovery require it; preserve `make test-unit` as the fast loop (unit-only) and `make test` / `make test-integration` as full coverage.
+- Documentation: [`memory-bank/techContext.md`](../../memory-bank/techContext.md), [`memory-bank/systemPatterns.md`](../../memory-bank/systemPatterns.md), [`.cursor/rules/ai-rizz-development.mdc`](../../.cursor/rules/ai-rizz-development.mdc), [`README.md`](../../README.md) — reflect the new convention.
 
 ## Out of Scope
 
-- Findings **1–14** (done in M1) and **16** (M3: test tier reorganization).
-- Any change to production script `ai-rizz` (cross-milestone invariant).
+- Production changes to `ai-rizz` (L4 invariant).
+- Findings 1–15 (handled in M1/M2).
 
-## Definition of Done (M2)
+## Definition of Done (M3)
 
-- Finding **15** addressed per audit intent; any intentional deviation documented in the M2 reflection.
+- Finding **16** addressed per audit; intentional deviations documented in the M3 reflection.
 - **`make test`** exits 0.
-- Cross-milestone invariants in `milestones.md` respected (no new SLOBAC smells; test-only edits).
+- Cross-milestone invariants in `milestones.md` respected (no new SLOBAC smells; no production code edits).

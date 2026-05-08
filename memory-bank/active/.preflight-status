@@ -1,0 +1,22 @@
+# Preflight Status
+
+**Task:** properdocs documentation site for ai-rizz
+**Complexity:** Level 3
+**Date:** 2026-05-08
+**Result:** PASS
+
+## Summary of Checks
+
+- **TDD Plan Encoding**: PASS — The implementation plan explicitly frames verification as `properdocs build --strict` succeeding (the "test") before any content or config is considered final. Numbered steps place validation at the end of each major phase. No implementation-before-test ordering.
+- **Convention Compliance**: PASS — New files (`docs/`, `properdocs.yaml`, `pyproject.toml`, `.github/workflows/`) follow the exact patterns established in the reference slobac project. No deviation from ai-rizz's shell-centric nature (Python is docs-only). `memory-bank/systemPatterns.md` has no conflicting documentation or ruleset patterns.
+- **Dependency Impact**: PASS — No existing modules or tests are affected. The docs build is completely isolated from `make test` / shunit2. Downstream consumers of the README (GitHub landing page) are explicitly addressed by the slimmed-down sales-pitch version.
+- **Conflict Detection**: PASS — No overlapping implementations. The progressive manifest system and entity routing in ai-rizz are untouched. No public CLI or rule commands are modified.
+- **Completeness Precheck**: PASS — Every requirement in the Project Brief has a concrete mapped step (toolchain, config, content migration, README shrink, CI workflows, verification). All acceptance criteria have corresponding plan items. Link integrity is covered by `--strict`.
+- **Radical Innovation (advisory)**: The plan is already optimal. One minor enhancement noted: after migration, we could consider adding a `make docs` target and a short "Documentation" section in the Developer Guide, but this is already captured in the optional Makefile step and does not require redesign.
+
+## Findings & Recommendations
+- No blocking issues.
+- Minor: Document the one-time GitHub Pages repository setting ("Source = GitHub Actions") in the new developer guide.
+- The content-slicing work in step 3 will be the highest-effort portion; recommend doing it in small, reviewable chunks if the PR becomes large.
+
+**Status:** Ready for `/niko-build` phase. All pre-build validation passed.

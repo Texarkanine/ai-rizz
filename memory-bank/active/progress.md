@@ -51,3 +51,12 @@ Initialize and stand up a properdocs documentation site for ai-rizz, migrate con
     - Reusable build is the single source of truth called from both PRs and main-push deploy.
 * Insights
     - This makes the split valuable for ai-rizz's "merge-to-main = live" lifecycle while still giving contributors fast feedback on doc integrity in CI. Preflight remains valid (additive, no conflicts introduced).
+
+## 2026-05-08 - BUILD - IN-PROGRESS
+* Work completed
+    - Verified all build prerequisites per level3-build skill (preflight PASS, no creative docs, complete plan, no open questions).
+    - Updated activeContext.md and progress.md to reflect transition into BUILD phase.
+* Decisions made
+    - Proceed with TDD implementation of the 7-step plan, using `properdocs build --strict` as the primary verification "test".
+* Insights
+    - Content migration (step 3) will be the bulk of the work; follow TDD by validating build after each major content slice.

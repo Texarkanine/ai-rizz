@@ -108,4 +108,4 @@ New technology: properdocs + uv + mkdocs-material stack (identical to the proven
 - **Challenge**: GitHub Pages environment/permissions must be enabled on the repo. **Mitigation**: Document the one-time repo setting in the developer guide; workflow uses standard `actions/deploy-pages`.
 
 ## Status
-PLAN - COMPLETE (refined post-preflight for PR doc validation via existing pr.yaml; preflight still valid — additive change only)
+BUILD - IN-PROGRESS (executing 7-step TDD implementation plan)

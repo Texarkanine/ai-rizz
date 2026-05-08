@@ -141,8 +141,15 @@ No new technology — validation not required.
 - [x] Implementation plan complete
 - [x] Technology validation complete
 - [x] Preflight
-- [ ] Build
+- [x] Build
 - [ ] QA
+
+## Inventory (2026-05-07) — stay vs move
+
+| File | Decision |
+|------|------------|
+| `test_skill_detection.test.sh` | **Stay** in `tests/unit/` — pure `is_skill()` surface; no `cmd_*` / deploy pipeline. |
+| All other former `tests/unit/test_*.test.sh` (25 files) | **Move** to `tests/integration/functions/` — real git, temp repos, symlinks, sync/deploy assertions, or direct `cmd_*` integration. |
 
 ## Preflight (2026-05-07)
 

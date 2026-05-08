@@ -18,7 +18,7 @@
 
 # Load common test utilities
 # shellcheck disable=SC1091
-. "$(dirname "$0")/../common.sh"
+. "$(dirname "$0")/../../common.sh"
 
 # Setup - run before each test
 setUp() {
@@ -223,4 +223,4 @@ test_smart_manifest_filename_parsing() {
 
 # Include and run shunit2
 # shellcheck disable=SC1090
-. "$(dirname "$0")/../../shunit2" 
+. "$(dirname "$0")/../../../shunit2" 

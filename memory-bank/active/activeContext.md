@@ -6,13 +6,14 @@
 
 ## Phase
 
-**PREFLIGHT — COMPLETE**
+**BUILD — COMPLETE**
 
 ## What Was Done
 
 - L4 Step 2a: M2 checked off in `milestones.md`; prior M2 sub-run ephemera cleared.
 - M3 classified **Level 3**; full plan in `tasks.md`; **Preflight PASS** (`.preflight-status`).
+- **Build:** Relocated 25 function/integration-style suites from `tests/unit/` to `tests/integration/functions/`; left `test_skill_detection.test.sh` as the sole unit-tier file. Adjusted `common.sh` and `shunit2` relative paths (`../../` vs `../../../` for repo-root `shunit2`). Updated `memory-bank/techContext.md`, `memory-bank/systemPatterns.md`, `.cursor/rules/ai-rizz-development.mdc`, `README.md`, and `tests/run_tests.sh` help text. **`make test`** green (1 unit + 32 integration).
 
 ## Next Step
 
-Run **`/niko-build`** to implement M3 (inventory → moves → docs → `make test`). Then **`/niko-qa`** and **`/niko-reflect`** per Level 3 workflow.
+Run **`/niko-qa`**, then **`/niko-reflect`** per Level 3 workflow.

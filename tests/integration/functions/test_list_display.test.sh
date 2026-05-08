@@ -15,7 +15,7 @@
 
 # Load common test utilities
 # shellcheck disable=SC1091
-. "$(dirname "$0")/../common.sh"
+. "$(dirname "$0")/../../common.sh"
 
 # Source the actual implementation from ai-rizz
 source_ai_rizz
@@ -329,5 +329,5 @@ test_list_empty_rulesets_section_omitted() {
 
 # Load shunit2
 # shellcheck disable=SC1091
-. "$(dirname "$0")/../../shunit2"
+. "$(dirname "$0")/../../../shunit2"
 

@@ -14,9 +14,10 @@ Single-file POSIX shell script (`ai-rizz`) with a shunit2-based test suite.
 
 ## Testing Process
 
-- Tests use [shunit2](./shunit2) (bundled) with test helpers in [`tests/common.sh`](./tests/common.sh)
+- Tests use [shunit2](./shunit2) (bundled at repo root) with test helpers in [`tests/common.sh`](./tests/common.sh)
 - Run all tests: `make test`
-- Run single suite: `./tests/unit/test_foo.test.sh`
-- Run single suite verbose: `VERBOSE_TESTS=true ./tests/unit/test_foo.test.sh`
-- Unit tests in `tests/unit/`, integration tests in `tests/integration/`
+- **`make test-unit`** — only [`tests/unit/`](./tests/unit/) (fast, minimal suites such as pure helper checks)
+- **`make test-integration`** — everything under [`tests/integration/`](./tests/integration/) recursively, including [`tests/integration/functions/`](./tests/integration/functions/) (CLI suites plus direct `cmd_*` tests with real git/filesystem work)
+- Run single suite (examples): `./tests/unit/test_skill_detection.test.sh`, `./tests/integration/functions/test_sync_operations.test.sh`
+- Run single suite verbose: `VERBOSE_TESTS=true ./tests/integration/functions/test_sync_operations.test.sh`
 - Test naming: `test_<description>()` functions; files named `test_<feature>.test.sh`

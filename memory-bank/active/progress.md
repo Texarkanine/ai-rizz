@@ -15,3 +15,10 @@ Sub-run for **L4 milestone M3**: reorganize wrong-level (real filesystem/git) te
 ## 2026-05-07 — PREFLIGHT COMPLETE
 
 - **PASS** — TDD ordering explicit per batch; scope and conventions verified; advisory only on `run_tests.sh` help text. Status in `memory-bank/active/.preflight-status`.
+
+## 2026-05-07 — BUILD COMPLETE
+
+- Relocated 25 `tests/unit/*.test.sh` files to `tests/integration/functions/` (finding 16 remediation); retained `tests/unit/test_skill_detection.test.sh` only.
+- Path fixes: `tests/common.sh` via `$(dirname "$0")/../../common.sh`; bundled `shunit2` at repo root via `$(dirname "$0")/../../../shunit2`.
+- Docs/rules/README and `run_tests.sh` usage lines updated for three-tier taxonomy; no changes to production `ai-rizz`.
+- Verification: `make test` — 33 suites passed (1 unit, 32 integration including `integration/functions/`).

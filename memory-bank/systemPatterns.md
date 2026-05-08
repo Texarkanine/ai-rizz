@@ -1,5 +1,13 @@
 # System Patterns
 
+## Test suite taxonomy
+
+Three buckets, driven by [`tests/run_tests.sh`](./tests/run_tests.sh):
+
+1. **`tests/unit/`** — Fast loops: suites that avoid heavy integration scenarios (e.g. pure detection helpers). Still use `tests/common.sh` and may run in a temp directory; the split is by *intent* and cost, not “no disk.”
+2. **`tests/integration/*.test.sh`** — Top-level files exercise the **public CLI** (`ai-rizz` as a subprocess).
+3. **`tests/integration/functions/*.test.sh`** — **Direct function** tests: source `ai-rizz` and call `cmd_*` / sync paths against real temp repos, git, symlinks, and on-disk deploy results. Discovery is recursive (`find` on `tests/integration`), so nested `functions/` is included in integration runs without extra wiring.
+
 ## Entity Type Routing
 
 Each entity has a detection function and a target directory getter:

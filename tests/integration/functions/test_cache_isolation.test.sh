@@ -7,7 +7,7 @@
 # - get_repo_dir_for_mode() returns correct directory for each mode
 
 # Source the test utilities
-. "$(dirname "$0")/../common.sh"
+. "$(dirname "$0")/../../common.sh"
 
 # Set up test environment with HOME isolation
 setUp() {
@@ -169,4 +169,4 @@ test_add_rule_global_uses_global_repo_dir() {
 
 # Load and run shunit2
 # shellcheck disable=SC1091
-. "$(dirname "$0")/../../shunit2"
+. "$(dirname "$0")/../../../shunit2"

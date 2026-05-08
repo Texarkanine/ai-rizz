@@ -21,7 +21,7 @@
 
 # Load common test utilities
 # shellcheck disable=SC1091
-. "$(dirname "$0")/../common.sh"
+. "$(dirname "$0")/../../common.sh"
 
 # Source the actual implementation from ai-rizz
 source_ai_rizz
@@ -604,4 +604,4 @@ test_skills_cleanup_removes_stale_files_not_just_dirs() {
 
 # Load and run shunit2
 # shellcheck disable=SC1090
-. "$(dirname "$0")/../../shunit2"
+. "$(dirname "$0")/../../../shunit2"

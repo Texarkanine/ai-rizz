@@ -5,5 +5,4 @@ This section covers ai-rizz internals: how the manifest system works, how confli
 ## In this section
 
 - [Progressive Manifest System](progressive-manifest.md)
-- [Conflict Resolution](conflict-resolution.md)
 - [Testing](testing.md)

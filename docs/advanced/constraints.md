@@ -1,8 +1,31 @@
-# Rule and Ruleset Constraints
+# Constraints
 
 ai-rizz enforces certain constraints to maintain data integrity and prevent conflicts between local and committed modes. Understanding these constraints helps you work effectively with complex rule management scenarios.
 
-## Example Repository Structure
+## Source Repository Consistency
+
+Local and commit modes must use the same source repository. If they differ, `ai-rizz` will complain and ask you to resolve it.
+
+Global mode can use a different source repository, allowing you to share one set of rules globally while using project-specific rules locally.
+
+## Multi-Mode Installation
+
+When a rule would be installed in more than one mode,
+
+- **Commit mode wins**: Committed rules take precedence
+- **Automatic cleanup**: Conflicting local entries are silently removed
+
+If manual editing creates duplicates in both manifests:
+
+1. Committed mode takes precedence
+2. Local entry silently removed during sync
+3. No warning shown
+
+## Moving Modes
+
+When a Ruleset is moved across modes, all of its constituent rules must move, too. This isn't always safe, if some of those rules are also installed a different way or in a different mode.
+
+Similarly, moving a rule across modes may not be safe, if that rule is also a member of a ruleset installed in a different mode.
 
 For the examples below, assume your source repository has this structure:
 
@@ -23,45 +46,7 @@ rulesets/
     └── testing.mdc
 ```
 
-## Upgrade/Downgrade Rules
-
-**Upgrade (Individual → Ruleset)**: ✅ Always allowed
-
-*Scenario*: You have `bash-style.mdc` installed individually, then add the `shell` ruleset:
-
-```bash
-# Starting state: individual rule installed
-ai-rizz add rule bash-style.mdc --local
-ai-rizz list
-# Shows: ◐ bash-style.mdc
-
-# Add the ruleset containing that rule
-ai-rizz add ruleset shell --local
-ai-rizz list
-# Shows: ◐ shell (contains bash-style.mdc, posix-style.mdc, shell-tdd.mdc)
-# The individual bash-style.mdc entry is automatically removed
-```
-
-**Downgrade (Ruleset → Individual)**: ⚠️ Conditionally blocked
-
-*Scenario*: You have the `shell` ruleset committed, then try to add just `bash-style.mdc` locally:
-
-```bash
-# Starting state: ruleset committed
-ai-rizz add ruleset shell --commit
-ai-rizz list
-# Shows: ● shell (contains bash-style.mdc, posix-style.mdc, shell-tdd.mdc)
-
-# Try to add individual rule locally - BLOCKED
-ai-rizz add rule bash-style.mdc --local
-# Error: Cannot add individual rule 'bash-style.mdc' to local mode:
-# it's part of committed ruleset 'rulesets/shell'.
-# Use 'ai-rizz add-ruleset shell --local' to move the entire ruleset.
-```
-
-*Why blocked*: Prevents fragmenting committed rulesets, which could lead to incomplete team configurations.
-
-## Valid Operations
+### Valid Operations
 
 **Same-mode operations**: ✅ Always allowed
 
@@ -96,7 +81,7 @@ ai-rizz add ruleset shell --local                    # Ruleset contains bash-sty
 # Result: Only the ruleset remains, individual bash-style.mdc entry removed
 ```
 
-## Blocked Operations
+### Blocked Operations
 
 **Downgrade from committed ruleset**: ❌ Blocked
 
@@ -118,6 +103,26 @@ ai-rizz add rule bash-style.mdc --local       # ❌ BLOCKED
 - Incomplete rulesets in commit mode (team missing some rules)
 - Confusion about which rules are shared vs. personal
 - Merge conflicts when team members have different rule subsets
+
+
+**Downgrade (Ruleset → Individual)**: ❌ Conditionally blocked
+
+*Scenario*: You have the `shell` ruleset committed, then try to add just `bash-style.mdc` locally:
+
+```bash
+# Starting state: ruleset committed
+ai-rizz add ruleset shell --commit
+ai-rizz list
+# Shows: ● shell (contains bash-style.mdc, posix-style.mdc, shell-tdd.mdc)
+
+# Try to add individual rule locally - BLOCKED
+ai-rizz add rule bash-style.mdc --local
+# Error: Cannot add individual rule 'bash-style.mdc' to local mode:
+# it's part of committed ruleset 'rulesets/shell'.
+# Use 'ai-rizz add-ruleset shell --local' to move the entire ruleset.
+```
+
+*Why blocked*: Prevents fragmenting committed rulesets, which could lead to incomplete team configurations.
 
 ## Workarounds for Complex Scenarios
 
@@ -150,14 +155,3 @@ ai-rizz add ruleset python --commit         # Moves to commit mode
 git add ai-rizz.skbd .cursor/rules/shared/   # Stage for commit
 git commit -m "Add team Python ruleset"    # Share with team
 ```
-
-## Ruleset-Local Rules
-
-Rulesets may contain `.mdc` *files* in addition to symlinks to rules in the `rules/` directory.
-
-Such "ruleset-local rules" will:
-
-1. be installed alongside symlinked rules normally
-2. show up in `ai-rizz list` output as part of the ruleset
-3. **not** show up in `ai-rizz` "rules" list
-4. **not** be able to be installed or removed individually

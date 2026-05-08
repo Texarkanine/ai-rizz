@@ -666,8 +666,9 @@ The project uses [shunit2](https://github.com/kward/shunit2) for unit and integr
 tests/
 ├── common.sh                        # Common test utilities and helper functions  
 ├── run_tests.sh                     # Test runner script
-├── integration/                     # Integration tests (against CLI interface)
-└── unit/                            # Unit tests (against functions)
+├── integration/                     # Integration tests (CLI + function-level)
+│   └── functions/                  # Direct cmd_* / sync tests (real git & filesystem)
+└── unit/                            # Fast unit-tier suites (e.g. pure helpers)
 ```
 
 #### Running Tests
@@ -679,11 +680,12 @@ make test
 # Run tests with verbose output
 VERBOSE_TESTS=true make test
 
-# Run specific test file (quiet)
-sh tests/unit/test_progressive_init.sh
+# Run specific test file (quiet) — examples
+sh tests/unit/test_skill_detection.test.sh
+sh tests/integration/functions/test_sync_operations.test.sh
 
 # Run specific test file (verbose)
-VERBOSE_TESTS=true sh tests/unit/test_progressive_init.sh
+VERBOSE_TESTS=true sh tests/integration/functions/test_sync_operations.test.sh
 ```
 
 #### Test Output Modes

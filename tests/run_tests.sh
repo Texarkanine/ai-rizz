@@ -113,8 +113,8 @@ show_usage() {
 	echo "Examples:"
 	echo "  $0                    # Run all tests quietly (default)"
 	echo "  $0 --verbose          # Run all tests with full output"
-	echo "  $0 --unit             # Run only unit tests"
-	echo "  $0 --integration      # Run only integration tests"
+	echo "  $0 --unit             # Run only unit tests (tests/unit/)"
+	echo "  $0 --integration      # Run integration tests (tests/integration/, recursively e.g. integration/functions/)"
 	echo "  VERBOSE_TESTS=true $0 # Run all tests with full output"
 }
 

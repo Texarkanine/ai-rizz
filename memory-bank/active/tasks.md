@@ -108,4 +108,30 @@ New technology: properdocs + uv + mkdocs-material stack (identical to the proven
 - **Challenge**: GitHub Pages environment/permissions must be enabled on the repo. **Mitigation**: Document the one-time repo setting in the developer guide; workflow uses standard `actions/deploy-pages`.
 
 ## Status
-BUILD - IN-PROGRESS (executing 7-step TDD implementation plan)
+BUILD - COMPLETE (all 7 implementation steps executed; strict docs build green; full test suite green 32/32)
+
+## Implementation Outcomes (per step)
+1. **Toolchain**: `pyproject.toml` + `uv.lock` (already in place from prior partial work) — verified working with `uv run properdocs build --strict`.
+2. **properdocs config**: `properdocs.yaml` already in place — strict mode + GitHub-compatible slugifier confirmed correct.
+3. **`docs/` tree + content migration**: Complete. All 721 lines of README content migrated into:
+   - `docs/index.md` (overview + navigation)
+   - `docs/getting-started.md` (Quick Start)
+   - `docs/user-guide/{index,configuration,rule-modes,installation-options,commands}.md`
+   - `docs/advanced/{index,constraints,rulesets-with-commands,repository-integrity,environment-variables}.md`
+   - `docs/developer-guide/{index,progressive-manifest,conflict-resolution,testing}.md`
+   - One link rewrite: `#--hook-based-ignore-local-mode` → `user-guide/commands.md#--hook-based-ignore-local-mode`.
+4. **README shrink**: README reduced from 721 lines to ~70 lines (sales pitch + quickstart + prominent docs site link). All deep content removed in favor of doc-site links.
+5. **GitHub Actions**:
+   - `.github/workflows/reusable-docs-build.yml` (new) — single-source-of-truth strict build, optional Pages artifact.
+   - `.github/workflows/docs.yaml` (new) — `push: main` + `workflow_dispatch`, calls reusable build with artifact upload, deploys to Pages.
+   - `.github/workflows/pr.yaml` (modified) — added `docs` job calling reusable build with `upload-pages-artifact: false` for strict validation on every PR.
+6. **Makefile**: `docs` (local preview) and `docs-build` (strict CI parity) targets added; `help` updated.
+7. **Verification**: `uv run properdocs build --strict` exit 0, zero warnings; `make test` 32/32 passing; YAML workflows parse cleanly.
+
+## Bonus
+- Added `.gitignore` (none existed) covering `site/`, `.venv/`, and Python caches — prevents docs-build artifacts and the local Python env from being committed.
+
+## QA Attempt
+- 2026-05-08: /niko-qa invoked but prerequisites not met (build incomplete).
+- Result: FAIL - substantive incompleteness (see .qa-validation-status).
+- Action: BUILD now complete. Re-run /niko-qa.

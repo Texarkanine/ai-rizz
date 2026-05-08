@@ -10,6 +10,9 @@ Each rule can be handled independently. Rule repositories may also choose to bun
 
 Check out my rules in [texarkanine/.cursor-rules](https://github.com/texarkanine/.cursor-rules.git) for examples.
 
-**Full documentation and guides:** See the [Getting Started](./getting-started.md) and [User Guide](./user-guide/index.md) sections.
+## Where to next
 
-> This site is the complete documentation. The root README is now a concise quickstart.
+- [Getting Started](getting-started.md) — prerequisites, install, first recipes
+- [User Guide](user-guide/index.md) — configuration, modes, commands
+- [Advanced Usage](advanced/index.md) — constraints, rulesets with commands, integrity, env vars
+- [Developer Guide](developer-guide/index.md) — manifest internals, conflict resolution, testing

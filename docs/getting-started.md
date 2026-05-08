@@ -51,5 +51,5 @@ ai-rizz list                                # shows: ★ for global rules
 
 > ## ⚠️ `.gitignore` and `.cursorignore`
 > Some builds of Cursor [ignore all files ignored by git](https://forum.cursor.com/t/cursor-2-1-50-ignores-rules-in-git-info-exclude-on-mac-not-on-windows-wsl/145695/4).
-> If you find that local rules aren't being applied (quick test: can you [@Mention](https://cursor.com/docs/context/mentions) the files?), see the [--hook-based-ignore `init` option](#--hook-based-ignore-local-mode).
+> If you find that local rules aren't being applied (quick test: can you [@Mention](https://cursor.com/docs/context/mentions) the files?), see the [--hook-based-ignore `init` option](user-guide/commands.md#--hook-based-ignore-local-mode).
 

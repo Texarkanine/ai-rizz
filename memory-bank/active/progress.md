@@ -60,3 +60,28 @@ Initialize and stand up a properdocs documentation site for ai-rizz, migrate con
     - Proceed with TDD implementation of the 7-step plan, using `properdocs build --strict` as the primary verification "test".
 * Insights
     - Content migration (step 3) will be the bulk of the work; follow TDD by validating build after each major content slice.
+
+## 2026-05-08 - BUILD - COMPLETE
+* Work completed
+    - Finished content migration: full README content sliced into `docs/index.md`, `docs/getting-started.md`, `docs/user-guide/{configuration,rule-modes,installation-options,commands}.md`, `docs/advanced/{constraints,rulesets-with-commands,repository-integrity,environment-variables}.md`, and `docs/developer-guide/{progressive-manifest,conflict-resolution,testing}.md` (plus index pages per section).
+    - Reduced root `README.md` from 721 to ~70 lines (sales pitch + quickstart + prominent docs-site links).
+    - Added `.github/workflows/reusable-docs-build.yml`, `.github/workflows/docs.yaml`, and `docs` job in existing `.github/workflows/pr.yaml`.
+    - Added `make docs` and `make docs-build` Makefile targets.
+    - Added `.gitignore` covering `site/`, `.venv/`, Python caches.
+    - Fixed one cross-page anchor link discovered by `--strict` build.
+    - Verified: `properdocs build --strict` exit 0, zero warnings; `make test` 32/32 passing; workflow YAML parses cleanly.
+* Decisions made
+    - README links point to the deployed docs site URL (not relative paths) for the public GitHub landing experience.
+    - GitHub-compatible slugifier preserves the `--hook-based-ignore-local-mode` two-leading-dashes anchor convention.
+* Insights
+    - The largest effort was indeed content migration (step 3); rest of the steps were straightforward applications of slobac patterns adapted for ai-rizz's push-to-main lifecycle.
+
+## 2026-05-08 - QA (prior, superseded) - FAIL (build was incomplete)
+* Work completed
+    - Performed prerequisite check per niko-qa skill: confirmed BUILD phase not marked complete and only partial files exist (no workflows, incomplete content migration).
+    - Created `.qa-validation-status` documenting the FAIL findings.
+    - Updated `tasks.md` with QA attempt note.
+* Decisions made
+    - Do not fix substantive incompleteness in QA phase; record and route back per skill rules.
+* Insights
+    - Premature /niko-qa invocation detected build not ready; reinforces need to complete full implementation before QA.

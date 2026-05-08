@@ -1,19 +1,23 @@
 # Active Context
 
 ## Current Task: properdocs documentation site for ai-rizz
-**Phase:** BUILD - IN-PROGRESS
+**Phase:** BUILD - COMPLETE
 
 ## What Was Done
-- Validated user intent via restatement (confirmed "You've got it!").
-- Classified task complexity using decision tree → **Level 3**.
-- Created and populated all ephemeral memory-bank files:
-  - Detailed project brief with user story, requirements, acceptance criteria.
-  - Full component analysis, test plan (TDD via `properdocs build --strict`), and ordered implementation plan in `tasks.md`.
-  - No open questions — the existing README ToC provides a ready navigation skeleton.
-- Committed memory-bank state before entering PLAN.
-- Drafted complete L3 implementation plan (7 major steps, content migration strategy, CI shape, verification).
-- **Plan refinement (operator clarification)**: Updated workflow strategy to retain reusable-build + deploy split (justified by PR validation use case) and explicitly add a `docs` job to the *existing* `pr.yaml` for strict docsite checks on every PR (preferred over new workflow file). This ensures doc validation runs in CI while deploy only happens on main pushes.
-- Entered BUILD phase: all prerequisites verified (preflight PASS, no creative docs, plan complete).
+- Migrated all README content into a structured `docs/` tree (index, getting-started, user-guide/, advanced/, developer-guide/) with all original information preserved and reorganized for the docsite.
+- Fixed cross-page anchor link (`#--hook-based-ignore-local-mode`) so `properdocs --strict` validation passes.
+- Reduced root `README.md` from 721 lines to ~70 lines (sales pitch + quickstart + links to the docs site).
+- Added GitHub Actions:
+  - `reusable-docs-build.yml` — strict build, optional Pages artifact.
+  - `docs.yaml` — push-to-main + workflow_dispatch deploy via reusable build.
+  - `pr.yaml` updated with a `docs` job calling the reusable build for PR validation.
+- Added `make docs` (local preview) and `make docs-build` (strict CI parity) Makefile targets.
+- Added `.gitignore` to exclude `site/`, `.venv/`, and Python caches.
+- Verified: `uv run properdocs build --strict` exit 0 with zero warnings; `make test` passes 32/32; all workflow YAML parses cleanly.
+
+## Key Implementation Decisions
+- Anchor for `### \`--hook-based-ignore\` Local Mode` resolves to `#--hook-based-ignore-local-mode` (two leading dashes preserved by GitHub-compatible slugifier configured in `properdocs.yaml`).
+- README quickstart links to the deployed docs site (`https://texarkanine.github.io/ai-rizz/`) for deep content rather than to in-tree paths, keeping the GitHub landing page concise.
 
 ## Next Step
-- Execute the 7-step implementation plan from tasks.md following TDD (tests first via failing `properdocs build --strict`), module by module, with full verification at end. Update tasks.md and progress.md upon completion of BUILD.
+- Run `/niko-qa` to perform post-implementation semantic review against the plan and acceptance criteria.

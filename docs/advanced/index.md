@@ -1,3 +1,10 @@
 # Advanced Usage
 
-> **TODO: Migrate Advanced Usage sections from README: Constraints, Rulesets with Commands, Repository Integrity, Environment Variable Fallbacks.**
+This section covers advanced behavior, constraint rules, integration features, and environment-variable fallbacks.
+
+## In this section
+
+- [Rule and Ruleset Constraints](constraints.md)
+- [Rulesets with Commands](rulesets-with-commands.md)
+- [Repository Integrity](repository-integrity.md)
+- [Environment Variable Fallbacks](environment-variables.md)

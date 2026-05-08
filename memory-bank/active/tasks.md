@@ -142,7 +142,12 @@ No new technology — validation not required.
 - [x] Technology validation complete
 - [x] Preflight
 - [x] Build
-- [ ] QA
+- [x] QA
+
+## QA (2026-05-07)
+
+- **Result:** PASS — see `memory-bank/active/.qa-validation-status`.
+- **Summary:** Implementation matches plan (wrong-level suites under `tests/integration/functions/`; sole unit file `test_skill_detection.test.sh`); docs and runner help updated; no production `ai-rizz` edits; full `make test` green.
 
 ## Inventory (2026-05-07) — stay vs move
 

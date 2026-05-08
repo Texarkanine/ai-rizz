@@ -22,3 +22,8 @@ Sub-run for **L4 milestone M3**: reorganize wrong-level (real filesystem/git) te
 - Path fixes: `tests/common.sh` via `$(dirname "$0")/../../common.sh`; bundled `shunit2` at repo root via `$(dirname "$0")/../../../shunit2`.
 - Docs/rules/README and `run_tests.sh` usage lines updated for three-tier taxonomy; no changes to production `ai-rizz`.
 - Verification: `make test` — 33 suites passed (1 unit, 32 integration including `integration/functions/`).
+
+## 2026-05-07 — QA COMPLETE
+
+- **PASS** — Reviewed implementation against `tasks.md` / `projectbrief.md`: KISS/DRY/YAGNI, completeness (finding 16 relocation + docs), regression risk (path fixes only), integrity (no stray debug). Preflight advisory (`run_tests.sh` mentioning `integration/functions/`) satisfied in build. Legacy `# TODO` comments in two moved suites noted as pre-existing, out of M3 scope.
+- Verification: `make test` — 33 suites passed; status in `memory-bank/active/.qa-validation-status`.

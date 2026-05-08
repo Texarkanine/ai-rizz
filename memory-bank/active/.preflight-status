@@ -1,0 +1,12 @@
+# Preflight — M3 slobac-audit-fixes-2
+
+**Date:** 2026-05-07  
+**Result:** PASS  
+
+**TDD encoding:** Each relocation batch is gated on `make test` before further moves; inventory precedes code motion; documentation is explicitly last — no production code in scope.  
+
+**Conventions:** `tests/integration/functions/` matches audit remediation; `find` integration discovery already recursive.  
+
+**Completeness:** Requirements from `projectbrief.md` and finding 16 mapped to numbered implementation steps.  
+
+**Advisory:** After first real move, optionally extend `tests/run_tests.sh` usage text to mention `tests/integration/functions/` — low priority.

@@ -140,6 +140,11 @@ No new technology — validation not required.
 - [x] Test planning complete (TDD)
 - [x] Implementation plan complete
 - [x] Technology validation complete
-- [ ] Preflight
+- [x] Preflight
 - [ ] Build
 - [ ] QA
+
+## Preflight (2026-05-07)
+
+- **Result:** PASS (recorded in `memory-bank/active/.preflight-status`).
+- **Advisory:** Consider mentioning `tests/integration/functions/` in `run_tests.sh --help` text after the tier exists on disk.

@@ -127,7 +127,7 @@ Skills may not nest. Skills will install "flat" to the target installation direc
 	Cursor has deprecated Commands in favor of Skills with the `disable-model-invocation: true` frontmatter field.
 	`ai-rizz` still supports Commands, but you should not create new ones.
 
-Commands **must** be placed in the `commands/` subdirectory of the ruleset. Only `*.md` files under that directory are installed as slash commands (nested paths are flattened into `.cursor/commands/<mode>/`). Other `.md` files elsewhere in the ruleset are not treated as commands.
+Commands **must** be placed in the `commands/` subdirectory of the ruleset. Only `*.md` files under that directory are installed as slash commands. Other `.md` files elsewhere in the ruleset are not treated as commands.
 
 === "Command"
 

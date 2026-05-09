@@ -61,4 +61,3 @@ ai-rizz list
 
 - See [Rule Modes](../user-guide/rule-modes.md) for a deeper explanation of how local/commit/global interact.
 - See [add / remove](../user-guide/commands/add-remove.md) for mixed-mode workflows (for example: mostly local, with a few commit-shared rules).
-TODO: better

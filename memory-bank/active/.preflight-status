@@ -1,4 +1,0 @@
-PASS
-task: issue-32-ruleset-symlinked-embedded-skills
-complexity: Level 2
-notes: Plan encodes explicit test-before-code ordering per implementation step.

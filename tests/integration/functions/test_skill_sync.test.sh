@@ -564,6 +564,73 @@ test_embedded_skills_subdir_external_symlink_not_deployed() {
 }
 
 # ============================================================================
+# Symlinked embedded skills: direct child symlink to in-repo skill is deployed
+# ============================================================================
+
+test_embedded_skill_symlinked_dir_within_repo_deployed() {
+	# A direct child symlink under rulesets/<r>/skills/ that resolves to an
+	# in-repository skill directory should be treated as a valid embedded skill
+	# and deployed to .cursor/skills/<mode>/<symlink-name>/.
+	mkdir -p "${REPO_DIR}/rules/reusable-skill"
+	echo "# Reusable Skill" > "${REPO_DIR}/rules/reusable-skill/SKILL.md"
+	echo "helper data" > "${REPO_DIR}/rules/reusable-skill/helper.txt"
+	mkdir -p "${REPO_DIR}/rulesets/my-ruleset/skills"
+	echo "rule content" > "${REPO_DIR}/rulesets/my-ruleset/rule.mdc"
+	ln -s "../../../rules/reusable-skill" \
+		"${REPO_DIR}/rulesets/my-ruleset/skills/linked-skill"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add ruleset with in-repo symlinked embedded skill" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+	cmd_add_ruleset "my-ruleset" --commit
+	assertTrue "cmd_add_ruleset should succeed" $?
+
+	assertTrue "linked-skill should be deployed to skills dir" \
+		"[ -d '.cursor/skills/shared/linked-skill' ]"
+	assertTrue "linked-skill should include SKILL.md" \
+		"[ -f '.cursor/skills/shared/linked-skill/SKILL.md' ]"
+	assertTrue "linked-skill should preserve extra files from source skill dir" \
+		"[ -f '.cursor/skills/shared/linked-skill/helper.txt' ]"
+}
+
+# ============================================================================
+# Symlinked embedded skills: direct child symlink to out-of-repo skill skipped
+# ============================================================================
+
+test_embedded_skill_symlinked_dir_outside_repo_not_deployed() {
+	# A direct child symlink under rulesets/<r>/skills/ that resolves outside
+	# the repository must be skipped for security.
+	outside_skill_dir="${TEST_DIR}/outside-linked-skill"
+	mkdir -p "${outside_skill_dir}"
+	echo "# External Skill" > "${outside_skill_dir}/SKILL.md"
+	echo "sensitive data" > "${outside_skill_dir}/secret.txt"
+
+	mkdir -p "${REPO_DIR}/rulesets/my-ruleset/skills"
+	echo "rule content" > "${REPO_DIR}/rulesets/my-ruleset/rule.mdc"
+	ln -s "${outside_skill_dir}" \
+		"${REPO_DIR}/rulesets/my-ruleset/skills/external-skill"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git config user.email "test@example.com" >/dev/null 2>&1
+	git config user.name "Test User" >/dev/null 2>&1
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add ruleset with out-of-repo symlinked embedded skill" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+	cmd_add_ruleset "my-ruleset" --commit
+	assertTrue "cmd_add_ruleset should succeed" $?
+
+	assertFalse "external-skill must NOT be deployed" \
+		"[ -d '.cursor/skills/shared/external-skill' ]"
+}
+
+# ============================================================================
 # Cleanup: stale plain files under skills target removed on sync
 # ============================================================================
 

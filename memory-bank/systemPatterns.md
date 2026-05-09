@@ -22,7 +22,7 @@ All routing happens in `copy_entry_to_target()`: file vs directory is branched f
 
 Rulesets can have special subdirectories whose contents are routed differently:
 - `commands/` — `.md` files copied flat to `.cursor/commands/<mode>/` (organizational convention; other `.md` outside `skills/` are also commands)
-- `skills/` — skill directories (each containing `SKILL.md`) copied to `.cursor/skills/<mode>/` via `cp -rL`. Any `*.md` under `rulesets/<r>/skills/` is excluded from the flat command pass so references and other skill-local markdown are not mistaken for Cursor slash-commands.
+- `skills/` — skill directories (each containing `SKILL.md`) copied to `.cursor/skills/<mode>/` via `cp -rL`. Direct child symlinks are included when they resolve within the repository; out-of-repo symlink targets are skipped for safety. Any `*.md` under `rulesets/<r>/skills/` is excluded from the flat command pass so references and other skill-local markdown are not mistaken for Cursor slash-commands.
 
 ## Skill Definition Paths
 
@@ -30,7 +30,7 @@ Skills can be defined in exactly two places:
 1. `rules/<skill-name>/SKILL.md` — standalone skill, one level only, no nesting
 2. `rulesets/<ruleset-name>/skills/<skill-name>/SKILL.md` — embedded in a ruleset's magic `skills/` subdir
 
-Symlinks in rulesets pointing to `rules/<name>/` work the same as for rules (the normal ruleset symlink mechanism). This is not a separate skill detection path.
+Embedded-skill discovery explicitly includes direct-child symlink entries under `rulesets/<ruleset>/skills/` and validates top-level target boundaries before list/deploy.
 
 ## POSIX-Compliant Local Variable Prefixes
 

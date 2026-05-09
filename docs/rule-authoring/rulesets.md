@@ -77,12 +77,11 @@ This allows you to have many "helper" rules that the end-user doesn't see. You'd
 
 ## Skills
 
-!!! danger "Broken"
-	This does not currently work as described; see [issue #32](https://github.com/texarkanine/ai-rizz/issues/32).
-
-	Symlinked skills will not be installed.
-
 Skills **must** be placed in the `skills/` subdirectory of the ruleset. Skills may not nest.
+
+Direct child symlinks under `rulesets/<ruleset>/skills/` are supported. If a symlink resolves to an in-repository skill directory containing `SKILL.md`, `ai-rizz list` shows it in the ruleset tree and install/sync deploys it into `.cursor/skills/<mode>/`.
+
+For safety, symlinks resolving outside the source repository are skipped.
 
 === "Skill"
 

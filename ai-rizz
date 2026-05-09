@@ -3531,9 +3531,29 @@ cmd_list() {
 						# Show one level of skills/ contents — only actual skills (dirs containing SKILL.md)
 						cl_temp_skl_all=$(mktemp)
 						cl_temp_skl_items=$(mktemp)
-						find "${cl_item}" -maxdepth 1 -mindepth 1 -type d | sort > "${cl_temp_skl_all}" 2>/dev/null || true
+						find "${cl_item}" -maxdepth 1 -mindepth 1 \( -type d -o -type l \) | sort > "${cl_temp_skl_all}" 2>/dev/null || true
 						while IFS= read -r cl_skl_dir; do
-							if [ -n "${cl_skl_dir}" ] && [ -f "${cl_skl_dir}/SKILL.md" ]; then
+							if [ -z "${cl_skl_dir}" ]; then
+								continue
+							fi
+							# Security: if the embedded skill entry itself is a symlink,
+							# ensure it resolves inside the source repository before listing.
+							if [ -L "${cl_skl_dir}" ]; then
+								cl_skl_resolved=$(_readlink_f "${cl_skl_dir}")
+								if [ -z "${cl_skl_resolved}" ]; then
+									continue
+								fi
+								case "${cl_skl_resolved}" in
+									"${cl_repo_dir}"/*)
+										# Symlink stays within repo — safe to list
+										;;
+									*)
+										# Skip out-of-repo symlink for safety parity with deploy path
+										continue
+										;;
+								esac
+							fi
+							if [ -d "${cl_skl_dir}" ] && [ -f "${cl_skl_dir}/SKILL.md" ]; then
 								echo "${cl_skl_dir}" >> "${cl_temp_skl_items}"
 							fi
 						done < "${cl_temp_skl_all}"
@@ -4900,13 +4920,34 @@ copy_entry_to_target() {
 			fi
 			if [ "${cett_skills_subdir_safe}" = "true" ] && [ -d "${cett_skills_subdir}" ]; then
 				cett_skill_dirs_tmp=$(mktemp)
-				find "${cett_skills_subdir}" -mindepth 1 -maxdepth 1 -type d > "${cett_skill_dirs_tmp}" 2>/dev/null || true
+				find "${cett_skills_subdir}" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) > "${cett_skill_dirs_tmp}" 2>/dev/null || true
 				while IFS= read -r cett_skill_dir; do
+					if [ -z "${cett_skill_dir}" ]; then
+						continue
+					fi
+					cett_emb_skill_name=$(basename "${cett_skill_dir}")
+					# Security: if the embedded skill entry itself is a symlink, ensure
+					# it resolves within repository boundaries before evaluating/copying.
+					if [ -L "${cett_skill_dir}" ]; then
+						cett_emb_resolved=$(_readlink_f "${cett_skill_dir}")
+						if [ -z "${cett_emb_resolved}" ]; then
+							warn "Skipping skill ${cett_emb_skill_name}: failed to resolve symlink: ${cett_skill_dir}"
+							continue
+						fi
+						case "${cett_emb_resolved}" in
+							"${cett_repo_dir}"/*)
+								# Symlink stays within repo — safe to proceed
+								;;
+							*)
+								warn "Skipping skill ${cett_emb_skill_name}: symlink points outside repository: ${cett_skill_dir} -> ${cett_emb_resolved}"
+								continue
+								;;
+						esac
+					fi
 					# Only copy dirs that have SKILL.md (are valid skills)
-					if [ -f "${cett_skill_dir}/SKILL.md" ]; then
+					if [ -d "${cett_skill_dir}" ] && [ -f "${cett_skill_dir}/SKILL.md" ]; then
 						# Security: validate symlinks inside the skill dir before copying.
 						# Uses the shared validate_dir_symlinks helper (same check as standalone skills).
-						cett_emb_skill_name=$(basename "${cett_skill_dir}")
 						if ! validate_dir_symlinks "${cett_skill_dir}" "${cett_repo_dir}" "${cett_emb_skill_name}"; then
 							continue
 						fi

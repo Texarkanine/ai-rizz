@@ -204,6 +204,61 @@ test_ruleset_tree_skills_subdir_shows_only_valid_skills() {
 }
 
 # ============================================================================
+# Ruleset tree: in-repo symlinked embedded skill appears in expansion
+# ============================================================================
+
+test_ruleset_tree_shows_in_repo_symlinked_embedded_skill() {
+	# A direct child symlink under rulesets/<r>/skills/ that resolves within the
+	# repository and points to a valid skill directory should appear in the
+	# ruleset tree expansion.
+	mkdir -p "${REPO_DIR}/rules/reusable-skill"
+	echo "# Reusable Skill" > "${REPO_DIR}/rules/reusable-skill/SKILL.md"
+	mkdir -p "${REPO_DIR}/rulesets/my-ruleset/skills"
+	ln -s "../../../rules/reusable-skill" \
+		"${REPO_DIR}/rulesets/my-ruleset/skills/linked-skill"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add in-repo symlinked embedded skill for list test" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+
+	output=$(cmd_list)
+
+	echo "${output}" | grep "linked-skill" | grep -qv "/" || \
+		fail "linked-skill should appear in ruleset tree expansion (without trailing /): ${output}"
+}
+
+# ============================================================================
+# Ruleset tree: out-of-repo symlinked embedded skill is excluded
+# ============================================================================
+
+test_ruleset_tree_skips_out_of_repo_symlinked_embedded_skill() {
+	# A direct child symlink under rulesets/<r>/skills/ that resolves outside
+	# the repository should be excluded from list output.
+	outside_skill_dir="${TEST_DIR}/outside-skill"
+	mkdir -p "${outside_skill_dir}"
+	echo "# External Skill" > "${outside_skill_dir}/SKILL.md"
+
+	mkdir -p "${REPO_DIR}/rulesets/my-ruleset/skills"
+	ln -s "${outside_skill_dir}" \
+		"${REPO_DIR}/rulesets/my-ruleset/skills/external-skill"
+
+	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add out-of-repo symlinked embedded skill for list test" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app dir"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+
+	output=$(cmd_list)
+
+	assertFalse "external-skill should be excluded from ruleset tree output" \
+		"echo '${output}' | grep -q 'external-skill'"
+}
+
+# ============================================================================
 # Section order: "Available rulesets:" after "Available skills:"
 # ============================================================================
 

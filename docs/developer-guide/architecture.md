@@ -14,10 +14,10 @@ The rest of this page describes the cross-cutting flow. Specifics — manifest s
 
 ```mermaid
 graph TD
-    classDef cli fill:#e1f5fe,stroke:#01579b;
-    classDef state fill:#f3e5f5,stroke:#7b1fa2;
-    classDef cache fill:#fff3e0,stroke:#ef6c00;
-    classDef output fill:#e8f5e9,stroke:#2e7d32;
+    classDef cli fill:#1e88e5,fill-opacity:0.16,stroke:#1e88e5,stroke-width:1.5px;
+    classDef state fill:#8e24aa,fill-opacity:0.16,stroke:#8e24aa,stroke-width:1.5px;
+    classDef cache fill:#f57c00,fill-opacity:0.16,stroke:#f57c00,stroke-width:1.5px;
+    classDef output fill:#2e7d32,fill-opacity:0.16,stroke:#2e7d32,stroke-width:1.5px;
 
     User["Developer"] --> CLI["ai-rizz CLI"]:::cli
     CLI -->|"reads & writes"| Manifests["Mode Manifests"]:::state
@@ -64,9 +64,9 @@ sequenceDiagram
 
 ```mermaid
 graph TD
-    classDef action fill:#e1f5fe,stroke:#01579b;
-    classDef decision fill:#fff3e0,stroke:#ef6c00;
-    classDef output fill:#e8f5e9,stroke:#2e7d32;
+    classDef action fill:#1e88e5,fill-opacity:0.16,stroke:#1e88e5,stroke-width:1.5px;
+    classDef decision fill:#f57c00,fill-opacity:0.16,stroke:#f57c00,stroke-width:1.5px;
+    classDef output fill:#2e7d32,fill-opacity:0.16,stroke:#2e7d32,stroke-width:1.5px;
 
     Start["sync_all_modes()"]:::action --> Conflicts["resolve_conflicts()"]:::action
     Conflicts --> Mode["For each active mode"]:::action

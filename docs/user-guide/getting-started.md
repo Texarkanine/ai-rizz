@@ -35,7 +35,7 @@ ai-rizz add rule git-safety
 ai-rizz list
 ```
 
-### Shared Project Rules`
+### Shared Project Rules
 
 If you want to customize the workflows for everyone who works with this repository, use `commit` mode. This will pull customizations in as normal files under `git` control:
 

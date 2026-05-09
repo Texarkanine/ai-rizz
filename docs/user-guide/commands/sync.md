@@ -1,6 +1,6 @@
 # sync
 
-```
+```bash
 ai-rizz sync
 ```
 

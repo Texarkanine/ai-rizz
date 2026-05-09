@@ -12,7 +12,7 @@ ln -s ../../rules/<your-rule>
 ln -s ../../rules/<other-rule>
 ```
 
-to poplate a ruleset.
+to populate a ruleset.
 
 Some basic rulesets might look like this:
 

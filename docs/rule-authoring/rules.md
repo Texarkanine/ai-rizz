@@ -46,7 +46,7 @@ Talk like a pirate when responding to questions about JavaScript.
 
     You should not create new commands because they are deprecated [and because a Skill is probably better, anyway](https://blog.cani.ne.jp/2025/11/24/usent-case-for-ai-coding-agent-slash-commands.html).
 
-    However, as of May 2026, both Cursor and `ai-rizz` still support Comamnds, and that support is documented here.
+    However, as of May 2026, both Cursor and `ai-rizz` still support Commands, and that support is documented here.
 
 Commands are a markdown file with no frontmatter. They are invoked by the operator by typing `/command-name` in the chat.
 

@@ -14,9 +14,9 @@ A "Ruleset" is a collection of rules. Rulesets group related rules together so t
 
 ## What is a Mode?
 
-A "Mode" is the way that a rule or rulesset is installed:
+A "Mode" is the way that a rule or ruleset is installed:
 
-- Local (in the repo directory, ignord by git)
+- Local (in the repo directory, ignored by git)
 - Commit (in the repo directory, committed to git)
 - Global (in the home directory, shared across all repos)
 

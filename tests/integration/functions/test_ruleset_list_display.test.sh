@@ -11,6 +11,7 @@
 # - List shows ruleset subtree: top-level rules and subdirectory names without listing children
 # - Tree output for rulesets that have only .mdc rules (no commands subdirs)
 # - Only .mdc files listed where applicable; complex ruleset exercising several behaviors together
+# - Unsupported root-level skill-like dirs are hidden from ruleset tree display
 #
 # Dependencies: shunit2, common test utilities
 # Usage: sh test_ruleset_list_display.test.sh
@@ -210,6 +211,62 @@ test_complex_ruleset_display() {
 	test -f ".cursor/commands/shared/top.md" || fail "Top command should be copied"
 	test -f ".cursor/commands/shared/nested.md" || fail "Nested command should be copied (FLAT)"
 	test -f ".cursor/commands/shared/root-cmd.md" || fail "Root command should be copied"
+}
+
+# ============================================================================
+# RULESET TREE FILTERING (ISSUE #30)
+# ============================================================================
+
+test_list_hides_unsupported_root_level_skill_like_directory() {
+	# Setup: root-level skill-like directory outside magic skills/ subdir.
+	mkdir -p "$REPO_DIR/rulesets/test-root-skill-dir/unsupported-root-skill-like"
+	echo "# Unsupported root skill-like dir" > "$REPO_DIR/rulesets/test-root-skill-dir/unsupported-root-skill-like/SKILL.md"
+	echo "top-level rule" > "$REPO_DIR/rulesets/test-root-skill-dir/top-rule.mdc"
+
+	# Commit fixture content
+	cd "$REPO_DIR" || fail "Failed to change to repo directory"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add ruleset with unsupported root skill-like dir" >/dev/null 2>&1
+	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
+
+	# Initialize and list
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
+	output=$(cmd_list)
+
+	# Ruleset still appears
+	echo "$output" | grep -q "test-root-skill-dir" || fail "Ruleset should appear in list output"
+
+	# Unsupported root-level skill-like directory should NOT appear
+	assertFalse "Root-level skill-like directory should not be listed in ruleset tree" \
+		"echo '$output' | grep -q 'unsupported-root-skill-like'"
+}
+
+test_list_keeps_magic_skills_directory_visible() {
+	# Setup: both a valid embedded skill and an unsupported root-level skill-like dir.
+	mkdir -p "$REPO_DIR/rulesets/test-skills-magic-dir/skills/valid-embedded-skill"
+	echo "# Valid Embedded Skill" > "$REPO_DIR/rulesets/test-skills-magic-dir/skills/valid-embedded-skill/SKILL.md"
+	mkdir -p "$REPO_DIR/rulesets/test-skills-magic-dir/unsupported-root-skill-like"
+	echo "# Unsupported root skill-like dir" > "$REPO_DIR/rulesets/test-skills-magic-dir/unsupported-root-skill-like/SKILL.md"
+
+	# Commit fixture content
+	cd "$REPO_DIR" || fail "Failed to change to repo directory"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add ruleset with magic skills and unsupported root skill-like dir" >/dev/null 2>&1
+	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
+
+	# Initialize and list
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
+	output=$(cmd_list)
+
+	# Magic skills path remains visible
+	echo "$output" | grep -A 12 "test-skills-magic-dir" | grep -q "skills" || \
+		fail "skills magic directory should appear in ruleset tree"
+	echo "$output" | grep -A 12 "test-skills-magic-dir" | grep -q "valid-embedded-skill" || \
+		fail "Valid embedded skill should appear under skills/ in ruleset tree"
+
+	# Unsupported root-level skill-like directory should not appear
+	assertFalse "Root-level skill-like directory should not be listed even when skills/ exists" \
+		"echo '$output' | grep -q 'unsupported-root-skill-like'"
 }
 
 # Load shunit2

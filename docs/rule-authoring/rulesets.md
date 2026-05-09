@@ -36,6 +36,12 @@ Cursor Rules with the `.mdc` extension can be placed anywhere in a Ruleset's dir
 * If they are in a subdirectory, they will
 	1. be installed to that subdirectory within the target installation directory
 	2. not show up in `ai-rizz list` - only the directory that contains them will.
+* In `ai-rizz list`, top-level ruleset directories are shown only when they are:
+	1. `commands/`
+	2. `skills/`
+	3. directories containing one or more deployable `.mdc` rules
+
+Directories that do not match those rules are ignored in list output.
 
 === "Rule"
 

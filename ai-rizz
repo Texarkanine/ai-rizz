@@ -3469,18 +3469,53 @@ cmd_list() {
 					;;
 			esac
 			
-			# Display ruleset contents (simplified: top-level only, commands/ special)
+			# Display ruleset contents (supported entries only)
 			# List display rules:
-			# - All top-level .mdc files are shown
-			# - All top-level subdirs are shown (but NO contents)
-			# - "commands" subdir gets special treatment (one level shown)
+			# - Top-level .mdc files are shown
+			# - "commands" and "skills" magic subdirs are shown
+			# - Other top-level dirs are shown only if they contain deployable .mdc rules
 			if [ -d "${cl_ruleset}" ]; then
-				# Get top-level items: .mdc files and directories
-				cl_items=$(find "${cl_ruleset}" -maxdepth 1 \( -name "*.mdc" -type f \) -o \( -name "*.mdc" -type l \) -o \( -type d ! -name "." ! -path "${cl_ruleset}" \) | sort)
-				cl_item_count=$(echo "${cl_items}" | grep -c . || echo "0")
-				cl_current=0
+				# Build top-level item list in a temp file to avoid subshell issues
 				cl_temp_items=$(mktemp)
-				echo "${cl_items}" > "${cl_temp_items}"
+				cl_temp_dirs=$(mktemp)
+
+				# Include top-level .mdc files/symlinks
+				find "${cl_ruleset}" -maxdepth 1 \
+					\( -name "*.mdc" -type f \) -o \( -name "*.mdc" -type l \) \
+					| sort > "${cl_temp_items}" 2>/dev/null || true
+
+				# Include supported top-level directories
+				find "${cl_ruleset}" -maxdepth 1 -mindepth 1 -type d \
+					| sort > "${cl_temp_dirs}" 2>/dev/null || true
+
+				while IFS= read -r cl_ruleset_dir; do
+					if [ -z "${cl_ruleset_dir}" ]; then
+						continue
+					fi
+
+					cl_ruleset_dir_name=$(basename "${cl_ruleset_dir}")
+					case "${cl_ruleset_dir_name}" in
+						commands|skills)
+							echo "${cl_ruleset_dir}" >> "${cl_temp_items}"
+							continue
+							;;
+					esac
+
+					cl_ruleset_dir_rules=$(mktemp)
+					find "${cl_ruleset_dir}" -name "*.mdc" \
+						\( -type f -o -type l \) > "${cl_ruleset_dir_rules}" 2>/dev/null || true
+
+					if [ -s "${cl_ruleset_dir_rules}" ]; then
+						echo "${cl_ruleset_dir}" >> "${cl_temp_items}"
+					fi
+
+					rm -f "${cl_ruleset_dir_rules}"
+				done < "${cl_temp_dirs}"
+
+				rm -f "${cl_temp_dirs}"
+				sort "${cl_temp_items}" -o "${cl_temp_items}" 2>/dev/null || true
+				cl_item_count=$(grep -c . "${cl_temp_items}" 2>/dev/null || echo "0")
+				cl_current=0
 				while IFS= read -r cl_item; do
 					if [ -z "${cl_item}" ]; then
 						continue

@@ -1,0 +1,36 @@
+name: Build and Deploy Docs Site
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One concurrent deploy to Pages; do not cancel in-progress prod deploys, but skip
+# any runs queued between the in-progress one and the latest queued one.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    uses: ./.github/workflows/reusable-docs-build.yml
+    with:
+      upload-pages-artifact: true
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5

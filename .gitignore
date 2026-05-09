@@ -1,0 +1,9 @@
+# Docs build output
+/site/
+
+# uv-managed Python environment (docs toolchain only)
+/.venv/
+
+# Python cache
+__pycache__/
+*.pyc

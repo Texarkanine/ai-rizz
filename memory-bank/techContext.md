@@ -10,7 +10,16 @@ Single-file POSIX shell script (`ai-rizz`) with a shunit2-based test suite.
 
 ## Build Tools
 
-- [`Makefile`](./Makefile) — `make install`, `make test`, `make test-unit`, `make test-integration`
+- [`Makefile`](./Makefile) — `make install`, `make test`, `make test-unit`, `make test-integration`, `make docs`, `make docs-build`
+
+## Docs-Build Toolchain
+
+The documentation site is built with [properdocs](https://github.com/ProperDocs/properdocs) (MkDocs continuation) + [mkdocs-material](https://squidfunk.github.io/mkdocs-material/). There is no runtime Python code in this project; the Python toolchain exists solely for docs.
+
+- Configuration: [`properdocs.yaml`](./properdocs.yaml) (strict mode enabled — warnings become errors)
+- Dependencies: [`pyproject.toml`](./pyproject.toml) `[dependency-groups] docs` + [`uv.lock`](./uv.lock)
+- Local preview: `make docs` (or `uv run properdocs serve`)
+- CI-parity build: `make docs-build` (or `uv sync --group docs --frozen && uv run properdocs build --strict`)
 
 ## Testing Process
 

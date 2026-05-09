@@ -5039,7 +5039,7 @@ Command-specific options:
   init options:
     -d <target_dir>        Target directory
     --git-exclude-ignore   local mode: use .git/info/exclude (legacy mode)
-                           Default is pre-commit hook (recommended for Cursor on Windows)
+                           Default is pre-commit hook (recommended for Cursor)
     --rule-path <path>     Source repository rules path
     --ruleset-path <path>  Source repository rulesets path
 

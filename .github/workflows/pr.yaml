@@ -32,3 +32,9 @@ jobs:
       
       - name: Run test suite
         run: make test
+
+  docs:
+    name: Docs (strict build)
+    uses: ./.github/workflows/reusable-docs-build.yml
+    with:
+      upload-pages-artifact: false

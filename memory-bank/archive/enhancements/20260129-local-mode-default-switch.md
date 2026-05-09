@@ -84,7 +84,7 @@ Cursor on Windows now ignores files based on git ignored state, not just .gitign
    
    # After:
    --git-exclude-ignore   local mode: use .git/info/exclude (legacy mode)
-                          Default is pre-commit hook (recommended for Cursor on Windows)
+                          Default is pre-commit hook (recommended for Cursor)
    ```
 
 ### Test Updates

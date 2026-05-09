@@ -13,10 +13,10 @@ make uninstall
 ```
 
 !!! warning "Custom Directories"
-    If you provided custom directories for installation, you must provide the same custom directories for uninstallation, e.g.
-    ```bash
-    make BINDIR=~/local uninstall
-    ```
+	If you provided custom directories for installation, you must provide the same custom directories for uninstallation, e.g.
+	```bash
+	make BINDIR=~/local uninstall
+	```
 
 ## Bash Completions
 

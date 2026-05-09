@@ -8,7 +8,7 @@ A command-line tool for managing AI rules and rulesets. Pull rules from a source
 
 Each rule can be handled independently. Rule repositories may also choose to bundle rules into "rulesets" for easier management of related rules.
 
-Check out my rules in [texarkanine/.cursor-rules](https://github.com/texarkanine/.cursor-rules.git) for examples.
+Check out my rules in [Texarkanine/.cursor-rules](https://github.com/Texarkanine/.cursor-rules.git) for examples.
 
 > **📚 Full documentation:** <https://texarkanine.github.io/ai-rizz/>
 
@@ -37,7 +37,7 @@ make install
 
 ```bash
 # Personal rules only (git-ignored):
-ai-rizz init https://github.com/texarkanine/.cursor-rules.git --local
+ai-rizz init https://github.com/Texarkanine/.cursor-rules.git --local
 ai-rizz add rule my-personal-rule.mdc
 ai-rizz list
 ```
@@ -45,8 +45,8 @@ ai-rizz list
 Other modes:
 
 ```bash
-ai-rizz init https://github.com/texarkanine/.cursor-rules.git --commit   # team-shared
-ai-rizz init https://github.com/texarkanine/.cursor-rules.git --global   # all repos
+ai-rizz init https://github.com/Texarkanine/.cursor-rules.git --commit   # team-shared
+ai-rizz init https://github.com/Texarkanine/.cursor-rules.git --global   # all repos
 ```
 
 > ## ⚠️ `.gitignore` and `.cursorignore`

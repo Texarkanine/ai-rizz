@@ -65,7 +65,3 @@ VERBOSE_TESTS=true sh tests/integration/functions/test_sync_operations.test.sh
 - Default quiet mode provides clean, parseable output
 - Failed tests include full diagnostic information
 - Exit codes properly indicate success/failure
-
-## GitHub Pages Setup (one-time)
-
-For docs deployment to work, the repository must have GitHub Pages enabled with **Source: GitHub Actions** under Settings → Pages. This is a one-time per-repository configuration.

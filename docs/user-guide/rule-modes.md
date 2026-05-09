@@ -18,8 +18,6 @@
 
 ## Status Display
 
-What `ai-rizz list` shows:
-
 | Symbol | Meaning                                         |
 |--------|-------------------------------------------------|
 | `○`    | Rule available but not installed                |
@@ -36,4 +34,4 @@ ai-rizz add rule some-rule.mdc --commit   # moves to commit mode
 
 ## See Also
 
-- [Rule and Ruleset Constraints](../advanced/constraints.md) - more-advanced interactions between rules, rulesets, and modes.
+- [Rule and Ruleset Constraints](advanced/constraints.md) - more-advanced interactions between rules, rulesets, and modes.

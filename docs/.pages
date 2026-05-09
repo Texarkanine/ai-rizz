@@ -1,7 +1,7 @@
 nav:
-  - Overview: index.md
-  - getting-started.md
+  - Home: index.md
   - User Guide: user-guide
-  - advanced
-  - developer-guide
+  - Rule Authoring Guide: rule-authoring
+  - Developer Guide: developer-guide
   - ...
+  

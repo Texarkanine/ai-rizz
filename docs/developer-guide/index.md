@@ -1,8 +1,8 @@
 # Developer Guide
 
-This section covers ai-rizz internals: how the manifest system works, how conflicts get resolved during sync, and how the test suite is organized.
+If you want to understand how `ai-rizz` works so that you can debug, contribute, fork, or extend it, this section is for you.
 
-## In this section
-
-- [Progressive Manifest System](progressive-manifest.md)
+- [Architecture](architecture.md)
+- [Manifest Files](manifest.md)
+- [Rules Cache](rules-cache.md)
 - [Testing](testing.md)

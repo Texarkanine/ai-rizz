@@ -21,45 +21,12 @@ Check out my rules in [Texarkanine/.cursor-rules](https://github.com/Texarkanine
 
 ## Quick Start
 
-### Prerequisites
-
-- git
-
-### Installation
-
-```bash
-git clone https://github.com/texarkanine/ai-rizz.git
-cd ai-rizz
-make install
-```
-
-### First recipe
-
-```bash
-# Personal rules only (git-ignored):
-ai-rizz init https://github.com/Texarkanine/.cursor-rules.git --local
-ai-rizz add rule my-personal-rule.mdc
-ai-rizz list
-```
-
-Other modes:
-
-```bash
-ai-rizz init https://github.com/Texarkanine/.cursor-rules.git --commit   # team-shared
-ai-rizz init https://github.com/Texarkanine/.cursor-rules.git --global   # all repos
-```
-
-> ## ⚠️ `.gitignore` and `.cursorignore`
-> Some builds of Cursor [ignore all files ignored by git](https://forum.cursor.com/t/cursor-2-1-50-ignores-rules-in-git-info-exclude-on-mac-not-on-windows-wsl/145695/4).
-> If your local rules aren't being applied, see the [`--hook-based-ignore` `init` option](https://texarkanine.github.io/ai-rizz/user-guide/commands/#--hook-based-ignore-local-mode) in the docs.
+- [Getting Started](https://texarkanine.github.io/ai-rizz/user-guide/getting-started/) - install, prerequisites, common recipes
 
 ## Learn more
 
 The full documentation lives at **<https://texarkanine.github.io/ai-rizz/>** and covers:
 
-- [Getting Started](https://texarkanine.github.io/ai-rizz/getting-started/) - install, prerequisites, common recipes
 - [User Guide](https://texarkanine.github.io/ai-rizz/user-guide/) - configuration, modes, full command reference
-- [Advanced Usage](https://texarkanine.github.io/ai-rizz/advanced/) - constraints, rulesets with commands, integrity, env vars
+- [Rule Authoring Guide](https://texarkanine.github.io/ai-rizz/rule-authoring/) - how to make your own repository of rules for `ai-rizz` to pull from
 - [Developer Guide](https://texarkanine.github.io/ai-rizz/developer-guide/) - manifest internals, conflict resolution, testing
-
-The docs site is the canonical source; the markdown sources are in [`docs/`](./docs/).

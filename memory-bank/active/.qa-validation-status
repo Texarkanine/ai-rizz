@@ -1,0 +1,5 @@
+PASS
+task: issue-30-ruleset-list-root-skill-dir-filtering
+complexity: Level 2
+notes: QA semantic review passed; implementation matches plan and docs with no substantive defects.
+PASS

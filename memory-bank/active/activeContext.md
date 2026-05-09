@@ -1,12 +1,12 @@
 # Active Context
 
 ## Current Task: Fix ruleset command install scope (GitHub #31)
-**Phase:** BUILD - COMPLETE
+**Phase:** QA - COMPLETE
 
 ## What Was Done
 
-- Implemented commands-only path in `copy_entry_to_target`; updated tests and rulesets doc; `make test` green.
+- Build + QA passed; ready for Level 1 wrap-up (reconcile persistent, final commit).
 
 ## Next Step
 
-- QA phase (`niko-qa`), then reconcile persistent files and final chore commit per Level 1 wrap-up.
+- Operator may delete `memory-bank/active/` when satisfied (Level 1 has no archive phase).

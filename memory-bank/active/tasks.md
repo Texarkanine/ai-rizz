@@ -9,4 +9,8 @@
 
 ## QA
 
-- [ ] Semantic review vs project brief; record `.qa-validation-status`.
+- [x] Semantic review vs project brief; record `.qa-validation-status`.
+
+### QA result
+
+- **PASS** — Implementation matches brief: `copy_entry_to_target` limits `find` to `rulesets/<r>/commands/`; skills subtree unchanged; docs/tests updated; no stray complexity; full `make test` green.

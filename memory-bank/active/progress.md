@@ -16,3 +16,10 @@ Align ruleset slash-command deployment with the documented contract: only `*.md`
 * Work completed
     - Ruleset slash commands: `find` only under `rulesets/<name>/commands/`; integration tests and `docs/rule-authoring/rulesets.md` aligned with issue #31.
     - Full `make test` passed (32/32 integration incl. unit).
+
+## 2026-05-09 - QA - COMPLETE
+
+* Work completed
+    - Semantic review (KISS/YAGNI/completeness/regression/docs): PASS; `.qa-validation-status` recorded.
+* Insights
+    - Clarified rulesets.md Command tab tree to match ruleset `commands/` layout.

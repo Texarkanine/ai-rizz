@@ -132,8 +132,10 @@ Commands **must** be placed in the `commands/` subdirectory of the ruleset. Only
 === "Command"
 
 	```
-	rules
-	└── magic-command.md
+	rulesets
+	└── example
+	    └── commands
+	        └── magic-command.md
 	```
 
 === "Ruleset"

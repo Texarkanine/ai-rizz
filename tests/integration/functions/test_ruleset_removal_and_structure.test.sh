@@ -33,7 +33,7 @@ test_commands_removed_when_ruleset_removed() {
 	mkdir -p "$REPO_DIR/rulesets/test-remove-cmd/commands/subdir"
 	echo "command1" > "$REPO_DIR/rulesets/test-remove-cmd/commands/cmd1.md"
 	echo "nested" > "$REPO_DIR/rulesets/test-remove-cmd/commands/subdir/nested.md"
-	echo "root cmd" > "$REPO_DIR/rulesets/test-remove-cmd/root-cmd.md"
+	echo "root cmd" > "$REPO_DIR/rulesets/test-remove-cmd/commands/root-cmd.md"
 	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-remove-cmd/rule1.mdc"
 	
 	# Commit and initialize
@@ -172,7 +172,7 @@ test_complex_ruleset_structure_preserved() {
 	mkdir -p "$REPO_DIR/rulesets/test-complex/Core"
 	echo "command" > "$REPO_DIR/rulesets/test-complex/commands/top.md"
 	echo "nested" > "$REPO_DIR/rulesets/test-complex/commands/subs/nested.md"
-	echo "root cmd" > "$REPO_DIR/rulesets/test-complex/root-cmd.md"
+	echo "root cmd" > "$REPO_DIR/rulesets/test-complex/commands/root-cmd.md"
 	echo "file rule" > "$REPO_DIR/rulesets/test-complex/Core/core-rule.mdc"
 	echo "rootrule" > "$REPO_DIR/rulesets/test-complex/rootrule.mdc"
 	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-complex/symlinked-rule.mdc"

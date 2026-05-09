@@ -10,3 +10,9 @@ Align ruleset slash-command deployment with the documented contract: only `*.md`
     - Scoped fix to `copy_entry_to_target` ruleset directory branch and dependent integration tests/docs.
 * Decisions made
     - Level 1 workflow: skip plan/preflight/reflect/archive; build → QA → reconcile persistent → final commit.
+
+## 2026-05-09 - BUILD - COMPLETE
+
+* Work completed
+    - Ruleset slash commands: `find` only under `rulesets/<name>/commands/`; integration tests and `docs/rule-authoring/rulesets.md` aligned with issue #31.
+    - Full `make test` passed (32/32 integration incl. unit).

@@ -33,7 +33,7 @@ test_commands_from_nested_dirs_copied_flat() {
 	mkdir -p "$REPO_DIR/rulesets/test-recursive/commands/subdir"
 	echo "nested command content" > "$REPO_DIR/rulesets/test-recursive/commands/subdir/nested.md"
 	echo "top command content" > "$REPO_DIR/rulesets/test-recursive/commands/top.md"
-	echo "root command content" > "$REPO_DIR/rulesets/test-recursive/root-cmd.md"
+	echo "root command content" > "$REPO_DIR/rulesets/test-recursive/commands/root-cmd.md"
 	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-recursive/rule1.mdc"
 	
 	# Commit the new structure
@@ -179,7 +179,7 @@ test_complex_ruleset_display() {
 	mkdir -p "$REPO_DIR/rulesets/test-complex/supporting"
 	echo "top command" > "$REPO_DIR/rulesets/test-complex/commands/top.md"
 	echo "nested command" > "$REPO_DIR/rulesets/test-complex/commands/subs/nested.md"
-	echo "root command" > "$REPO_DIR/rulesets/test-complex/root-cmd.md"
+	echo "root command" > "$REPO_DIR/rulesets/test-complex/commands/root-cmd.md"
 	echo "root rule" > "$REPO_DIR/rulesets/test-complex/test-complex.mdc"
 	echo "subrule" > "$REPO_DIR/rulesets/test-complex/supporting/subrule.mdc"
 	

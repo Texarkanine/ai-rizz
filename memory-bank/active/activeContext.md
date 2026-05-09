@@ -1,12 +1,12 @@
 # Active Context
 
 ## Current Task: Fix ruleset command install scope (GitHub #31)
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** BUILD - COMPLETE
 
 ## What Was Done
 
-- Classified as **Level 1** (behavior-contract bug in `copy_entry_to_target` ruleset branch; single component, tests document expected contract).
+- Implemented commands-only path in `copy_entry_to_target`; updated tests and rulesets doc; `make test` green.
 
 ## Next Step
 
-- Load Level 1 workflow → Build (`level1-build.md`): failing tests, minimal implementation, `make test`.
+- QA phase (`niko-qa`), then reconcile persistent files and final chore commit per Level 1 wrap-up.

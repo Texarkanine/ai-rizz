@@ -4,8 +4,8 @@
 
 ## Build
 
-- [ ] Restrict ruleset command `find` to `rulesets/<r>/commands/` in `copy_entry_to_target`.
-- [ ] Update integration tests and docs that assumed root-level `.md` commands.
+- [x] Restrict ruleset command `find` to `rulesets/<r>/commands/` in `copy_entry_to_target`.
+- [x] Update integration tests and docs that assumed root-level `.md` commands.
 
 ## QA
 

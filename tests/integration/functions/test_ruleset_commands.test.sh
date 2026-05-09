@@ -3,11 +3,11 @@
 # test_ruleset_commands.test.sh - Ruleset commands test suite
 #
 # Tests all operations related to commands in rulesets, including .md files
-# in ruleset root being treated as commands, uppercase .md files being ignored,
+# only under rulesets/<r>/commands/, uppercase .md files being ignored,
 # and proper migration from old directory structures.
 #
 # Test Coverage:
-# - .md files in ruleset root → treated as commands (unified handling)
+# - .md files outside rulesets/<r>/commands/ → NOT deployed as slash commands
 # - Uppercase .md files (README.md) → ignored (documentation, not commands)
 # - commands/ subdir still works (backwards compatible)
 # - Ruleset with commands works in all modes (local, commit, global)
@@ -28,16 +28,18 @@
 source_ai_rizz
 
 # ============================================================================
-# UNIFIED COMMAND HANDLING TESTS (.md files in ruleset root)
+# COMMAND INSTALL SCOPE (only rulesets/<r>/commands/)
 # ============================================================================
 
-# Test that .md files in ruleset root are treated as commands
-# Expected: foo.md in ruleset root → copied to commands directory
-test_md_files_in_ruleset_root_treated_as_commands() {
-	# Setup: Create ruleset with .md file in root
+# Test that .md files in ruleset root are NOT deployed as slash commands
+# Expected: only rulesets/<r>/commands/*.md → copied to commands directory
+test_md_files_in_ruleset_root_not_deployed_as_commands() {
+	# Setup: Create ruleset with .md file in root (should stay documentation-side only)
 	mkdir -p "$REPO_DIR/rulesets/test-root-md"
+	mkdir -p "$REPO_DIR/rulesets/test-root-md/commands"
 	echo "rule content" > "$REPO_DIR/rulesets/test-root-md/test-rule.mdc"
-	echo "command in root" > "$REPO_DIR/rulesets/test-root-md/my-command.md"
+	echo "command in root only — wrong place" > "$REPO_DIR/rulesets/test-root-md/my-command.md"
+	echo "command in commands dir" > "$REPO_DIR/rulesets/test-root-md/commands/my-command.md"
 	
 	# Commit the new structure
 	cd "$REPO_DIR" || fail "Failed to change to repo directory"
@@ -52,11 +54,10 @@ test_md_files_in_ruleset_root_treated_as_commands() {
 	cmd_add_ruleset "test-root-md" --commit
 	assertTrue "Should add ruleset successfully" $?
 	
-	# Expected: .md file copied to commands directory (flat, not in subdirectory)
 	commands_dir=".cursor/commands/shared"
 	test -d "$commands_dir" || fail "Commands directory should be created"
-	test -f "$commands_dir/my-command.md" || fail "my-command.md should be copied to commands dir"
-	assertEquals "Command content should match" "command in root" "$(cat "$commands_dir/my-command.md")"
+	test -f "$commands_dir/my-command.md" || fail "my-command.md should be installed from commands/ only"
+	assertEquals "Command content should match commands/ file" "command in commands dir" "$(cat "$commands_dir/my-command.md")"
 	
 	# Expected: .mdc file copied to rules directory
 	test -f "$TEST_TARGET_DIR/shared/test-rule.mdc" || fail "test-rule.mdc should be copied to rules dir"
@@ -72,7 +73,8 @@ test_uppercase_md_files_ignored() {
 	echo "changelog content" > "$REPO_DIR/rulesets/test-uppercase-md/CHANGELOG.md"
 	echo "contributing content" > "$REPO_DIR/rulesets/test-uppercase-md/CONTRIBUTING.md"
 	echo "license content" > "$REPO_DIR/rulesets/test-uppercase-md/LICENSE.md"
-	echo "lowercase command" > "$REPO_DIR/rulesets/test-uppercase-md/my-command.md"
+	mkdir -p "$REPO_DIR/rulesets/test-uppercase-md/commands"
+	echo "lowercase command" > "$REPO_DIR/rulesets/test-uppercase-md/commands/my-command.md"
 	
 	# Commit the new structure
 	cd "$REPO_DIR" || fail "Failed to change to repo directory"
@@ -105,7 +107,8 @@ test_md_under_skills_dir_not_deployed_as_flat_commands() {
 	echo "reference body" > "$REPO_DIR/rulesets/test-skill-refs/skills/niko/references/core/memory-bank-init.md"
 	printf '%s\n' "# Niko" > "$REPO_DIR/rulesets/test-skill-refs/skills/niko/SKILL.md"
 	echo "rule content" > "$REPO_DIR/rulesets/test-skill-refs/test-rule.mdc"
-	echo "real command" > "$REPO_DIR/rulesets/test-skill-refs/published-cmd.md"
+	mkdir -p "$REPO_DIR/rulesets/test-skill-refs/commands"
+	echo "real command" > "$REPO_DIR/rulesets/test-skill-refs/commands/published-cmd.md"
 
 	cd "$REPO_DIR" || fail "Failed to change to repo directory"
 	git add . >/dev/null 2>&1
@@ -126,15 +129,17 @@ test_md_under_skills_dir_not_deployed_as_flat_commands() {
 	assertEquals "Reference content" "reference body" "$(cat "$skills_ref")"
 }
 
-# Test that multiple .md files in ruleset root are all copied flat
-# Expected: All .md files copied to commands dir root (not preserving subdirs)
+# Test that multiple .md files under commands/ are copied flat
+# Expected: All deployable .md files copied to commands dir root (not preserving subdirs)
 test_multiple_md_files_copied_flat() {
-	# Setup: Create ruleset with nested .md files
+	# Setup: Create ruleset with nested .md files under commands/ only
 	mkdir -p "$REPO_DIR/rulesets/test-nested-md"
-	mkdir -p "$REPO_DIR/rulesets/test-nested-md/subdir"
+	mkdir -p "$REPO_DIR/rulesets/test-nested-md/commands/subdir"
+	mkdir -p "$REPO_DIR/rulesets/test-nested-md/support-md"
 	echo "rule content" > "$REPO_DIR/rulesets/test-nested-md/test-rule.mdc"
-	echo "root command" > "$REPO_DIR/rulesets/test-nested-md/root-cmd.md"
-	echo "nested command" > "$REPO_DIR/rulesets/test-nested-md/subdir/nested-cmd.md"
+	echo "root command" > "$REPO_DIR/rulesets/test-nested-md/support-md/not-a-command.md"
+	echo "nested command" > "$REPO_DIR/rulesets/test-nested-md/commands/subdir/nested-cmd.md"
+	echo "top command" > "$REPO_DIR/rulesets/test-nested-md/commands/root-cmd.md"
 	
 	# Commit the new structure
 	cd "$REPO_DIR" || fail "Failed to change to repo directory"
@@ -149,8 +154,9 @@ test_multiple_md_files_copied_flat() {
 	cmd_add_ruleset "test-nested-md" --commit
 	assertTrue "Should add ruleset successfully" $?
 	
-	# Expected: Both .md files copied flat to commands dir
+	# Expected: Both .md files under commands/ copied flat; support dir ignored
 	commands_dir=".cursor/commands/shared"
+	test ! -f "$commands_dir/not-a-command.md" || fail "support-md/*.md must not deploy as commands"
 	test -f "$commands_dir/root-cmd.md" || fail "root-cmd.md should be copied"
 	test -f "$commands_dir/nested-cmd.md" || fail "nested-cmd.md should be copied (flat, not in subdir)"
 	
@@ -158,14 +164,14 @@ test_multiple_md_files_copied_flat() {
 	test ! -d "$commands_dir/subdir" || fail "subdir should NOT be created in commands dir"
 }
 
-# Test that commands/ subdir still works (backwards compatible)
-# Expected: .md files in commands/ subdir are also copied
+# Test that commands/ subdir still works
+# Expected: .md files in commands/ subdir are copied; root .md is not a command
 test_commands_subdir_still_works() {
-	# Setup: Create ruleset with both root .md and commands/ subdir
+	# Setup: Create ruleset with root .md (not a command) and commands/ subdir
 	mkdir -p "$REPO_DIR/rulesets/test-both-locations"
 	mkdir -p "$REPO_DIR/rulesets/test-both-locations/commands"
 	echo "rule content" > "$REPO_DIR/rulesets/test-both-locations/test-rule.mdc"
-	echo "root command" > "$REPO_DIR/rulesets/test-both-locations/root-cmd.md"
+	echo "not a slash command" > "$REPO_DIR/rulesets/test-both-locations/root-cmd.md"
 	echo "subdir command" > "$REPO_DIR/rulesets/test-both-locations/commands/subdir-cmd.md"
 	
 	# Commit the new structure
@@ -181,9 +187,9 @@ test_commands_subdir_still_works() {
 	cmd_add_ruleset "test-both-locations" --commit
 	assertTrue "Should add ruleset successfully" $?
 	
-	# Expected: Both .md files copied
+	# Expected: Only commands/ subdir copied
 	commands_dir=".cursor/commands/shared"
-	test -f "$commands_dir/root-cmd.md" || fail "root-cmd.md should be copied"
+	test ! -f "$commands_dir/root-cmd.md" || fail "root-cmd.md at ruleset root must NOT deploy"
 	test -f "$commands_dir/subdir-cmd.md" || fail "subdir-cmd.md should be copied (from commands/ subdir)"
 }
 
@@ -419,7 +425,7 @@ test_commands_copied_to_correct_location() {
 	echo "file1 content" > "$REPO_DIR/rulesets/test-commands/commands/file1.md"
 	echo "file2 content" > "$REPO_DIR/rulesets/test-commands/commands/file2.txt"  # NOT copied (not .md)
 	echo "file3 content" > "$REPO_DIR/rulesets/test-commands/commands/file3.sh"   # NOT copied (not .md)
-	echo "root cmd content" > "$REPO_DIR/rulesets/test-commands/root-cmd.md"
+	echo "root cmd content" > "$REPO_DIR/rulesets/test-commands/commands/root-cmd.md"
 	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-commands/rule1.mdc"
 	
 	# Commit the new structure
@@ -458,9 +464,9 @@ test_commands_symlinks_followed_correctly() {
 	mkdir -p "$REPO_DIR/rulesets/test-symlinks/commands"
 	echo "original content" > "$REPO_DIR/rulesets/test-symlinks/commands/original.md"
 	ln -sf "original.md" "$REPO_DIR/rulesets/test-symlinks/commands/symlink.md"
-	# Also test symlink at ruleset root
-	echo "root original" > "$REPO_DIR/rulesets/test-symlinks/root-original.md"
-	ln -sf "root-original.md" "$REPO_DIR/rulesets/test-symlinks/root-symlink.md"
+	# Also test symlink under commands/
+	echo "root original" > "$REPO_DIR/rulesets/test-symlinks/commands/root-original.md"
+	ln -sf "root-original.md" "$REPO_DIR/rulesets/test-symlinks/commands/root-symlink.md"
 	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-symlinks/rule1.mdc"
 	
 	# Commit the new structure

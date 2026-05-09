@@ -3827,7 +3827,8 @@ cmd_add_rule() {
 # Adds entire rulesets to specified mode, handling lazy initialization and
 # conflict resolution. Auto-detects mode when only one exists, migrates
 # rulesets between modes on conflicts. Rulesets deploy all contained .mdc
-# files as individual rules in the target directory.
+# files as individual rules in the target directory; slash commands (*.md)
+# install only from each ruleset's commands/ subdirectory.
 #
 # Globals:
 #   LOCAL_MANIFEST_FILE - Local manifest filename
@@ -4638,7 +4639,8 @@ validate_dir_symlinks() {
 # Copy a single entry (rule or ruleset) to target directory
 #
 # Handles both individual rules (single file copy) and rulesets (copy all
-# .mdc files from directory). Routes commands (*.md) to commands directory.
+# .mdc files from directory). Routes ruleset slash commands (*.md under
+# rulesets/<name>/commands/) to the commands directory.
 # Implements conflict resolution by skipping files that would conflict with
 # commit mode when syncing to local directory.
 # Follows symlinks to copy actual content, not the links themselves.
@@ -4836,27 +4838,21 @@ copy_entry_to_target() {
 		
 		rm -f "${cett_temp_file}"
 		
-		# Copy .md files from ruleset to commands directory (unified handling)
-		# All .md files in ruleset are commands, except uppercase ones (README.md, etc.)
+		# Copy .md slash commands from rulesets/<name>/commands/ only (explicit contract).
+		# Root-level or support-dir *.md are ambiguous (docs vs commands); skills/ stays separate.
 		if [ -n "${cett_mode}" ]; then
 			cett_commands_dir=$(get_commands_target_dir "${cett_mode}")
 			mkdir -p "${cett_commands_dir}"
 			
-			# Find all .md files in ruleset
 			cett_cmd_temp_file=$(mktemp)
-			find "${cett_source_path}" -name "*.md" \( -type f -o -type l \) > "${cett_cmd_temp_file}" 2>/dev/null
+			if [ -d "${cett_source_path}/commands" ]; then
+				find "${cett_source_path}/commands" -name "*.md" \( -type f -o -type l \) > "${cett_cmd_temp_file}" 2>/dev/null
+			else
+				: > "${cett_cmd_temp_file}"
+			fi
 			
 			while IFS= read -r cett_cmd_file; do
 				if [ -n "${cett_cmd_file}" ] && ([ -f "${cett_cmd_file}" ] || [ -L "${cett_cmd_file}" ]); then
-					# Embedded skills live under rulesets/<r>/skills/; their *.md (e.g. references/)
-					# are part of the skill tree and must not be flattened into .cursor/commands/.
-					cett_cmd_rel="${cett_cmd_file#"${cett_source_path}"/}"
-					case "${cett_cmd_rel}" in
-						skills/*)
-							continue
-							;;
-					esac
-
 					cett_cmd_filename=$(basename "${cett_cmd_file}")
 					
 					# Skip uppercase .md files (README.md, CHANGELOG.md, etc.) - these are documentation

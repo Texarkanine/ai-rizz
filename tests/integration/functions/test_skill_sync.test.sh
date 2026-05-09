@@ -239,9 +239,10 @@ test_ruleset_with_rules_and_skills_deploys_both() {
 test_ruleset_with_rules_commands_and_skills_deploys_all() {
 	# A ruleset with all three types deploys each to its correct target dir.
 	mkdir -p "${REPO_DIR}/rulesets/triple-ruleset/skills/my-skill"
+	mkdir -p "${REPO_DIR}/rulesets/triple-ruleset/commands"
 	echo "# Skill" > "${REPO_DIR}/rulesets/triple-ruleset/skills/my-skill/SKILL.md"
 	echo "rule content" > "${REPO_DIR}/rulesets/triple-ruleset/rule.mdc"
-	echo "command content" > "${REPO_DIR}/rulesets/triple-ruleset/my-command.md"
+	echo "command content" > "${REPO_DIR}/rulesets/triple-ruleset/commands/my-command.md"
 
 	cd "${REPO_DIR}" || fail "Failed to cd to REPO_DIR"
 	git config user.email "test@example.com" >/dev/null 2>&1

@@ -121,9 +121,9 @@ test_commands_relative_symlink_works() {
 	# Create relative symlink to the .md file
 	ln -sf "source.md" "$REPO_DIR/rulesets/test-relative-commands/commands/relative-symlink.md"
 	
-	# Also create a root-level command with relative symlink
-	echo "root source content" > "$REPO_DIR/rulesets/test-relative-commands/root-source.md"
-	ln -sf "root-source.md" "$REPO_DIR/rulesets/test-relative-commands/root-symlink.md"
+	# Also exercise relative symlinks alongside other commands under commands/
+	echo "root source content" > "$REPO_DIR/rulesets/test-relative-commands/commands/root-source.md"
+	ln -sf "root-source.md" "$REPO_DIR/rulesets/test-relative-commands/commands/root-symlink.md"
 	
 	# Create valid rule symlink
 	ln -sf "$REPO_DIR/rules/rule1.mdc" "$REPO_DIR/rulesets/test-relative-commands/rule1.mdc"

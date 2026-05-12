@@ -44,3 +44,7 @@ All functions use a function-specific prefix for local variables to avoid subshe
 Adding an item writes to a manifest file only. `sync_all_modes()` then reads manifests and calls `copy_entry_to_target()` for each entry, rebuilding the target directories. This means sync is the single source of truth for what ends up deployed.
 
 Before sync, target directories (rules, commands, skills) for the mode are cleared and rebuilt from scratch.
+
+## C Locale Enforcement
+
+`ai-rizz` sets `LC_ALL=C` at script top to ensure POSIX character class ranges (`[A-Z]`, `[a-z]`, etc.) use byte-value ordering rather than locale-dependent dictionary collation. Without this, ranges like `[A-Z]` match lowercase letters under UTF-8 locales (e.g. macOS `en_US.UTF-8`), silently breaking entity-type routing for `.md` commands.

@@ -32,3 +32,15 @@ Fix three cross-platform bugs in `ai-rizz` and `completion.bash` that break func
     - Confirmed convention compliance
     - No dependency conflicts or overlaps found
     - All requirements mapped to concrete implementation steps
+
+## 2025-05-12 - BUILD - COMPLETE
+
+* Work completed
+    - Added `LC_ALL=C; export LC_ALL` at top of `ai-rizz`
+    - Replaced 3 GNU-only `find -printf` calls with portable `sed 's|.*/||'` in `completion.bash`
+    - Added `LC_ALL=C` to `grep -v '^[A-Z]'` in `completion.bash`
+    - Added `-mindepth 1` to `find -empty -delete` in `sync_manifest_to_directory`
+    - Wrote 4 new tests (3 locale filter, 1 dir preservation)
+    - Full test suite: 33/33 pass (1 unit + 32 integration)
+* Decisions made
+    - No deviations from plan required

@@ -17,6 +17,9 @@
 # - AI_RIZZ_RULESET_PATH: Fallback for --ruleset-path option
 # - AI_RIZZ_MODE: Fallback for --local/--commit mode selection
 
+LC_ALL=C
+export LC_ALL
+
 set -e  # Exit on error
 
 # Configuration constants
@@ -4475,7 +4478,7 @@ sync_manifest_to_directory() {
 				if [ -d "${smtd_commands_dir}" ]; then
 					find "${smtd_commands_dir}" -name "*.md" \( -type f -o -type l \) -delete 2>/dev/null || true
 					# Clean up any empty directories left behind (e.g., from old ruleset subdirs)
-					find "${smtd_commands_dir}" -type d -empty -delete 2>/dev/null || true
+					find "${smtd_commands_dir}" -mindepth 1 -type d -empty -delete 2>/dev/null || true
 				fi
 			fi
 

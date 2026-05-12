@@ -371,6 +371,81 @@ test_remove_rule_deletes_file() {
         "[ -f '.cursor/rules/local/rule1.mdc' ]"
 }
 
+# ============================================================================
+# LOCALE-SAFE UPPERCASE FILTER TESTS
+# ============================================================================
+
+test_lowercase_md_command_not_skipped_by_uppercase_filter() {
+    # Bug: On macOS with en_US.UTF-8, [A-Z] in case statements matches
+    # lowercase letters due to dictionary collation. This caused lowercase
+    # .md commands to be silently skipped during sync.
+    # Expected: lowercase .md commands are always deployed.
+    
+    # Create a lowercase command that was affected by the bug
+    create_command_in_source "pr-feedback-judge.md"
+    
+    # Initialize and add command in local mode
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --local
+    _tlmc=$(mktemp)
+    cmd_add_rule "pr-feedback-judge.md" --local >"$_tlmc" 2>&1
+    add_exit=$?
+    output=$(cat "$_tlmc")
+    rm -f "$_tlmc"
+    assertEquals "Add command should succeed" 0 "$add_exit"
+    
+    # Verify the lowercase command IS deployed (not skipped)
+    assertTrue "Lowercase .md command should be in commands dir" \
+        "[ -f '.cursor/commands/local/pr-feedback-judge.md' ]"
+}
+
+test_uppercase_md_still_skipped_by_filter() {
+    # Verify that the locale fix doesn't break the uppercase skip logic.
+    # Expected: README.md and CHANGELOG.md are still skipped.
+    
+    mkdir -p "${REPO_DIR}/rules"
+    echo "readme content" > "${REPO_DIR}/rules/README.md"
+    echo "changelog content" > "${REPO_DIR}/rules/CHANGELOG.md"
+    echo "real command" > "${REPO_DIR}/rules/my-tool.md"
+    
+    cd "$REPO_DIR" || fail "Failed to cd to REPO_DIR"
+    git add . >/dev/null 2>&1
+    git commit --no-gpg-sign -m "Add mixed-case md files" >/dev/null 2>&1
+    cd "$TEST_DIR/app" || fail "Failed to cd to app dir"
+    
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --local
+    cmd_add_rule "README.md" --local >/dev/null 2>&1
+    cmd_add_rule "CHANGELOG.md" --local >/dev/null 2>&1
+    cmd_add_rule "my-tool.md" --local >/dev/null 2>&1
+    
+    # Uppercase .md files should NOT be in commands dir
+    assertFalse "README.md should NOT be in commands dir" \
+        "[ -f '.cursor/commands/local/README.md' ]"
+    assertFalse "CHANGELOG.md should NOT be in commands dir" \
+        "[ -f '.cursor/commands/local/CHANGELOG.md' ]"
+    
+    # Lowercase .md file SHOULD be in commands dir
+    assertTrue "my-tool.md should be in commands dir" \
+        "[ -f '.cursor/commands/local/my-tool.md' ]"
+}
+
+test_command_starting_with_a_still_works() {
+    # Edge case: before the fix, filenames starting with 'a' were the only
+    # lowercase names that survived the [A-Z] filter in UTF-8 locales.
+    # Verify they still work after the fix.
+    
+    create_command_in_source "add-review-comment.md"
+    
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --local
+    _tcswa=$(mktemp)
+    cmd_add_rule "add-review-comment.md" --local >"$_tcswa" 2>&1
+    add_exit=$?
+    rm -f "$_tcswa"
+    assertEquals "Add command should succeed" 0 "$add_exit"
+    
+    assertTrue "Command starting with 'a' should be in commands dir" \
+        "[ -f '.cursor/commands/local/add-review-comment.md' ]"
+}
+
 # Load and run shunit2
 # shellcheck disable=SC1090
 . "$(dirname "$0")/../../../shunit2"

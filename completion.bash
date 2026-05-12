@@ -79,11 +79,11 @@ _ai_rizz_completion() {
 			local repo_dir rules_list
 			repo_dir="$(_get_repo_dir)"
 			if [[ -d "${repo_dir}/rules" ]]; then
-			# Combine .mdc files (all) and .md files (excluding uppercase docs like README.md)
-			rules_list=$(
-				find "${repo_dir}/rules" -type f -name "*.mdc" | sed -e 's|.*/||' -e 's/\.mdc$//'
-				find "${repo_dir}/rules" -type f -name "*.md" | sed 's|.*/||' | LC_ALL=C grep -v '^[A-Z]' | sed 's/\.md$//'
-			)
+				# Combine .mdc files (all) and .md files (excluding uppercase docs like README.md)
+				rules_list=$(
+					find "${repo_dir}/rules" -type f -name "*.mdc" | sed -e 's|.*/||' -e 's/\.mdc$//'
+					find "${repo_dir}/rules" -type f -name "*.md" | sed 's|.*/||' | LC_ALL=C grep -v '^[A-Z]' | sed 's/\.md$//'
+				)
 				COMPREPLY=( $(compgen -W "${rules_list}" -- "${cur}") )
 			fi
 			;;

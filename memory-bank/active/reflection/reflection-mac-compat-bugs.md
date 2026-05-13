@@ -1,6 +1,6 @@
 ---
 task_id: mac-compat-bugs
-date: 2025-05-12
+date: 2026-05-12
 complexity_level: 2
 ---
 

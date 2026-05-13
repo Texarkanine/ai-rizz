@@ -279,6 +279,34 @@ test_sync_no_modes_error() {
     echo "$output" | grep -q "No ai-rizz configuration found\|ERROR_OCCURRED" || fail "Should error when no modes exist"
 }
 
+# ============================================================================
+# COMMANDS DIRECTORY PRESERVATION TESTS
+# ============================================================================
+
+test_sync_does_not_delete_commands_root_dir() {
+    # Bug: find -type d -empty -delete in sync_manifest_to_directory could
+    # delete the commands root directory itself when it was empty after cleanup.
+    # Expected: commands directory persists even when empty after sync cleanup.
+    
+    # Setup: Initialize with a command (command1.md already exists from setUp)
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    cmd_add_rule "command1.md" --local
+    
+    # Verify command dir was created
+    assertTrue "Commands dir should exist after add" \
+        "[ -d '.cursor/commands/local' ]"
+    
+    # Remove the command
+    cmd_remove_rule "command1.md" --local
+    
+    # Run sync (this triggers the cleanup code path)
+    cmd_sync
+    
+    # The commands root directory should still exist even though it's empty
+    assertTrue "Commands root dir should survive sync even when empty" \
+        "[ -d '.cursor/commands/local' ]"
+}
+
 # Load and run shunit2
 # shellcheck disable=SC1090
 . "$(dirname "$0")/../../../shunit2" 

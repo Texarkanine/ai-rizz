@@ -84,6 +84,34 @@ test_sync_global_only_updates_global_not_local() {
     return 0
 }
 
+test_sync_global_ignores_local_commit_integrity_mismatch() {
+    setup_global_test_environment
+
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
+
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+    cmd_add_rule "rule2.mdc" --global
+
+    # Simulate local/commit metadata drift that should not block --global sync.
+    printf "other-repo\t%s\n" "$TEST_TARGET_DIR" > "$LOCAL_MANIFEST_FILE"
+
+    rm -f "${GLOBAL_RULES_DIR}/rule2.mdc"
+
+    output=$(cmd_sync --global 2>&1 || echo "ERROR_OCCURRED")
+
+    case "$output" in
+        *ERROR_OCCURRED*)
+            fail "sync --global should ignore local/commit integrity mismatch: $output"
+            ;;
+    esac
+
+    assert_file_exists "${GLOBAL_RULES_DIR}/rule2.mdc"
+
+    teardown_global_test_environment
+    return 0
+}
+
 test_sync_global_redeploys_updated_repo_content() {
     setup_global_test_environment
 

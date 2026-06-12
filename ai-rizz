@@ -5099,9 +5099,6 @@ cmd_sync() {
 		esac
 	done
 
-	# Check if any mode is initialized and validate manifest integrity
-	ensure_initialized_and_valid
-
 	if [ "${cs_mode}" = "global" ]; then
 		if ! sync_global_mode; then
 			return 1
@@ -5109,6 +5106,9 @@ cmd_sync() {
 		echo "Sync complete"
 		return 0
 	fi
+
+	# Check if any mode is initialized and validate manifest integrity
+	ensure_initialized_and_valid
 
 	# Pull project repository cache when local or commit mode is active
 	if [ "$(is_mode_active local)" = "true" ] || [ "$(is_mode_active commit)" = "true" ]; then

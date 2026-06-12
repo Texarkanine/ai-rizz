@@ -4348,6 +4348,41 @@ cmd_remove_ruleset() {
 	return 0
 }
 
+# Sync global mode manifest to its target directory
+#
+# Pulls the global source repository cache and redeploys the global manifest.
+# Used by cmd_sync --global and as part of the global repo pull in default sync.
+#
+# Globals:
+#   None (uses get_manifest_and_target, sync_global_repo, sync_manifest_to_directory)
+#
+# Arguments:
+#   None
+#
+# Outputs:
+#   Stderr: Warning messages on failure
+#
+# Returns:
+#   0 on success
+#   1 on failure
+#
+sync_global_mode() {
+	if [ "$(is_mode_active global)" != "true" ]; then
+		error "Global mode is not initialized. Run 'ai-rizz init <repo> --global' to set up global mode."
+	fi
+
+	if ! sync_global_repo; then
+		return 1
+	fi
+
+	sgm_manifest_and_target=$(get_manifest_and_target "global")
+	sgm_manifest_file=$(echo "${sgm_manifest_and_target}" | cut -f1 -d"	")
+	sgm_target_dir=$(echo "${sgm_manifest_and_target}" | cut -f2 -d"	")
+
+	sync_manifest_to_directory "${sgm_manifest_file}" "${sgm_target_dir}" "global" || return 1
+	return 0
+}
+
 # Sync all available manifests to their target directories
 #
 # Orchestrates complete sync process: resolves conflicts using "commit wins"
@@ -5028,15 +5063,18 @@ handle_sync_cleanup() {
 
 # Sync the repository (multi-mode aware)
 #
-# Updates source repository cache and syncs all manifests to target directories.
+# Updates source repository caches and syncs manifests to target directories.
 # Resolves conflicts using "commit wins" policy, handles network failures
 # gracefully, and ensures target directories match manifest contents.
+#
+# Flags:
+#   --global, -g  Sync only global mode (skip local/commit repo pull and deploy)
 #
 # Globals:
 #   SOURCE_REPO - Source repository URL
 #
 # Arguments:
-#   None
+#   [--global|-g]  Optional: sync only global mode
 #
 # Outputs:
 #   Stdout: Success message
@@ -5047,23 +5085,52 @@ handle_sync_cleanup() {
 #   1 on error (via error() function)
 #
 cmd_sync() {
+	cs_mode=""
+
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			--global|-g)
+				cs_mode="global"
+				shift
+				;;
+			*)
+				show_command_usage_error "Unknown sync option: $1" "ai-rizz sync [--global]"
+				;;
+		esac
+	done
+
+	if [ "${cs_mode}" = "global" ]; then
+		if ! sync_global_mode; then
+			return 1
+		fi
+		echo "Sync complete"
+		return 0
+	fi
+
 	# Check if any mode is initialized and validate manifest integrity
 	ensure_initialized_and_valid
 
-	# Use unified SOURCE_REPO variable directly
-	cs_source_repo="${SOURCE_REPO}"
-	
-	# Sync repository first
-	if [ -n "${cs_source_repo}" ]; then
-		if ! git_sync "${cs_source_repo}"; then
-			# git_sync already issued a warning, fail the sync operation
+	# Pull project repository cache when local or commit mode is active
+	if [ "$(is_mode_active local)" = "true" ] || [ "$(is_mode_active commit)" = "true" ]; then
+		cs_source_repo="${SOURCE_REPO}"
+		if [ -n "${cs_source_repo}" ]; then
+			if ! git_sync "${cs_source_repo}"; then
+				# git_sync already issued a warning, fail the sync operation
+				return 1
+			fi
+		fi
+	fi
+
+	# Pull global repository cache when global mode is active
+	if [ "$(is_mode_active global)" = "true" ]; then
+		if ! sync_global_repo; then
 			return 1
 		fi
 	fi
-	
+
 	# Sync all initialized modes
 	sync_all_modes
-	
+
 	echo "Sync complete"
 	return 0
 }
@@ -5117,6 +5184,9 @@ Command-specific options:
                            Default is pre-commit hook (recommended for Cursor)
     --rule-path <path>     Source repository rules path
     --ruleset-path <path>  Source repository rulesets path
+
+  sync options:
+    -g, --global           Sync only global mode (skip local/commit)
 
   deinit options:
     -y                     Skip confirmation prompts

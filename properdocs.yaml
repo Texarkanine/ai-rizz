@@ -25,6 +25,7 @@ validation:
 
 theme:
   name: material
+  custom_dir: overrides
   language: en
   features:
     - navigation.indexes
@@ -60,6 +61,9 @@ theme:
 
 extra_css:
   - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/theme-family.js
 
 plugins:
   - search

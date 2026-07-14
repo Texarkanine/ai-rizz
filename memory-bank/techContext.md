@@ -33,4 +33,4 @@ The documentation site is built with [properdocs](https://github.com/ProperDocs/
 
 ## Design System
 
-Docs site chrome (not product UI): ProperDocs / Material tokens live in [`docs/stylesheets/extra.css`](../docs/stylesheets/extra.css), wired from [`properdocs.yaml`](../properdocs.yaml) (`primary`/`accent: custom` + `extra_css`). Warm paper light / ember dark; Texarkanine tokens shared with slobac. Contract-tested in [`tests/unit/test_docs_theme_tokens.test.sh`](../tests/unit/test_docs_theme_tokens.test.sh).
+Docs site chrome: [`docs/stylesheets/extra.css`](../docs/stylesheets/extra.css) (`primary`/`accent: custom` via [`properdocs.yaml`](../properdocs.yaml)). Two families — Texarkanine (`default`/`slate`) and Rizzed (`rizz`/`rizz-slate`) — toggled by a palette-swatch inline right of search ([`overrides/partials/header.html`](../overrides/partials/header.html) + [`docs/javascripts/theme-family.js`](../docs/javascripts/theme-family.js)).

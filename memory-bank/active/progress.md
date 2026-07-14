@@ -1,38 +1,15 @@
 # Progress
 
-Fix `ai-rizz sync` so global rules pick up upstream changes; add `sync --global` flag.
+Port the exact Texarkanine paper/ember Material docs theme from slobac PR #27 onto ai-rizz (copy theme files exactly where possible; wire via properdocs.yaml; add token contract tests; update techContext Design System pointer).
 
-**Complexity:** Level 1
+**Complexity:** Level 2
 
-## 2026-06-12 - COMPLEXITY-ANALYSIS - COMPLETE
+## 2026-07-14 - COMPLEXITY-ANALYSIS - COMPLETE
 
 * Work completed
-    - Confirmed root cause: `cmd_sync` never calls `sync_global_repo()`
-    - Classified as Level 1 (isolated bug in single command function)
+    - Validated intent: exact theme port from slobac PR #27 / `../slobac`, with byte-faithful copies where possible
+    - Classified as Level 2 (self-contained docs enhancement)
 * Decisions made
-    - Default sync updates global repo cache when global mode is initialized
-    - `--global` flag syncs only global mode (skip local/commit)
+    - Copy `extra.css` and related theme artifacts from slobac rather than reconstructing tokens
 * Insights
-    - `cmd_list` and `cmd_add_*` already call `sync_global_repo()` correctly; `cmd_sync` is the outlier
-
-## 2026-06-12 - BUILD - COMPLETE
-
-* Work completed
-    - Added `sync_global_mode()` helper for global-only sync path
-    - Fixed `cmd_sync` to call `sync_global_repo()` before `sync_all_modes()` when global mode is active
-    - Added `ai-rizz sync --global` / `-g` to sync only global mode
-    - Updated help text with sync options
-    - Added `tests/integration/functions/test_global_sync.test.sh` (4 tests)
-* Decisions made
-    - Default sync pulls both project and global caches when respective modes are initialized
-    - `--global` skips local/commit repo pull and manifest deploy entirely
-* Insights
-    - Global-only sync reuses `sync_manifest_to_directory` directly, skipping `resolve_conflicts` (local/commit concern)
-
-## 2026-06-12 - QA - COMPLETE
-
-* Work completed
-    - Verified all requirements implemented; no over-engineering or pattern violations
-    - Full test suite passes (34/34)
-* Insights
-    - `sync_global_mode()` keeps `--global` path readable without complicating `sync_all_modes()`
+    - ai-rizz currently uses indigo Material palette with no `extra_css`; slobac has the finished paper/ember theme under `skills/slobac-audit/references/docs/stylesheets/extra.css`

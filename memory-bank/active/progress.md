@@ -13,3 +13,13 @@ Port the exact Texarkanine paper/ember Material docs theme from slobac PR #27 on
     - Copy `extra.css` and related theme artifacts from slobac rather than reconstructing tokens
 * Insights
     - ai-rizz currently uses indigo Material palette with no `extra_css`; slobac has the finished paper/ember theme under `skills/slobac-audit/references/docs/stylesheets/extra.css`
+
+## 2026-07-14 - PLAN - COMPLETE
+
+* Work completed
+    - Wrote Level 2 TDD plan: byte-copy `extra.css`, wire `properdocs.yaml`, shunit2 token contracts, techContext Design System pointer
+* Decisions made
+    - Copy `extra.css` verbatim from `../slobac`; adapt tests to `tests/unit/` shunit2 (no pytest)
+    - Assert dark primary `#de8131` (final approved D), not deleted slobac test’s stale `#f59e0b`
+* Insights
+    - slobac removed `test_docs_theme_tokens.py` in a pre-merge cleanup; assertion intent recoverable from commit `a7c228a`

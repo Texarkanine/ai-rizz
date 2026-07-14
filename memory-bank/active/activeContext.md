@@ -1,11 +1,12 @@
 # Active Context
 
 ## Current Task: creamy-papery-docs-theme
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** PLAN - COMPLETE
 
 ## What Was Done
-- Classified as Level 2 (Simple Enhancement): self-contained docs theme port from slobac PR #27 — CSS + properdocs.yaml wiring + contract tests + techContext pointer
-- Operator constraint recorded: copy theme files exactly where possible; do not re-infer tokens
+- Level 2 plan written: byte-copy `extra.css` from `../slobac`, wire `properdocs.yaml` custom palette + `extra_css`, shell unit contracts in `tests/unit/test_docs_theme_tokens.test.sh`, techContext Design System pointer
+- Decision: do not introduce pytest (ai-rizz has no Python test suite; slobac deleted its theme pytest before merge) — adapt assertion intent to shunit2
+- Dark primary contract: `#de8131` (approved variant D), matching live slobac CSS
 
 ## Next Step
-- Load Level 2 workflow and execute plan phase
+- Preflight validation

@@ -30,3 +30,7 @@ The documentation site is built with [properdocs](https://github.com/ProperDocs/
 - Run single suite (examples): `./tests/unit/test_skill_detection.test.sh`, `./tests/integration/functions/test_sync_operations.test.sh`
 - Run single suite verbose: `VERBOSE_TESTS=true ./tests/integration/functions/test_sync_operations.test.sh`
 - Test naming: `test_<description>()` functions; files named `test_<feature>.test.sh`
+
+## Design System
+
+Docs site chrome: [`docs/stylesheets/extra.css`](../docs/stylesheets/extra.css) (`primary`/`accent: custom` via [`properdocs.yaml`](../properdocs.yaml)). Two families — Texarkanine (`default`/`slate`) and Rizzed (`rizz`/`rizz-slate`) — toggled by a palette-swatch inline right of search ([`overrides/partials/header.html`](../overrides/partials/header.html) + [`docs/javascripts/theme-family.js`](../docs/javascripts/theme-family.js)).

@@ -1,38 +1,66 @@
 # Progress
 
-Fix `ai-rizz sync` so global rules pick up upstream changes; add `sync --global` flag.
+Port the exact Texarkanine paper/ember Material docs theme from slobac PR #27 onto ai-rizz (copy theme files exactly where possible; wire via properdocs.yaml; add token contract tests; update techContext Design System pointer).
 
-**Complexity:** Level 1
+**Complexity:** Level 2
 
-## 2026-06-12 - COMPLEXITY-ANALYSIS - COMPLETE
+## 2026-07-14 - COMPLEXITY-ANALYSIS - COMPLETE
 
 * Work completed
-    - Confirmed root cause: `cmd_sync` never calls `sync_global_repo()`
-    - Classified as Level 1 (isolated bug in single command function)
+    - Validated intent: exact theme port from slobac PR #27 / `../slobac`, with byte-faithful copies where possible
+    - Classified as Level 2 (self-contained docs enhancement)
 * Decisions made
-    - Default sync updates global repo cache when global mode is initialized
-    - `--global` flag syncs only global mode (skip local/commit)
+    - Copy `extra.css` and related theme artifacts from slobac rather than reconstructing tokens
 * Insights
-    - `cmd_list` and `cmd_add_*` already call `sync_global_repo()` correctly; `cmd_sync` is the outlier
+    - ai-rizz currently uses indigo Material palette with no `extra_css`; slobac has the finished paper/ember theme under `skills/slobac-audit/references/docs/stylesheets/extra.css`
 
-## 2026-06-12 - BUILD - COMPLETE
+## 2026-07-14 - PLAN - COMPLETE
 
 * Work completed
-    - Added `sync_global_mode()` helper for global-only sync path
-    - Fixed `cmd_sync` to call `sync_global_repo()` before `sync_all_modes()` when global mode is active
-    - Added `ai-rizz sync --global` / `-g` to sync only global mode
-    - Updated help text with sync options
-    - Added `tests/integration/functions/test_global_sync.test.sh` (4 tests)
+    - Wrote Level 2 TDD plan: byte-copy `extra.css`, wire `properdocs.yaml`, shunit2 token contracts, techContext Design System pointer
 * Decisions made
-    - Default sync pulls both project and global caches when respective modes are initialized
-    - `--global` skips local/commit repo pull and manifest deploy entirely
+    - Copy `extra.css` verbatim from `../slobac`; adapt tests to `tests/unit/` shunit2 (no pytest)
+    - Assert dark primary `#de8131` (final approved D), not deleted slobac test’s stale `#f59e0b`
 * Insights
-    - Global-only sync reuses `sync_manifest_to_directory` directly, skipping `resolve_conflicts` (local/commit concern)
+    - slobac removed `test_docs_theme_tokens.py` in a pre-merge cleanup; assertion intent recoverable from commit `a7c228a`
 
-## 2026-06-12 - QA - COMPLETE
+## 2026-07-14 - PREFLIGHT - COMPLETE
 
 * Work completed
-    - Verified all requirements implemented; no over-engineering or pattern violations
-    - Full test suite passes (34/34)
+    - Validated TDD ordering, conventions (`tests/unit/` shunit2), requirement coverage, and touchpoints
+    - Amended file-parity behavior to local-only `cmp` so CI stays self-contained
+* Decisions made
+    - Preflight status: PASS WITH ADVISORY
 * Insights
-    - `sync_global_mode()` keeps `--global` path readable without complicating `sync_all_modes()`
+    - No existing `docs/stylesheets/` or theme contracts in ai-rizz; clean add
+
+## 2026-07-14 - BUILD - COMPLETE
+
+* Work completed
+    - Implemented theme port via TDD: shunit2 contracts, byte-copied `extra.css`, wired `properdocs.yaml`, techContext Design System
+    - `make docs-build` passed; full suite 35/35
+* Decisions made
+    - No pytest; shell contracts only
+    - CSS copied verbatim (`cmp` against `../slobac` source)
+* Insights
+    - Dark primary `#de8131` matches live slobac CSS (approved D)
+
+## 2026-07-14 - QA - COMPLETE
+
+* Work completed
+    - Semantic review against plan/brief: complete, no over-engineering, CSS still byte-identical to slobac
+    - Confirmed built site loads `stylesheets/extra.css` with paper/ember tokens
+* Decisions made
+    - Kept `--md-hue: 32` from upstream CSS (copy-exactly constraint)
+* Insights
+    - No pytest / no palette reinterpretation — port stayed a wiring + copy job
+
+## 2026-07-14 - REFLECT - COMPLETE
+
+* Work completed
+    - Wrote `memory-bank/active/reflection/reflection-creamy-papery-docs-theme.md`
+    - Reconciled persistent files: techContext already current; no productContext/systemPatterns edits
+* Decisions made
+    - Per-repo CSS copy is appropriate weight vs shared package for now
+* Insights
+    - Live upstream CSS is truth; deleted upstream tests are intent-only

@@ -1,0 +1,148 @@
+/*
+ * Two palette families (sun/moon = light/dark within the active family):
+ *   default / slate      — Texarkanine paper/ember
+ *   rizz / rizz-slate    — Rizzed yellow-forward / pink-accent
+ * Family clicker: overrides/partials/header.html + javascripts/theme-family.js
+ */
+
+/* -------------------------------------------------------------------------- */
+/* Texarkanine — paper/ember                                                  */
+/* -------------------------------------------------------------------------- */
+
+[data-md-color-scheme="default"] {
+  color-scheme: light;
+
+  --md-default-bg-color: #f6f0e4;
+  --md-default-fg-color: #1f1a14;
+  --md-default-fg-color--light: #5c5348;
+  --md-default-fg-color--lighter: #8a8072;
+  --md-default-fg-color--lightest: #c4bbae;
+  --md-typeset-color: var(--md-default-fg-color);
+
+  --md-primary-fg-color: #b45309;
+  --md-primary-fg-color--light: #d97706;
+  --md-primary-fg-color--dark: #92400e;
+  --md-primary-bg-color: #f6f0e4;
+  --md-primary-bg-color--light: #f6f0e4;
+
+  --md-accent-fg-color: #c2410c;
+  --md-accent-fg-color--transparent: #c2410c1a;
+  --md-accent-bg-color: #f6f0e4;
+  --md-accent-bg-color--light: #f6f0e4;
+
+  --md-typeset-a-color: #b45309;
+
+  --md-code-bg-color: #ebe4d4;
+  --md-code-fg-color: #1f1a14;
+
+  --md-footer-bg-color: #2a241c;
+  --md-footer-bg-color--dark: #1f1a14;
+  --md-footer-fg-color: #f0e6d4;
+  --md-footer-fg-color--light: #f0e6d4cc;
+  --md-footer-fg-color--lighter: #f0e6d480;
+}
+
+[data-md-color-scheme="slate"] {
+  color-scheme: dark;
+  --md-hue: 32;
+
+  --md-default-bg-color: #1c1914;
+  --md-default-fg-color: #f0e6d4;
+  --md-default-fg-color--light: #c4bbae;
+  --md-default-fg-color--lighter: #8a8072;
+  --md-default-fg-color--lightest: #5c5348;
+  --md-typeset-color: var(--md-default-fg-color);
+
+  --md-primary-fg-color: #de8131;
+  --md-primary-fg-color--light: #e69a55;
+  --md-primary-fg-color--dark: #c46e22;
+  --md-primary-bg-color: #1c1914;
+  --md-primary-bg-color--light: #1c1914;
+
+  --md-accent-fg-color: #fb923c;
+  --md-accent-fg-color--transparent: #fb923c26;
+  --md-accent-bg-color: #1c1914;
+  --md-accent-bg-color--light: #1c1914;
+
+  --md-typeset-a-color: #fb923c;
+
+  --md-code-bg-color: #2a251c;
+  --md-code-fg-color: #f0e6d4;
+
+  --md-footer-bg-color: #12100c;
+  --md-footer-bg-color--dark: #0c0b09;
+  --md-footer-fg-color: #f0e6d4;
+  --md-footer-fg-color--light: #f0e6d4cc;
+  --md-footer-fg-color--lighter: #f0e6d480;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Rizzed — yellow-forward, pink-accent (easter egg family)                   */
+/* -------------------------------------------------------------------------- */
+
+[data-md-color-scheme="rizz"] {
+  color-scheme: light;
+
+  --md-default-bg-color: #fbfcee;
+  --md-default-fg-color: #2f3428;
+  --md-default-fg-color--light: #4f5940;
+  --md-default-fg-color--lighter: #7a8c2e;
+  --md-default-fg-color--lightest: #c4b37a;
+  --md-typeset-color: var(--md-default-fg-color);
+
+  --md-primary-fg-color: #a3b300;
+  --md-primary-fg-color--light: #d6e000;
+  --md-primary-fg-color--dark: #7a8c2e;
+  --md-primary-bg-color: #2f3428;
+  --md-primary-bg-color--light: #2f3428;
+
+  --md-accent-fg-color: #ff2d95;
+  --md-accent-fg-color--transparent: #ff2d951a;
+  --md-accent-bg-color: #fbfcee;
+  --md-accent-bg-color--light: #fbfcee;
+
+  --md-typeset-a-color: #ff2d95;
+
+  --md-code-bg-color: #f0ebe3;
+  --md-code-fg-color: #4f5940;
+
+  --md-footer-bg-color: #4f5940;
+  --md-footer-bg-color--dark: #2f3428;
+  --md-footer-fg-color: #c4b37a;
+  --md-footer-fg-color--light: #c4b37acc;
+  --md-footer-fg-color--lighter: #c4b37a80;
+}
+
+[data-md-color-scheme="rizz-slate"] {
+  color-scheme: dark;
+  --md-hue: 72;
+
+  --md-default-bg-color: #2f3428;
+  --md-default-fg-color: #e8e0c8;
+  --md-default-fg-color--light: #c4b37a;
+  --md-default-fg-color--lighter: #8a8072;
+  --md-default-fg-color--lightest: #5c5348;
+  --md-typeset-color: var(--md-default-fg-color);
+
+  --md-primary-fg-color: #7a8c2e;
+  --md-primary-fg-color--light: #a3b300;
+  --md-primary-fg-color--dark: #4f5940;
+  --md-primary-bg-color: #fbfcee;
+  --md-primary-bg-color--light: #fbfcee;
+
+  --md-accent-fg-color: #ff2d95;
+  --md-accent-fg-color--transparent: #ff2d9526;
+  --md-accent-bg-color: #2f3428;
+  --md-accent-bg-color--light: #2f3428;
+
+  --md-typeset-a-color: #ff6ec7;
+
+  --md-code-bg-color: #4f5940;
+  --md-code-fg-color: #d6e000;
+
+  --md-footer-bg-color: #23271e;
+  --md-footer-bg-color--dark: #1a1d16;
+  --md-footer-fg-color: #c4b37a;
+  --md-footer-fg-color--light: #c4b37acc;
+  --md-footer-fg-color--lighter: #c4b37a80;
+}

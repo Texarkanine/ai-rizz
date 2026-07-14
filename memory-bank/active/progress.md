@@ -44,3 +44,13 @@ Port the exact Texarkanine paper/ember Material docs theme from slobac PR #27 on
     - CSS copied verbatim (`cmp` against `../slobac` source)
 * Insights
     - Dark primary `#de8131` matches live slobac CSS (approved D)
+
+## 2026-07-14 - QA - COMPLETE
+
+* Work completed
+    - Semantic review against plan/brief: complete, no over-engineering, CSS still byte-identical to slobac
+    - Confirmed built site loads `stylesheets/extra.css` with paper/ember tokens
+* Decisions made
+    - Kept `--md-hue: 32` from upstream CSS (copy-exactly constraint)
+* Insights
+    - No pytest / no palette reinterpretation — port stayed a wiring + copy job

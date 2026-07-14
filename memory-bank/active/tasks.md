@@ -77,7 +77,7 @@ No new technology - validation not required. Theme uses existing ProperDocs/Mate
 - [x] Technology validation complete
 - [x] Preflight
 - [x] Build
-- [ ] QA
+- [x] QA
 
 ## Build Checklist
 

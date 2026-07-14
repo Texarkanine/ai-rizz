@@ -33,3 +33,14 @@ Port the exact Texarkanine paper/ember Material docs theme from slobac PR #27 on
     - Preflight status: PASS WITH ADVISORY
 * Insights
     - No existing `docs/stylesheets/` or theme contracts in ai-rizz; clean add
+
+## 2026-07-14 - BUILD - COMPLETE
+
+* Work completed
+    - Implemented theme port via TDD: shunit2 contracts, byte-copied `extra.css`, wired `properdocs.yaml`, techContext Design System
+    - `make docs-build` passed; full suite 35/35
+* Decisions made
+    - No pytest; shell contracts only
+    - CSS copied verbatim (`cmp` against `../slobac` source)
+* Insights
+    - Dark primary `#de8131` matches live slobac CSS (approved D)

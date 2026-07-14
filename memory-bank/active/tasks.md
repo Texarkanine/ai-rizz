@@ -76,8 +76,16 @@ No new technology - validation not required. Theme uses existing ProperDocs/Mate
 - [x] Implementation plan complete
 - [x] Technology validation complete
 - [x] Preflight
-- [ ] Build
+- [x] Build
 - [ ] QA
+
+## Build Checklist
+
+- [x] Step 1: Failing unit contracts (`tests/unit/test_docs_theme_tokens.test.sh`)
+- [x] Step 2: Byte-copy `docs/stylesheets/extra.css` from `../slobac`
+- [x] Step 3: Wire `properdocs.yaml` custom palette + `extra_css`
+- [x] Step 4: Unit contracts green; `make docs-build` green; `make test` 35/35
+- [x] Step 5: Design System pointer in `memory-bank/techContext.md`
 
 ## Preflight Findings
 

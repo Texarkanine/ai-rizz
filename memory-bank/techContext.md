@@ -30,3 +30,7 @@ The documentation site is built with [properdocs](https://github.com/ProperDocs/
 - Run single suite (examples): `./tests/unit/test_skill_detection.test.sh`, `./tests/integration/functions/test_sync_operations.test.sh`
 - Run single suite verbose: `VERBOSE_TESTS=true ./tests/integration/functions/test_sync_operations.test.sh`
 - Test naming: `test_<description>()` functions; files named `test_<feature>.test.sh`
+
+## Design System
+
+Docs site chrome (not product UI): ProperDocs / Material tokens live in [`docs/stylesheets/extra.css`](../docs/stylesheets/extra.css), wired from [`properdocs.yaml`](../properdocs.yaml) (`primary`/`accent: custom` + `extra_css`). Warm paper light / ember dark; Texarkanine tokens shared with slobac. Contract-tested in [`tests/unit/test_docs_theme_tokens.test.sh`](../tests/unit/test_docs_theme_tokens.test.sh).

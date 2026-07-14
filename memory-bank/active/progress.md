@@ -23,3 +23,13 @@ Port the exact Texarkanine paper/ember Material docs theme from slobac PR #27 on
     - Assert dark primary `#de8131` (final approved D), not deleted slobac test’s stale `#f59e0b`
 * Insights
     - slobac removed `test_docs_theme_tokens.py` in a pre-merge cleanup; assertion intent recoverable from commit `a7c228a`
+
+## 2026-07-14 - PREFLIGHT - COMPLETE
+
+* Work completed
+    - Validated TDD ordering, conventions (`tests/unit/` shunit2), requirement coverage, and touchpoints
+    - Amended file-parity behavior to local-only `cmp` so CI stays self-contained
+* Decisions made
+    - Preflight status: PASS WITH ADVISORY
+* Insights
+    - No existing `docs/stylesheets/` or theme contracts in ai-rizz; clean add

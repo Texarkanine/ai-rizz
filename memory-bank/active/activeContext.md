@@ -1,12 +1,11 @@
 # Active Context
 
 ## Current Task: creamy-papery-docs-theme
-**Phase:** PLAN - COMPLETE
+**Phase:** PREFLIGHT - COMPLETE (PASS WITH ADVISORY)
 
 ## What Was Done
-- Level 2 plan written: byte-copy `extra.css` from `../slobac`, wire `properdocs.yaml` custom palette + `extra_css`, shell unit contracts in `tests/unit/test_docs_theme_tokens.test.sh`, techContext Design System pointer
-- Decision: do not introduce pytest (ai-rizz has no Python test suite; slobac deleted its theme pytest before merge) — adapt assertion intent to shunit2
-- Dark primary contract: `#de8131` (approved variant D), matching live slobac CSS
+- Preflight validated plan: TDD step order, shunit2 unit placement, no pytest, all brief requirements mapped
+- Advisory fix applied: sibling `cmp` is local-only; CI relies on in-repo token asserts
 
 ## Next Step
-- Preflight validation
+- Build phase

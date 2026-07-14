@@ -15,7 +15,7 @@ Port the exact Texarkanine paper/ember Material docs theme from slobac PR #27 / 
 - [extra_css wired]: `properdocs.yaml` lists `extra_css:` → `stylesheets/extra.css`
 - [Light tokens]: `docs/stylesheets/extra.css` default scheme declares paper tokens (`#f6f0e4` bg, `#1f1a14` fg, `#b45309` primary, `#c2410c` accent, `#ebe4d4` code bg, `#2a241c` footer bg)
 - [Dark tokens]: slate scheme declares ember tokens (`#1c1914` bg, `#f0e6d4` fg, `#de8131` primary, `#fb923c` accent/link, `#2a251c` code bg, `#12100c` footer bg)
-- [File parity]: `docs/stylesheets/extra.css` is identical to `../slobac/skills/slobac-audit/references/docs/stylesheets/extra.css` (byte-for-byte)
+- [File parity (local-only)]: when `../slobac/.../extra.css` exists, `cmp` against it; when absent (CI), skip — in-repo token asserts remain the CI gate
 - [Strict build]: `make docs-build` succeeds after theme wiring
 
 ### Edge Cases
@@ -75,6 +75,10 @@ No new technology - validation not required. Theme uses existing ProperDocs/Mate
 - [x] Test planning complete (TDD)
 - [x] Implementation plan complete
 - [x] Technology validation complete
-- [ ] Preflight
+- [x] Preflight
 - [ ] Build
 - [ ] QA
+
+## Preflight Findings
+
+- PASS WITH ADVISORY: sibling-repo `cmp` must be local-only (amended above) so CI does not depend on `../slobac`

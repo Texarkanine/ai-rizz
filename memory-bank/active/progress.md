@@ -54,3 +54,13 @@ Port the exact Texarkanine paper/ember Material docs theme from slobac PR #27 on
     - Kept `--md-hue: 32` from upstream CSS (copy-exactly constraint)
 * Insights
     - No pytest / no palette reinterpretation — port stayed a wiring + copy job
+
+## 2026-07-14 - REFLECT - COMPLETE
+
+* Work completed
+    - Wrote `memory-bank/active/reflection/reflection-creamy-papery-docs-theme.md`
+    - Reconciled persistent files: techContext already current; no productContext/systemPatterns edits
+* Decisions made
+    - Per-repo CSS copy is appropriate weight vs shared package for now
+* Insights
+    - Live upstream CSS is truth; deleted upstream tests are intent-only

@@ -69,6 +69,8 @@ plugins:
   - search
   - awesome-pages
   - panzoom
+  - llms-source:
+      source_revision: true
 
 markdown_extensions:
   # Core structure / typography

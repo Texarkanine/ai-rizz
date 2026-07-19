@@ -10,6 +10,7 @@ source = { virtual = "." }
 [package.dev-dependencies]
 docs = [
     { name = "mkdocs-awesome-pages-plugin" },
+    { name = "mkdocs-llms-source" },
     { name = "mkdocs-material" },
     { name = "mkdocs-panzoom-plugin" },
     { name = "properdocs" },
@@ -21,6 +22,7 @@ docs = [
 [package.metadata.requires-dev]
 docs = [
     { name = "mkdocs-awesome-pages-plugin", specifier = "~=2.9" },
+    { name = "mkdocs-llms-source", specifier = ">=1.2.0" },
     { name = "mkdocs-material", specifier = "~=9.5" },
     { name = "mkdocs-panzoom-plugin", specifier = "~=0.5" },
     { name = "properdocs", specifier = "~=1.6" },
@@ -228,6 +230,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ce/25/b3cccb187655b9393572bde9b09261d267c3bf2f2cdabe347673be5976a6/mkdocs_get_deps-0.2.2.tar.gz", hash = "sha256:8ee8d5f316cdbbb2834bc1df6e69c08fe769a83e040060de26d3c19fad3599a1", size = 11047, upload-time = "2026-03-10T02:46:33.632Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/88/29/744136411e785c4b0b744d5413e56555265939ab3a104c6a4b719dad33fd/mkdocs_get_deps-0.2.2-py3-none-any.whl", hash = "sha256:e7878cbeac04860b8b5e0ca31d3abad3df9411a75a32cde82f8e44b6c16ff650", size = 9555, upload-time = "2026-03-10T02:46:32.256Z" },
+]
+
+[[package]]
+name = "mkdocs-llms-source"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mkdocs" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/44/02/80b5d343e5efe53ff9b1c34797215fe0551d6d01f831451b48ac8f74699a/mkdocs_llms_source-1.2.0.tar.gz", hash = "sha256:177efd34aca375a0ea747b6cf22596be22ba4c32a7a072bf97405250e4078566", size = 72610, upload-time = "2026-07-18T22:02:52.126Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6b/b7/b6d49bb519cd6b37a151404133a1dc140a96125a780344cf21e2c24c3b80/mkdocs_llms_source-1.2.0-py3-none-any.whl", hash = "sha256:6fda5242cb8c9f50a792fcaa880f185ae67ebef4490143406e5a432eaffd8ac2", size = 7872, upload-time = "2026-07-18T22:02:50.849Z" },
 ]
 
 [[package]]

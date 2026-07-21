@@ -1,10 +1,10 @@
 # Active Context
 
 ## Current Task: fix-issues-40-41-repo-global-select
-**Phase:** QA - COMPLETE
+**Phase:** REFLECT - COMPLETE
 
 ## What Was Done
-- QA PASS — implementation matches plan; docs updated; no debris
+- Reflection written; persistent files unchanged (no invalidated system knowledge)
 
 ## Next Step
-- Reflect phase
+- Operator: `/niko-archive`

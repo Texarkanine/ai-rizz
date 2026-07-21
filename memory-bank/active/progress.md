@@ -56,3 +56,13 @@ Fix [#40](https://github.com/Texarkanine/ai-rizz/issues/40) and [#41](https://gi
     - No code changes from QA
 * Insights
     - None
+
+## 2026-07-21 - REFLECT - COMPLETE
+
+* Work completed
+    - Wrote `reflection/reflection-fix-issues-40-41-repo-global-select.md`
+    - Reconciled persistent files — no updates
+* Decisions made
+    - Ready for operator archive
+* Insights
+    - Assert on exit-helper stderr text; don't rely on `|| echo` after `exit`

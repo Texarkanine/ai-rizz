@@ -1,10 +1,11 @@
 # Active Context
 
 ## Current Task: issue-grouping-recommendation
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** BUILD - COMPLETE
 
 ## What Was Done
-- Classified as Level 1: advisory grouping recommendation; single deliverable; research-then-answer; no product code changes; low risk / short effort
+- Reviewed #40, #41, #42 against `select_mode` / `cmd_add_rule` / `cmd_deinit`
+- Recommended one push for #40+#41; keep #42 separate
 
 ## Next Step
-- Load Level 1 workflow and execute Build phase
+- QA phase via `niko-qa`

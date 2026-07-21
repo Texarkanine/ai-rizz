@@ -46,3 +46,12 @@ Replace the `deinit --all` footgun with `deinit --both` (local+commit only), and
     - Built to plan; short `-b` included
 * Insights
     - `assert_no_modes_exist` only covers project manifests — global asserts stayed explicit
+
+## 2026-07-21 - QA - COMPLETE
+
+* Work completed
+    - Semantic review vs plan/brief: KISS/DRY/YAGNI/completeness/docs — PASS
+* Decisions made
+    - No code changes from QA
+* Insights
+    - `--all`/`-a` kept as explicit reject arms (not silent fallthrough) so the hint stays actionable

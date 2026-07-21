@@ -59,14 +59,14 @@ test_deinit_commit_mode_only() {
     assert_local_mode_exists
 }
 
-test_deinit_all_modes() {
-    # Setup: Both modes exist
+test_deinit_both_modes() {
+    # Setup: Both project modes exist
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit
     
-    # Test: Deinit all modes
-    cmd_deinit --all -y
-    # Expected: All ai-rizz modes removed, but target directory preserved (may contain user files)
+    # Test: Deinit local+commit via --both
+    cmd_deinit --both -y
+    # Expected: Project modes removed; target directory may remain (user files)
     assert_no_modes_exist
     assertFalse "Local subdirectory should be removed" "[ -d '$TEST_TARGET_DIR/$TEST_LOCAL_DIR' ]"
     assertFalse "Shared subdirectory should be removed" "[ -d '$TEST_TARGET_DIR/$TEST_SHARED_DIR' ]"
@@ -81,8 +81,9 @@ test_deinit_requires_mode_selection() {
     # Test: Deinit without mode flag (provide empty input to prompt)
     output=$(echo "" | cmd_deinit 2>&1 || echo "ERROR_OCCURRED")
     
-    # Expected: Should prompt for mode selection
-    echo "$output" | grep -q "mode\|local\|commit\|choose\|select" || fail "Should prompt for mode selection"
+    # Expected: Should prompt for mode selection (both, not all)
+    echo "$output" | grep -Eq "mode|local|commit|both|choose|select" || fail "Should prompt for mode selection"
+    echo "$output" | grep -Eq "both" || fail "Prompt should offer both, got: $output"
 }
 
 test_deinit_single_mode_direct() {
@@ -167,34 +168,92 @@ test_deinit_nonexistent_mode_graceful() {
     assert_local_mode_exists
 }
 
-test_deinit_all_with_single_mode() {
+test_deinit_both_with_single_mode() {
     # Setup: Only commit mode
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
     cmd_add_rule "rule1.mdc" --commit
     
-    # Test: Deinit all when only one mode exists
-    cmd_deinit --all -y
+    # Test: Deinit --both when only one project mode exists
+    cmd_deinit --both -y
     
-    # Expected: All ai-rizz modes removed, but target directory preserved (may contain user files)
+    # Expected: Project modes removed; target directory may remain (user files)
     assert_no_modes_exist
     assertFalse "Shared subdirectory should be removed" "[ -d '$TEST_TARGET_DIR/$TEST_SHARED_DIR' ]"
 }
 
-test_deinit_all_with_yes_flag_skips_prompt() {
+test_deinit_both_with_yes_flag_skips_prompt() {
     # Setup: Both modes with rules
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --commit
     
-    # Test: Deinit all with --yes skips interactive confirmation
-    _tdawyf_tmp=$(mktemp)
-    ( cmd_deinit --all -y >"$_tdawyf_tmp" 2>&1 )
-    tdawyf_exit=$?
-    rm -f "$_tdawyf_tmp"
-    assertEquals "cmd_deinit --all -y should succeed" 0 "$tdawyf_exit"
+    # Test: Deinit --both with --yes skips interactive confirmation
+    _tdbwyf_tmp=$(mktemp)
+    ( cmd_deinit --both -y >"$_tdbwyf_tmp" 2>&1 )
+    tdbwyf_exit=$?
+    rm -f "$_tdbwyf_tmp"
+    assertEquals "cmd_deinit --both -y should succeed" 0 "$tdbwyf_exit"
 
-    # Expected: Full cleanup without interactive prompts when -y is passed
+    # Expected: Project cleanup without interactive prompts when -y is passed
     assert_no_modes_exist
+}
+
+test_deinit_both_preserves_global() {
+    # Setup: local + commit + global; --both must not wipe global
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    cmd_add_rule "rule1.mdc" --commit
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+    init_global_paths
+    cmd_add_rule "rule2.mdc" --global
+
+    assertTrue "global should be active before --both" \
+        "[ \"$(is_mode_active global)\" = \"true\" ]"
+    assertTrue "global manifest should exist before --both" \
+        "[ -f '${GLOBAL_MANIFEST_FILE}' ]"
+
+    cmd_deinit --both -y
+
+    assert_no_modes_exist
+    assertTrue "global should remain active after --both" \
+        "[ \"$(is_mode_active global)\" = \"true\" ]"
+    assertTrue "global manifest should remain after --both" \
+        "[ -f '${GLOBAL_MANIFEST_FILE}' ]"
+}
+
+test_deinit_all_flag_rejected() {
+    # Setup: dual project modes — --all must not remove anything
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    cmd_add_rule "rule1.mdc" --commit
+
+    _tdafr_tmp=$(mktemp)
+    ( cmd_deinit --all -y >"$_tdafr_tmp" 2>&1 )
+    tdafr_exit=$?
+    tdafr_output=$(cat "$_tdafr_tmp")
+    rm -f "$_tdafr_tmp"
+
+    assertFalse "cmd_deinit --all should fail" "[ \"$tdafr_exit\" -eq 0 ]"
+    echo "$tdafr_output" | grep -Eqi "unknown|--both|both|global" || \
+        fail "Rejection should mention unknown/--both/global, got: $tdafr_output"
+    assert_local_mode_exists
+    assert_commit_mode_exists
+}
+
+test_deinit_all_short_flag_rejected() {
+    # Setup: dual project modes — -a must not remove anything
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+    cmd_add_rule "rule1.mdc" --commit
+
+    _tdasfr_tmp=$(mktemp)
+    ( cmd_deinit -a -y >"$_tdasfr_tmp" 2>&1 )
+    tdasfr_exit=$?
+    tdasfr_output=$(cat "$_tdasfr_tmp")
+    rm -f "$_tdasfr_tmp"
+
+    assertFalse "cmd_deinit -a should fail" "[ \"$tdasfr_exit\" -eq 0 ]"
+    echo "$tdasfr_output" | grep -Eqi "unknown|--both|both|global" || \
+        fail "Rejection should mention unknown/--both/global, got: $tdasfr_output"
+    assert_local_mode_exists
+    assert_commit_mode_exists
 }
 
 test_deinit_partial_cleanup_on_error() {
@@ -248,8 +307,9 @@ test_deinit_interactive_mode_selection() {
     # Test: Interactive mode (provide empty input to prompt)
     output=$(echo "" | cmd_deinit 2>&1 || echo "ERROR_OCCURRED")
     
-    # Expected: Should prompt for mode selection
-    echo "$output" | grep -q "mode\|local\|commit\|choose\|select" || fail "Should prompt for mode selection"
+    # Expected: Should prompt for mode selection (both, not all)
+    echo "$output" | grep -Eq "mode|local|commit|both|choose|select" || fail "Should prompt for mode selection"
+    echo "$output" | grep -Eq "both" || fail "Prompt should offer both, got: $output"
 }
 
 test_deinit_local_message_includes_commands_dir() {

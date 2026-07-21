@@ -43,6 +43,7 @@ Command-specific options:
     --ruleset-path <path>  Source repository rulesets path
 
   deinit options:
+    -b, --both             Remove local and commit modes only (not global)
     -y                     Skip confirmation prompts
 
 Modes:

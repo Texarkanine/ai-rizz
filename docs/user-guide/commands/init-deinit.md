@@ -49,7 +49,7 @@ ai-rizz init https://github.com/Texarkanine/.cursor-rules.git --local -f cursor-
 ## deinit
 
 ```
-ai-rizz deinit [--local|-l|--commit|-c|--global|-g|--all|-a] [-y]
+ai-rizz deinit [--local|-l|--commit|-c|--global|-g|--both|-b] [-y]
 ```
 
 | Option / Flag        | Description                               |
@@ -57,5 +57,5 @@ ai-rizz deinit [--local|-l|--commit|-c|--global|-g|--all|-a] [-y]
 | `--local`, `-l`      | Remove only local rules/setup              |
 | `--commit`, `-c`     | Remove only committed rules/setup          |
 | `--global`, `-g`     | Remove only global rules/setup             |
-| `--all`, `-a`        | Remove everything                          |
+| `--both`, `-b`       | Remove local and commit only (not global)  |
 | `-y`                 | Automatically confirm without prompting    |

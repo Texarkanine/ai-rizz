@@ -2174,8 +2174,8 @@ Option 1: Switch local mode to match commit mode
 Option 2: Switch commit mode to match local mode  
   ai-rizz deinit --commit -y && ai-rizz init ${SOURCE_REPO} -d "${TARGET_DIR}" --commit
 
-Option 3: Reset everything and start fresh
-  ai-rizz deinit --all -y && ai-rizz init
+Option 3: Reset project modes and start fresh
+  ai-rizz deinit --both -y && ai-rizz init
 EOF
 }
 
@@ -3008,7 +3008,8 @@ cleanup_empty_parents() {
 # Arguments:
 #   [--local|-l]         - Remove local mode only
 #   [--commit|-c]        - Remove commit mode only
-#   [--all|-a]           - Remove all modes (default if neither --local nor --commit specified)
+#   [--global|-g]        - Remove global mode only
+#   [--both|-b]          - Remove local and commit modes only (not global)
 #   [-y]                 - Skip confirmation prompts
 #
 # Outputs:
@@ -3042,9 +3043,12 @@ cmd_deinit() {
 				cd_mode="global"
 				shift
 				;;
-			--all|-a)
-				cd_mode="all"
+			--both|-b)
+				cd_mode="both"
 				shift
+				;;
+			--all|-a)
+				error "Unknown argument: $1. Use --both for local+commit, or --global separately."
 				;;
 			*)
 				error "Unknown argument: $1"
@@ -3055,11 +3059,8 @@ cmd_deinit() {
 	# Check for environment variable fallback if no mode provided
 	if [ -z "${cd_mode}" ] && [ -n "${AI_RIZZ_MODE}" ]; then
 		case "${AI_RIZZ_MODE}" in
-			local|commit|global)
+			local|commit|global|both)
 				cd_mode="${AI_RIZZ_MODE}"
-				;;
-			all)
-				cd_mode="all"
 				;;
 			*)
 				# Invalid mode in environment variable - just ignore it
@@ -3091,22 +3092,25 @@ cmd_deinit() {
 		
 		if [ ${cd_active_count} -gt 1 ]; then
 			# Multiple modes active - prompt user
-			printf "Which mode to remove [local/commit/global/all]: "
+			printf "Which mode to remove [local/commit/global/both]: "
 			read -r cd_mode
 		elif [ ${cd_active_count} -eq 1 ]; then
 			cd_mode="${cd_last_active}"
 		else
-			# No modes active, default to all for idempotence
-			cd_mode="all"
+			# No modes active, default to both for project-scoped idempotence
+			cd_mode="both"
 		fi
 	fi
 	
 	# Validate mode
 	case "${cd_mode}" in
-		local|commit|global|all)
+		local|commit|global|both)
+			;;
+		all)
+			error "Invalid mode: all. Use --both for local+commit, or --global separately."
 			;;
 		*)
-			error "Invalid mode: ${cd_mode}. Must be 'local', 'commit', 'global', or 'all'"
+			error "Invalid mode: ${cd_mode}. Must be 'local', 'commit', 'global', or 'both'. Use --both for local+commit; --global separately."
 			;;
 	esac
 	
@@ -3128,10 +3132,9 @@ cmd_deinit() {
 			# Just set removal flag without validation - allow deinit of non-existent modes
 			cd_remove_global=true
 			;;
-		all)
+		both)
 			cd_remove_local=true
 			cd_remove_commit=true
-			cd_remove_global=true
 			;;
 	esac
 	
@@ -5236,6 +5239,7 @@ Command-specific options:
     -g, --global           Sync only global mode (skip local/commit)
 
   deinit options:
+    -b, --both             Remove local and commit modes only (not global)
     -y                     Skip confirmation prompts
 
 Modes:

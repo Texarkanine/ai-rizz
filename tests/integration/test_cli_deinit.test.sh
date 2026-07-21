@@ -92,9 +92,9 @@ test_deinit_commit_mode_only() {
 	assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
 }
 
-# Test: ai-rizz deinit --all
-# Expected: Removes both modes completely
-test_deinit_all_modes() {
+# Test: ai-rizz deinit --both
+# Expected: Removes local+commit completely
+test_deinit_both_modes() {
 	# Initialize dual mode with rules
 	run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
 	run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --commit
@@ -108,11 +108,11 @@ test_deinit_all_modes() {
 	assertTrue "Local directory should exist" "[ -d '.cursor/rules/local' ]"
 	assertTrue "Shared directory should exist" "[ -d '.cursor/rules/shared' ]"
 	
-	# Deinit all modes
-	run_ai_rizz deinit --all -y
-	assertEquals "Deinit all should succeed" 0 $?
+	# Deinit both project modes
+	run_ai_rizz deinit --both -y
+	assertEquals "Deinit both should succeed" 0 $?
 	
-	# Verify everything removed
+	# Verify project modes removed
 	assertFalse "Local manifest should be removed" "[ -f 'ai-rizz.local.skbd' ]"
 	assertFalse "Commit manifest should be removed" "[ -f 'ai-rizz.skbd' ]"
 	assertFalse "Local directory should be removed" "[ -d '.cursor/rules/local' ]"
@@ -135,7 +135,7 @@ test_deinit_requires_mode_selection() {
 	output=$(echo "" | run_ai_rizz deinit 2>&1 || echo "DEINIT_FAILED")
 	
 	# Command showed prompt - should contain mode selection text
-	assert_output_contains "$output" "mode\|local\|commit\|all\|choose\|select"
+	assert_output_contains "$output" "mode\|local\|commit\|both\|choose\|select"
 }
 
 # Test: ai-rizz deinit --local (with confirmation prompt)
@@ -323,9 +323,9 @@ test_deinit_commit_preserves_local() {
 	assertTrue "Hook should contain ai-rizz marker" "grep -q 'BEGIN ai-rizz hook' .git/hooks/pre-commit"
 }
 
-# Test: ai-rizz deinit all modes removes everything
-# Expected: Should remove all modes and clean up everything
-test_deinit_all_removes_everything() {
+# Test: ai-rizz deinit --both removes both project modes
+# Expected: Should remove local+commit and clean up deploy dirs
+test_deinit_both_removes_project_modes() {
 	# Initialize both modes
 	run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
 	run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --commit
@@ -338,11 +338,11 @@ test_deinit_all_removes_everything() {
 	assert_rule_deployed ".cursor/rules/local" "rule1"
 	assert_rule_deployed ".cursor/rules/shared" "rule2"
 	
-	# Deinitialize all modes
-	output=$(run_ai_rizz deinit --all -y 2>&1)
-	assertEquals "Deinit all should succeed" 0 $?
+	# Deinitialize both project modes
+	output=$(run_ai_rizz deinit --both -y 2>&1)
+	assertEquals "Deinit both should succeed" 0 $?
 	
-	# Verify everything removed
+	# Verify project modes removed
 	assertFalse "Local manifest should be removed" "[ -f 'ai-rizz.local.skbd' ]"
 	assertFalse "Commit manifest should be removed" "[ -f 'ai-rizz.skbd' ]"
 	assertFalse "Local directory should be removed" "[ -d '.cursor/rules/local' ]"
@@ -350,6 +350,24 @@ test_deinit_all_removes_everything() {
 	
 	# Target directory parent should still exist (not removed)
 	assertTrue "(empty) target directory parent should not exist" "[ ! -d '.cursor/rules' ]"
+}
+
+# Test: ai-rizz deinit --all is rejected (footgun removed)
+test_deinit_all_flag_rejected() {
+	run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+	run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --commit
+
+	_tdafr_tmp=$(mktemp)
+	( run_ai_rizz deinit --all -y >"$_tdafr_tmp" 2>&1 )
+	tdafr_exit=$?
+	tdafr_output=$(cat "$_tdafr_tmp")
+	rm -f "$_tdafr_tmp"
+
+	assertFalse "deinit --all should fail" "[ \"$tdafr_exit\" -eq 0 ]"
+	echo "$tdafr_output" | grep -Eqi "unknown|--both|both|global" || \
+		fail "Rejection should mention unknown/--both/global, got: $tdafr_output"
+	assertTrue "Local manifest should remain" "[ -f 'ai-rizz.local.skbd' ]"
+	assertTrue "Commit manifest should remain" "[ -f 'ai-rizz.skbd' ]"
 }
 
 # Test: ai-rizz deinit without flags (should succeed in single mode)

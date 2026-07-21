@@ -35,3 +35,14 @@ Replace the `deinit --all` footgun with `deinit --both` (local+commit only), and
     - Preflight PASS; proceed to build
 * Insights
     - Integrity Option 3 was already a project-mode reset; `--all` there was doubly wrong
+
+## 2026-07-21 - BUILD - COMPLETE
+
+* Work completed
+    - Implemented `--both`/`-b`; removed `--all`/`-a` footgun with actionable errors
+    - Updated integrity Option 3, docs, help, completion
+    - Extended deinit function + CLI tests (global preserve, rejection); `make test` 35/35
+* Decisions made
+    - Built to plan; short `-b` included
+* Insights
+    - `assert_no_modes_exist` only covers project manifests — global asserts stayed explicit

@@ -70,6 +70,11 @@ No new technology - validation not required
 - **Fix only add, leave select_mode**: would leave remove/other commands inconsistent — plan keeps change in `select_mode` (Challenge already covers shared callers).
 - **Ship without updating `test_select_mode_two_modes_local_global`**: suite would fail or mask intent — called out in Test Plan.
 
+## Preflight Findings
+
+- PASS — TDD ordering explicit (tests step before `select_mode` impl); conventions match `tests/integration/functions/`; `select_mode` callers are `cmd_add_rule` / `cmd_add_ruleset` only (narrower than assumed — full suite still required).
+- Advisory (non-blocking): optional `cmd_add_ruleset` mirror of the #40/#41 cases; skipped to keep scope on `select_mode` + one add-rule smoke.
+
 ## Status
 
 - [x] Initialization complete
@@ -77,6 +82,6 @@ No new technology - validation not required
 - [x] Implementation plan complete
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
-- [ ] Preflight
+- [x] Preflight
 - [ ] Build
 - [ ] QA

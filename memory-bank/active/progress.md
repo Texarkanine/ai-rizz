@@ -24,3 +24,13 @@ Fix [#40](https://github.com/Texarkanine/ai-rizz/issues/40) and [#41](https://gi
     - Keep change in `select_mode()` so all callers share policy; out of scope: #42 deinit
 * Insights
     - `APP_DIR` in global detection suite is already a git repo — right place for #40/#41 cases
+
+## 2026-07-21 - PREFLIGHT - COMPLETE
+
+* Work completed
+    - Validated plan against TDD encoding, conventions, callers, completeness
+    - Wrote `.preflight-status` PASS
+* Decisions made
+    - No plan amendments required
+* Insights
+    - `select_mode` is only used by `cmd_add_rule` and `cmd_add_ruleset` (narrower blast radius)

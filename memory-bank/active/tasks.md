@@ -22,3 +22,6 @@ Same product rule: inside a git repo, global must be opt-in via `--global`; repo
 
 ## Why #42 alone
 Different command (`deinit`), different UX (destructive wipe vs add-time mode selection). No dependency on `select_mode`. Shipping it with #40/#41 inflates review surface and mixes a flag rename/footgun fix with mode-selection policy.
+
+## QA
+- PASS — all brief ACs met; recommendation grounded in `select_mode` / `cmd_deinit`; no product code changes (advisory-only scope respected)

@@ -1,11 +1,11 @@
 # Active Context
 
 ## Current Task: issue-grouping-recommendation
-**Phase:** BUILD - COMPLETE
+**Phase:** QA - COMPLETE
 
 ## What Was Done
-- Reviewed #40, #41, #42 against `select_mode` / `cmd_add_rule` / `cmd_deinit`
-- Recommended one push for #40+#41; keep #42 separate
+- Grouping recommendation: #40+#41 together; #42 separate
+- QA PASS against project brief acceptance criteria
 
 ## Next Step
-- QA phase via `niko-qa`
+- L1 wrap-up (reconcile persistent, final commit); operator cleans `memory-bank/active/` when satisfied

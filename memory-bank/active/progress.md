@@ -23,3 +23,13 @@ Recommend which of the three open GitHub issues (#40, #41, #42) belong in one pu
     - Bundle #40 + #41 in one push; ship #42 separately
 * Insights
     - #41's "global is opt-in in repos" policy also blocks the #40 auto-select-global path; invalid-manifest write is a related defense-in-depth fix in the same surface
+
+## 2026-07-21 - QA - COMPLETE
+
+* Work completed
+    - Semantic review against projectbrief ACs — PASS
+    - Wrote `.qa-validation-status`
+* Decisions made
+    - No product code or persistent memory-bank updates needed for this advisory task
+* Insights
+    - None beyond build-phase grouping rationale

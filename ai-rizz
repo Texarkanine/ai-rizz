@@ -635,6 +635,44 @@ EOF
   exit "${2:-1}"
 }
 
+# Show error when a git repo has no local/commit mode for auto-select
+#
+# Inside a git repository, global mode is opt-in. Unflagged commands require
+# either a single local/commit init, or an explicit mode flag.
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Command being used (e.g., "add rule", "command") (required)
+#   $2 - Exit code (optional, defaults to 1)
+#
+# Outputs:
+#   Stderr: Formatted error with init and --global guidance
+#
+# Returns:
+#   Never returns (exits with specified code)
+#
+show_repo_mode_required_error() {
+	cat >&2 << EOF
+Error: No local or commit mode is initialized in this repository.
+
+Global mode is opt-in inside a git repository. Specify a mode explicitly:
+
+  ai-rizz ${1} --local     # Use local mode (git-ignored)
+  ai-rizz ${1} --commit    # Use commit mode (git-tracked)
+  ai-rizz ${1} --global    # Use global mode (user-wide)
+
+Or initialize a project mode first:
+
+  ai-rizz init <repository-url> --local
+  ai-rizz init <repository-url> --commit
+
+For more information on modes, run: ai-rizz help
+EOF
+	exit "${2:-1}"
+}
+
 # Show invalid mode error with guidance
 #
 # Displays a user-friendly error message when an invalid mode is specified
@@ -2214,9 +2252,11 @@ ensure_initialized_and_valid() {
 
 # Handle smart mode selection
 #
-# Implements the common pattern of selecting a mode when not explicitly provided
-# by choosing the single available mode or prompting for selection when multiple exist.
-# Will check AI_RIZZ_MODE environment variable as a fallback if no mode is provided.
+# Selects a mode when not explicitly provided. Checks AI_RIZZ_MODE as a fallback.
+#
+# Inside a git repository, auto-select considers only local/commit. Global is
+# always opt-in via --global (or AI_RIZZ_MODE=global). Outside a git repository,
+# global-only setups auto-select global.
 #
 # Supports three modes: local, commit, and global
 #
@@ -2263,34 +2303,41 @@ select_mode() {
 		esac
 	fi
 	
-	# Smart mode selection - count active modes
 	sm_local_active=$(is_mode_active local)
 	sm_commit_active=$(is_mode_active commit)
 	sm_global_active=$(is_mode_active global)
-	
-	sm_active_count=0
-	sm_single_mode=""
-	
-	if [ "${sm_local_active}" = "true" ]; then
-		sm_active_count=$((sm_active_count + 1))
-		sm_single_mode="local"
+
+	# Inside a git repo: auto-select among local/commit only (global is opt-in)
+	if [ -d ".git" ]; then
+		sm_repo_count=0
+		sm_single_mode=""
+
+		if [ "${sm_local_active}" = "true" ]; then
+			sm_repo_count=$((sm_repo_count + 1))
+			sm_single_mode="local"
+		fi
+		if [ "${sm_commit_active}" = "true" ]; then
+			sm_repo_count=$((sm_repo_count + 1))
+			sm_single_mode="commit"
+		fi
+
+		if [ "${sm_repo_count}" -eq 1 ]; then
+			echo "${sm_single_mode}"
+			return 0
+		fi
+		if [ "${sm_repo_count}" -eq 0 ]; then
+			show_repo_mode_required_error "command"
+		fi
+		# Both local and commit are active
+		show_mode_selection_error "command"
 	fi
-	if [ "${sm_commit_active}" = "true" ]; then
-		sm_active_count=$((sm_active_count + 1))
-		sm_single_mode="commit"
-	fi
+
+	# Outside a git repository: only global can be meaningfully active
 	if [ "${sm_global_active}" = "true" ]; then
-		sm_active_count=$((sm_active_count + 1))
-		sm_single_mode="global"
-	fi
-	
-	# Auto-select if only one mode is active
-	if [ "${sm_active_count}" -eq 1 ]; then
-		echo "${sm_single_mode}"
+		echo "global"
 		return 0
 	fi
-	
-	# Multiple modes active - require explicit selection
+
 	show_mode_selection_error "command"
 }
 

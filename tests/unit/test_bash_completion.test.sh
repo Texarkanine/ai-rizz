@@ -9,6 +9,7 @@
 #
 # Capability coverage (_ai_rizz_list_rule_names):
 #   - Standalone skill directories under rules/ with SKILL.md are listed
+#   - Symlinked SKILL.md is listed (parity with cmd_list's `[ -f …/SKILL.md ]`)
 #   - Plain directories under rules/ without SKILL.md are not listed as names
 #   - Existing .mdc rules and lowercase .md commands remain listed
 #   - Nested SKILL.md paths (rules/a/b/SKILL.md) are not listed
@@ -88,6 +89,23 @@ test_list_rule_names_includes_standalone_skill() {
 	names="$(_list_rule_names "${REPO_DIR}")"
 	echo "${names}" | grep -qx "my-skill" || \
 		fail "Standalone skill 'my-skill' should be listed: ${names}"
+	return 0
+}
+
+# ============================================================================
+# Symlinked SKILL.md is listed (cmd_list uses [ -f ], which follows symlinks)
+# ============================================================================
+
+test_list_rule_names_includes_symlinked_skill_md() {
+	# A regular skill dir whose SKILL.md is a symlink to a real file must complete,
+	# matching cmd_list / is_skill which test with [ -f …/SKILL.md ].
+	mkdir -p "${REPO_DIR}/rules/link-skill" "${REPO_DIR}/skill-targets"
+	echo "# Linked Skill" > "${REPO_DIR}/skill-targets/SKILL.md"
+	ln -s "../../skill-targets/SKILL.md" "${REPO_DIR}/rules/link-skill/SKILL.md"
+
+	names="$(_list_rule_names "${REPO_DIR}")"
+	echo "${names}" | grep -qx "link-skill" || \
+		fail "Skill with symlinked SKILL.md should be listed: ${names}"
 	return 0
 }
 

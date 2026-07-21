@@ -82,9 +82,15 @@ _ai_rizz_list_rule_names() {
 	find "${rules_dir}" -type f -name "*.mdc" | sed -e 's|.*/||' -e 's/\.mdc$//'
 	find "${rules_dir}" -type f -name "*.md" | sed 's|.*/||' | LC_ALL=C grep -v '^[A-Z]' | sed 's/\.md$//'
 
-	# Standalone skills: rules/<name>/SKILL.md (exactly one level under rules/)
-	find "${rules_dir}" -mindepth 2 -maxdepth 2 -type f -name "SKILL.md" \
-		| sed -e 's|/SKILL\.md$||' -e 's|.*/||'
+	# Standalone skills: rules/<name>/SKILL.md (exactly one level under rules/).
+	# Include symlinked SKILL.md; keep only paths that `[ -f ]` accepts (same as
+	# cmd_list / is_skill), so dangling symlinks are omitted.
+	local skill_md skill_name
+	while IFS= read -r skill_md; do
+		[[ -f "${skill_md}" ]] || continue
+		skill_name="${skill_md%/*}"
+		printf '%s\n' "${skill_name##*/}"
+	done < <(find "${rules_dir}" -mindepth 2 -maxdepth 2 \( -type f -o -type l \) -name "SKILL.md")
 }
 
 # Main completion function for ai-rizz

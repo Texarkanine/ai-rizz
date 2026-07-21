@@ -16,6 +16,12 @@
 - Manifest stored at `~/ai-rizz.skbd`
 - Not present in the repository at all
 
+## Choosing a mode
+
+Inside a git repository, unflagged commands auto-select when exactly one of local or commit is initialized. Global is always opt-in: pass `--global` (or set `AI_RIZZ_MODE=global`). If neither local nor commit is initialized, the command errors instead of silently using global.
+
+Outside a git repository, global-only setups auto-select global.
+
 ## Status Display
 
 | Symbol | Meaning                                         |

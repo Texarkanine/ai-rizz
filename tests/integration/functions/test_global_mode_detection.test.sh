@@ -183,19 +183,96 @@ test_select_mode_requires_flag_with_three_modes() {
 }
 
 test_select_mode_two_modes_local_global() {
-    # Test: select_mode() with local and global active (no flag)
-    # Expected: Shows error asking for mode specification
+    # Test (#41): select_mode() with local and global active in a git repo (no flag)
+    # Expected: Auto-selects local; global is opt-in via --global
     
     setup_global_test_environment
     cd "${APP_DIR}" || fail "Failed to change to app directory"
     
-    # Initialize local and global modes
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+    cache_manifest_metadata
+    
+    result=$(select_mode "")
+    assertEquals "Should auto-select local when only local repo mode is active" "local" "${result}"
+    
+    teardown_global_test_environment
+}
+
+test_select_mode_commit_and_global_auto_selects_commit() {
+    # Test (#41): select_mode() with commit and global active in a git repo (no flag)
+    # Expected: Auto-selects commit
+    
+    setup_global_test_environment
+    cd "${APP_DIR}" || fail "Failed to change to app directory"
+    
+    cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+    cache_manifest_metadata
+    
+    result=$(select_mode "")
+    assertEquals "Should auto-select commit when only commit repo mode is active" "commit" "${result}"
+    
+    teardown_global_test_environment
+}
+
+test_select_mode_only_global_in_git_repo_requires_flag() {
+    # Test (#40): select_mode() with only global active inside a git repo (no flag)
+    # Expected: Error requiring explicit mode; does not auto-select global
+    
+    setup_global_test_environment
+    cd "${APP_DIR}" || fail "Failed to change to app directory"
+    assertTrue "APP_DIR should be a git repo" "[ -d .git ]"
+    
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+    cache_manifest_metadata
     
     output=$(select_mode "" 2>&1 || echo "ERROR_OCCURRED")
     
-    echo "$output" | grep -q "mode\|--local\|--global\|specify" || fail "Should show mode selection error"
+    echo "$output" | grep -q "No local or commit mode" || \
+        fail "select_mode should require a project mode when only global is active in a git repo: $output"
+    echo "$output" | grep -q "\-\-global" || \
+        fail "Error should mention --global: $output"
+    
+    teardown_global_test_environment
+}
+
+test_add_rule_only_global_in_git_repo_errors_without_project_manifest() {
+    # Test (#40): unflagged cmd_add_rule with only global init in a git repo
+    # Expected: Errors; does not create invalid project manifests
+    
+    setup_global_test_environment
+    cd "${APP_DIR}" || fail "Failed to change to app directory"
+    
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+    cache_manifest_metadata
+    
+    rm -f "${COMMIT_MANIFEST_FILE}" "${LOCAL_MANIFEST_FILE}"
+    
+    output=$(cmd_add_rule "rule1.mdc" 2>&1 || echo "ERROR_OCCURRED")
+    
+    echo "$output" | grep -q "No local or commit mode" || \
+        fail "cmd_add_rule should fail without project mode: $output"
+    assertFalse "Should not create commit manifest" "[ -f '${COMMIT_MANIFEST_FILE}' ]"
+    assertFalse "Should not create local manifest" "[ -f '${LOCAL_MANIFEST_FILE}' ]"
+    
+    teardown_global_test_environment
+}
+
+test_add_rule_only_global_in_git_repo_with_global_flag_succeeds() {
+    # Test (#40 edge): explicit --global add still works in a git repo with no local/commit
+    
+    setup_global_test_environment
+    cd "${APP_DIR}" || fail "Failed to change to app directory"
+    
+    cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
+    cache_manifest_metadata
+    
+    cmd_add_rule "rule1.mdc" --global
+    assertTrue "Rule should be deployed to global rules dir" \
+        "[ -f '${GLOBAL_RULES_DIR}/rule1.mdc' ]"
+    assertFalse "Should not create commit manifest" "[ -f '${COMMIT_MANIFEST_FILE}' ]"
+    assertFalse "Should not create local manifest" "[ -f '${LOCAL_MANIFEST_FILE}' ]"
     
     teardown_global_test_environment
 }

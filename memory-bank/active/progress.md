@@ -34,3 +34,15 @@ Fix [#40](https://github.com/Texarkanine/ai-rizz/issues/40) and [#41](https://gi
     - No plan amendments required
 * Insights
     - `select_mode` is only used by `cmd_add_rule` and `cmd_add_ruleset` (narrower blast radius)
+
+## 2026-07-21 - BUILD - COMPLETE
+
+* Work completed
+    - Implemented repo-aware `select_mode` + `show_repo_mode_required_error`
+    - Updated/added 5 behaviors in `test_global_mode_detection.test.sh`
+    - Documented choosing-a-mode policy
+    - Full suite green (34/34)
+* Decisions made
+    - Separate error for no project mode vs multi-mode ambiguity
+* Insights
+    - Pre-fix, only-global-in-repo `cmd_add_rule` auto-selected global and succeeded; #40's invalid-manifest symptom may be environmental, but the opt-in policy fix matches the issue intent

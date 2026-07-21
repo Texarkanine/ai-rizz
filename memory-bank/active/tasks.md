@@ -37,17 +37,21 @@ In git repositories, `select_mode()` must ignore global when auto-selecting (glo
 1. **Update/extend select_mode tests (failing first)**
    - Files: `tests/integration/functions/test_global_mode_detection.test.sh`
    - Changes: rewrite `test_select_mode_two_modes_local_global` expectation; add `test_select_mode_commit_and_global_auto_selects_commit`; add `test_select_mode_only_global_in_git_repo_requires_flag`; add `test_add_rule_only_global_in_git_repo_errors_without_project_manifest` (and optional `--global` success counterpart)
+   - [x] Done
 
 2. **Implement repo-aware auto-select in `select_mode()`**
-   - Files: `ai-rizz` (`select_mode`)
+   - Files: `ai-rizz` (`select_mode`, `show_repo_mode_required_error`)
    - Changes: when `.git` exists, count only local+commit for auto-select; if count==1 return that mode; if count==2 keep `show_mode_selection_error`; if count==0 error requiring explicit `--local`/`--commit`/`--global` (actionable message — not “multiple modes” when none). When `.git` absent, keep current global-only auto-select. Explicit arg and `AI_RIZZ_MODE` unchanged.
+   - [x] Done
 
 3. **Doc touch for mode auto-select policy**
    - Files: `docs/user-guide/rule-modes.md`
    - Changes: short note that in a repo, unflagged commands auto-select the single local/commit mode; global always needs `--global`
+   - [x] Done
 
 4. **Verify**
    - Run updated suite verbose, then `make test`
+   - [x] Done — `test_global_mode_detection` 15/15; `make test` 34/34
 
 ## Technology Validation
 
@@ -83,5 +87,5 @@ No new technology - validation not required
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
 - [x] Preflight
-- [ ] Build
+- [x] Build
 - [ ] QA

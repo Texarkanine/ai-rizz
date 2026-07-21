@@ -10,8 +10,8 @@
 
 ## Files Affected
 
-- `completion.bash` — skill-aware rule-name listing + test-friendly `complete` registration gate
-- `tests/unit/test_bash_completion.test.sh` — new unit suite for listing behavior
+- `completion.bash` — skill-aware rule-name listing; `_get_repo_dir` project-vs-global selection; test-friendly `complete` gate
+- `tests/unit/test_bash_completion.test.sh` — listing + `_get_repo_dir` unit coverage
 
 ## QA Results
 

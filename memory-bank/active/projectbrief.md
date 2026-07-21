@@ -37,4 +37,5 @@ Outside a git repository (global-only context), tab completion after `add rule` 
 2. Existing rule/ruleset/command completion still works.
 3. Non-skill directories under `rules/` are not offered as completions solely for being directories.
 4. Outside a git repo (and in git repos without project manifests), completion uses the global cache so globally available skills appear.
-5. Automated tests cover skill listing and repo-dir selection and pass.
+5. Skills whose `SKILL.md` is a symlink are listed (parity with `cmd_list` / `is_skill`).
+6. Automated tests cover skill listing, symlink SKILL.md, and repo-dir selection and pass.

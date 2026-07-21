@@ -45,3 +45,15 @@ Fix bash tab completion so skills are offered the same way rules and rulesets al
     - Match `cmd_list`: project manifests → project cache; else global cache
 * Insights
     - Stale `repos/mobaxterm` cache explained missing skills at `~`
+
+## 2026-07-21 - PR REVIEW FOLLOW-UP - COMPLETE
+
+* Work completed
+    - Opened draft PR #46 for #44
+    - Judged LlamaPReview / CodeRabbit feedback on #46
+    - Fixed symlinked `SKILL.md` discovery for cmd_list parity; pushed `1a15611`
+* Decisions made
+    - Operator: be consistent with cmd_list on symlink SKILL.md (fix in this PR)
+    - Hardcoded `_ai-rizz.global` path dismissed (matches `get_global_repo_dir`)
+* Insights
+    - `find -type f` vs `[ -f ]` is a recurring symlink consistency footgun

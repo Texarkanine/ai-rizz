@@ -23,3 +23,10 @@
 - **Issue:** Outside a git repo, `_get_repo_dir` used `repos/$(basename "$PWD")/repo` (e.g. stale `repos/mobaxterm`), so global skills were missing from completion.
 - **Fix:** Mirror `cmd_list` — project manifests → project cache; otherwise `_ai-rizz.global`.
 - **Tests:** `test_get_repo_dir_outside_git_uses_global_cache`, `test_get_repo_dir_with_project_manifest_uses_project_cache`, `test_get_repo_dir_git_without_project_manifest_uses_global_cache`
+
+## PR #46 Review Follow-up
+
+- **Issue:** `find -type f` omitted skills whose `SKILL.md` is a symlink; `cmd_list` / `is_skill` use `[ -f ]` and would include them.
+- **Fix:** Discover `SKILL.md` with `\( -type f -o -type l \)` and keep only paths that pass `[ -f ]` (drops dangling links).
+- **Tests:** `test_list_rule_names_includes_symlinked_skill_md`
+- **Commit:** `1a15611` (pushed to PR)

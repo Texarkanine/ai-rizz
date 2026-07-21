@@ -1,11 +1,11 @@
 # Active Context
 
 ## Current Task: fix-issue-44-skill-tab-completion
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** BUILD - COMPLETE
 
 ## What Was Done
-- Intent clarified and approved: fix [#44](https://github.com/Texarkanine/ai-rizz/issues/44) so bash completion includes skills
-- Complexity determined: Level 1 (bug fix, single component — `completion.bash`)
+- Fixed [#44](https://github.com/Texarkanine/ai-rizz/issues/44): `_ai_rizz_list_rule_names` includes standalone skills after `rule`
+- Added `tests/unit/test_bash_completion.test.sh` (4 cases); full `make test` passed (2 unit + 33 integration)
 
 ## Next Step
-- Load Level 1 workflow and execute Build phase
+- Run `/niko-qa` (Level 1 QA)

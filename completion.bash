@@ -5,11 +5,14 @@
 # - Command completion (init, deinit, list, add, remove, sync, help)
 # - Rule and ruleset type completion for add/remove commands
 # - Dynamic rule completion from the current project's repository
-#   (includes both .mdc rules and .md commands)
+#   (includes .mdc rules, .md commands, and standalone skills under rules/)
 # - Dynamic ruleset completion from the current project's repository
 #
 # Installation:
 #   Source this file in your .bashrc or place in /etc/bash_completion.d/
+#
+# Testing:
+#   Set AI_RIZZ_COMPLETION_TEST=1 before sourcing to skip `complete -F` registration.
 
 
 # Get repository directory for the current project (matches ai-rizz get_repo_dir function)
@@ -39,6 +42,42 @@ _get_repo_dir() {
 	fi
 	
 	echo "${config_dir}/repos/${project_name}/repo"
+}
+
+# List completable names after `ai-rizz add rule` / `remove rule`
+#
+# Emits one name per line for entities installable via `add rule`:
+# - `.mdc` rule files under rules/
+# - lowercase `.md` command files under rules/ (uppercase docs like README.md excluded)
+# - standalone skill directories: rules/<name>/SKILL.md
+#
+# Globals:
+#   None
+#
+# Arguments:
+#   $1 - Repository directory (cache clone root containing rules/)
+#
+# Outputs:
+#   Stdout: completion names, one per line
+#
+# Returns:
+#   0 on success
+#
+_ai_rizz_list_rule_names() {
+	local repo_dir="$1"
+	local rules_dir="${repo_dir}/rules"
+
+	if [[ ! -d "${rules_dir}" ]]; then
+		return 0
+	fi
+
+	# .mdc rules (all) and .md commands (exclude uppercase docs like README.md)
+	find "${rules_dir}" -type f -name "*.mdc" | sed -e 's|.*/||' -e 's/\.mdc$//'
+	find "${rules_dir}" -type f -name "*.md" | sed 's|.*/||' | LC_ALL=C grep -v '^[A-Z]' | sed 's/\.md$//'
+
+	# Standalone skills: rules/<name>/SKILL.md (exactly one level under rules/)
+	find "${rules_dir}" -mindepth 2 -maxdepth 2 -type f -name "SKILL.md" \
+		| sed -e 's|/SKILL\.md$||' -e 's|.*/||'
 }
 
 # Main completion function for ai-rizz
@@ -74,16 +113,11 @@ _ai_rizz_completion() {
 			COMPREPLY=()
 			;;
 		rule)
-			# Get available rules and commands from the current project's repo
-			# Rules are .mdc files (include all), commands are .md files (exclude uppercase docs)
+			# Get available rules, commands, and standalone skills from the project's repo
 			local repo_dir rules_list
 			repo_dir="$(_get_repo_dir)"
 			if [[ -d "${repo_dir}/rules" ]]; then
-				# Combine .mdc files (all) and .md files (excluding uppercase docs like README.md)
-				rules_list=$(
-					find "${repo_dir}/rules" -type f -name "*.mdc" | sed -e 's|.*/||' -e 's/\.mdc$//'
-					find "${repo_dir}/rules" -type f -name "*.md" | sed 's|.*/||' | LC_ALL=C grep -v '^[A-Z]' | sed 's/\.md$//'
-				)
+				rules_list="$(_ai_rizz_list_rule_names "${repo_dir}")"
 				COMPREPLY=( $(compgen -W "${rules_list}" -- "${cur}") )
 			fi
 			;;
@@ -98,5 +132,7 @@ _ai_rizz_completion() {
 	esac
 }
 
-# Register the completion function
-complete -F _ai_rizz_completion ai-rizz
+# Register the completion function (skip when sourced under tests)
+if [[ -z "${AI_RIZZ_COMPLETION_TEST:-}" ]]; then
+	complete -F _ai_rizz_completion ai-rizz
+fi

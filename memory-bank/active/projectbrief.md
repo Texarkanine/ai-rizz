@@ -2,22 +2,23 @@
 
 ## User Story
 
-As an ai-rizz CLI user, I want bash tab completion to offer `skill` (and skill names) the same way it offers `rule`/`ruleset`, so that I can discover and select skills without typing them out.
+As an ai-rizz CLI user, I want bash tab completion after `add rule` / `remove rule` to include standalone skill names (directories under `rules/` with `SKILL.md`), so that I can discover and select skills the same way I select rules and commands.
 
 ## Use-Case(s)
 
 ### Use-Case 1
 
-After typing `ai-rizz add ` or `ai-rizz remove `, tab completion includes `skill` alongside `rule` and `ruleset`.
+After typing `ai-rizz add rule ` (or `remove rule `), tab completion lists standalone skill names from the current project's repository alongside existing `.mdc` rules and `.md` commands.
 
 ### Use-Case 2
 
-After typing `ai-rizz add skill ` (or `remove skill `), tab completion lists available skill names from the current project's repository.
+Directories under `rules/` that are not skills (no `SKILL.md`) are not offered as skill completions.
 
 ## Requirements
 
-1. Fix bash tab completion so skills are completable ([issue #44](https://github.com/Texarkanine/ai-rizz/issues/44)).
+1. Fix bash tab completion so standalone skills are completable after `rule` ([issue #44](https://github.com/Texarkanine/ai-rizz/issues/44)).
 2. Preserve existing completion behavior for commands, rules, and rulesets.
+3. Do not invent an `add skill` / `remove skill` type — skills use `add rule` / `remove rule`.
 
 ## Constraints
 
@@ -27,7 +28,7 @@ After typing `ai-rizz add skill ` (or `remove skill `), tab completion lists ava
 
 ## Acceptance Criteria
 
-1. `add`/`remove` type completion includes `skill`.
-2. After `skill`, available skill names from the project repo complete via tab.
-3. Existing rule/ruleset/command completion still works.
+1. After `rule`, available standalone skill names from `rules/<name>/SKILL.md` complete via tab.
+2. Existing rule/ruleset/command completion still works.
+3. Non-skill directories under `rules/` are not offered as completions solely for being directories.
 4. Automated tests cover the new skill-completion behavior and pass.

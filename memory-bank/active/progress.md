@@ -55,3 +55,13 @@ Replace the `deinit --all` footgun with `deinit --both` (local+commit only), and
     - No code changes from QA
 * Insights
     - `--all`/`-a` kept as explicit reject arms (not silent fallthrough) so the hint stays actionable
+
+## 2026-07-21 - REFLECT - COMPLETE
+
+* Work completed
+    - Wrote reflection-deinit-guard-or-remove-all.md
+    - Reconciled persistent files: no updates needed
+* Decisions made
+    - Ready for archive
+* Insights
+    - Suggested fix commands in errors deserve the same audit as the flags they mention

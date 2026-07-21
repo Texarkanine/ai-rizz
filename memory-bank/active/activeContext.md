@@ -1,11 +1,11 @@
 # Active Context
 
 ## Current Task: deinit-guard-or-remove-all
-**Phase:** QA - COMPLETE
+**Phase:** REFLECT COMPLETE
 
 ## What Was Done
-- Semantic QA PASS against plan and issue #42 requirements
-- No code fixes required
+- Reflection written; persistent files unchanged (no system-level invalidation)
+- Issue #42 implemented and verified
 
 ## Next Step
-- Reflect phase
+- Run `/niko-archive` to archive and finalize

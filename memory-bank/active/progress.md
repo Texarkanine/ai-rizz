@@ -46,3 +46,13 @@ Fix [#40](https://github.com/Texarkanine/ai-rizz/issues/40) and [#41](https://gi
     - Separate error for no project mode vs multi-mode ambiguity
 * Insights
     - Pre-fix, only-global-in-repo `cmd_add_rule` auto-selected global and succeeded; #40's invalid-manifest symptom may be environmental, but the opt-in policy fix matches the issue intent
+
+## 2026-07-21 - QA - COMPLETE
+
+* Work completed
+    - Semantic review vs plan/brief — PASS
+    - Wrote `.qa-validation-status`
+* Decisions made
+    - No code changes from QA
+* Insights
+    - None

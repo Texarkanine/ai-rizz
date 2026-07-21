@@ -25,3 +25,13 @@ Fix bash tab completion so skills are offered the same way rules and rulesets al
     - Gate `complete -F` behind `AI_RIZZ_COMPLETION_TEST` for sourcable tests
 * Insights
     - Negative listing tests need a positive baseline assert so empty stubs cannot pass
+
+## 2026-07-21 - QA - COMPLETE
+
+* Work completed
+    - Semantic review against project brief and system patterns
+    - Wrote `.qa-validation-status` = PASS
+* Decisions made
+    - No QA fixes required
+* Insights
+    - Extracting `_ai_rizz_list_rule_names` was the right testability tradeoff for a bash completion script

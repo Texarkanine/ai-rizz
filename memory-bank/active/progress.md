@@ -13,3 +13,14 @@ Fix [#40](https://github.com/Texarkanine/ai-rizz/issues/40) and [#41](https://gi
     - Level 2 path: plan → preflight → build → qa → reflect → (operator archive)
 * Insights
     - Primary lever is `select_mode()`; existing tests in `test_global_mode_detection.test.sh` will need updates for local+global auto-select
+
+## 2026-07-21 - PLAN - COMPLETE
+
+* Work completed
+    - TDD plan: behaviors for #40/#41, test file mapping, linear implementation steps
+    - Noted existing `test_select_mode_two_modes_local_global` must flip to auto-select local
+* Decisions made
+    - In git repos, auto-select counts only local+commit; zero repo modes → actionable error (not “multiple modes”)
+    - Keep change in `select_mode()` so all callers share policy; out of scope: #42 deinit
+* Insights
+    - `APP_DIR` in global detection suite is already a git repo — right place for #40/#41 cases

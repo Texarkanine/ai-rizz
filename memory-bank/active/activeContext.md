@@ -1,10 +1,10 @@
 # Active Context
 
 ## Current Task: fix-issues-40-41-repo-global-select
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** PLAN - COMPLETE
 
 ## What Was Done
-- Classified as Level 2: self-contained mode-selection policy change + related bug fix in `select_mode` / add path; needs plan + tests; moderate shared-caller risk
+- Level 2 plan: repo-aware `select_mode()` (ignore global inside git); update/add tests in `test_global_mode_detection.test.sh`; doc note in `rule-modes.md`
 
 ## Next Step
-- Load Level 2 workflow → Plan phase
+- Preflight validation

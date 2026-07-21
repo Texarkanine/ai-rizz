@@ -1,12 +1,11 @@
 # Active Context
 
 ## Current Task: deinit-guard-or-remove-all
-**Phase:** PLAN - COMPLETE
+**Phase:** PREFLIGHT - COMPLETE
 
 ## What Was Done
-- Planned Level 2 enhancement for [issue #42](https://github.com/Texarkanine/ai-rizz/issues/42)
-- Test plan: convert `--all` suites to `--both`; add global-preservation + `--all`/`-a` rejection
-- Implementation: `cmd_deinit` gains `--both`/`-b` (local+commit only); remove `--all`/`-a`; update prompt, env fallback, integrity error, docs, completion
+- Preflight PASS with amendments: global assert caveat; `--both` under deinit options; actionable `all` rejection; integrity Option 3 → `--both`
+- TDD ordering confirmed (step 1 tests before production code)
 
 ## Next Step
-- Preflight validation
+- Build phase

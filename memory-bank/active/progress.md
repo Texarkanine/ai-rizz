@@ -25,3 +25,13 @@ Replace the `deinit --all` footgun with `deinit --both` (local+commit only), and
     - Interactive prompt and no-mode default use `both` instead of `all`; `AI_RIZZ_MODE=all` no longer accepted
 * Insights
     - `cmd_help` never listed `--all` under deinit options; docs and `cmd_deinit` did — docs/completion are the user-visible gaps
+
+## 2026-07-21 - PREFLIGHT - COMPLETE
+
+* Work completed
+    - Validated TDD encoding, conventions, dependency impact, completeness
+    - Amended plan: global assert caveat; deinit-options placement; actionable `all` rejection; integrity Option 3 → `--both`
+* Decisions made
+    - Preflight PASS; proceed to build
+* Insights
+    - Integrity Option 3 was already a project-mode reset; `--all` there was doubly wrong

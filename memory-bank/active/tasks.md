@@ -40,7 +40,7 @@ Replace `deinit --all` (wipes local+commit+global) with `deinit --both` (local+c
 | Behavior | File | Action |
 |----------|------|--------|
 | `--both` removes local+commit; `-y` skips prompt; single-mode `--both` | `tests/integration/functions/test_deinit_modes.test.sh` | Rename/retarget `test_deinit_all_*` → `test_deinit_both_*`; call `--both` |
-| `--both` preserves global | same | **Add** new test with global initialized |
+| `--both` preserves global | same | **Add** new test with global initialized; assert global separately (`assert_no_modes_exist` only checks local+commit manifests) |
 | `--all` / `-a` rejected | same | **Add** rejection tests |
 | Interactive prompt mentions `both` | same (+ CLI suite grep) | Update assertions that match `all` in prompt |
 | CLI `--both` dual-mode cleanup | `tests/integration/test_cli_deinit.test.sh` | Retarget `test_deinit_all_modes` and related `--all` calls |
@@ -58,18 +58,18 @@ Replace `deinit --all` (wipes local+commit+global) with `deinit --both` (local+c
      - Parse `--both` / `-b` → `cd_mode="both"` (short `-b` for parity with `-l`/`-c`/`-g`)
      - Remove `--all`/`-a` case (fall through to unknown argument)
      - Case `both`: set `cd_remove_local` + `cd_remove_commit` only (not global)
-     - Validation + error strings: accept `both`, reject `all`
-     - Interactive prompt: `local/commit/global/both`
+     - Validation + error strings: accept `both`, reject `all` with actionable hint (`--both` for project modes; `--global` separately)
+     - Interactive prompt: `local/commit/global/both`; typed `all` hits the same invalid-mode path with that hint
      - No-modes default: `both` (was `all`) for project-scoped idempotence
      - `AI_RIZZ_MODE`: accept `both`; stop accepting `all`
 
 3. **Update actionable error that recommends `deinit --all`**
-   - Files: `ai-rizz` (manifest integrity helper ~2178)
-   - Changes: Suggest `ai-rizz deinit --both -y` (and note `--global` separately if a full wipe is intended)
+   - Files: `ai-rizz` (`show_manifest_integrity_error` Option 3 ~2178)
+   - Changes: Option 3 becomes `ai-rizz deinit --both -y && ai-rizz init` (this error is about divergent local/commit manifests — wiping global was never appropriate)
 
 4. **Docs + help**
-   - Files: `docs/user-guide/commands/init-deinit.md`; `ai-rizz` `cmd_help` if deinit-specific flags are listed; `docs/user-guide/commands/index.md` if it mirrors flags
-   - Changes: Replace `--all`/`-a` with `--both`/`-b`; describe “local + commit only, not global”
+   - Files: `docs/user-guide/commands/init-deinit.md`; `ai-rizz` `cmd_help` deinit options; `docs/user-guide/commands/index.md` help mirror
+   - Changes: Document `--both`/`-b` under **deinit options** (not general Mode options); describe “local + commit only, not global”; remove `--all`/`-a`
 
 5. **Shell completion**
    - Files: `completion.bash`
@@ -108,6 +108,13 @@ No new technology - validation not required
 - [x] Implementation plan complete
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
-- [ ] Preflight
+- [x] Preflight
 - [ ] Build
 - [ ] QA
+
+## Preflight Amendments
+
+- Global-preservation asserts must not rely on `assert_no_modes_exist` alone (helper ignores global).
+- `--both`/`-b` belongs under deinit-specific help/docs options, not the shared Mode options list.
+- Invalid `all` (flag, prompt, or env) should surface an actionable hint toward `--both` / `--global`.
+- Integrity Option 3 → `--both` is the correct project reset (not a full-machine wipe).

@@ -202,7 +202,6 @@ test_deinit_both_preserves_global() {
     # Setup: local + commit + global; --both must not wipe global
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
     cmd_add_rule "rule1.mdc" --commit
-    init_global_paths
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
     init_global_paths
     cmd_add_rule "rule2.mdc" --global

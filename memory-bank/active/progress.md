@@ -35,3 +35,13 @@ Fix bash tab completion so skills are offered the same way rules and rulesets al
     - No QA fixes required
 * Insights
     - Extracting `_ai_rizz_list_rule_names` was the right testability tradeoff for a bash completion script
+
+## 2026-07-21 - BUILD - FOLLOW-UP COMPLETE
+
+* Work completed
+    - Fixed `_get_repo_dir` to use `_ai-rizz.global` outside git / global-only (was basename(PWD))
+    - Added three unit tests for repo-dir selection
+* Decisions made
+    - Match `cmd_list`: project manifests → project cache; else global cache
+* Insights
+    - Stale `repos/mobaxterm` cache explained missing skills at `~`

@@ -15,7 +15,11 @@
 #   Set AI_RIZZ_COMPLETION_TEST=1 before sourcing to skip `complete -F` registration.
 
 
-# Get repository directory for the current project (matches ai-rizz get_repo_dir function)
+# Resolve the source-repo cache directory for completion (mirrors cmd_list)
+#
+# Selects the same cache ai-rizz uses when listing available items:
+# - Project cache when the cwd's git root has a local/commit manifest
+# - Global cache (_ai-rizz.global) otherwise (outside git, or global-only)
 #
 # Globals:
 #   HOME - User home directory
@@ -24,24 +28,27 @@
 #   None
 #
 # Outputs:
-#   Stdout: Repository directory path for current project
+#   Stdout: Repository directory path for completion discovery
 #
 # Returns:
 #   0 on success
 #
 _get_repo_dir() {
 	local config_dir="${HOME}/.config/ai-rizz"
-	local project_name
-	local git_root
-	
-	# Use git root directory name as project name, fallback to current directory
+	local global_repo="${config_dir}/repos/_ai-rizz.global/repo"
+	local git_root project_name
+
 	if git_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
-		project_name="$(basename "${git_root}")"
-	else
-		project_name="$(basename "$(pwd)")"
+		# Local/commit mode active when either project manifest exists (cmd_list)
+		if [[ -f "${git_root}/ai-rizz.skbd" || -f "${git_root}/ai-rizz.local.skbd" ]]; then
+			project_name="$(basename "${git_root}")"
+			echo "${config_dir}/repos/${project_name}/repo"
+			return 0
+		fi
 	fi
-	
-	echo "${config_dir}/repos/${project_name}/repo"
+
+	# Global-only context: outside git, or git repo with no project manifests
+	echo "${global_repo}"
 }
 
 # List completable names after `ai-rizz add rule` / `remove rule`

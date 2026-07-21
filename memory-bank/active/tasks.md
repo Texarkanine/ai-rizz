@@ -17,3 +17,9 @@
 
 - **Status:** PASS
 - **Findings:** None. Implementation matches brief; no over-engineering, stubs, or doc gaps.
+
+## Follow-up Fix
+
+- **Issue:** Outside a git repo, `_get_repo_dir` used `repos/$(basename "$PWD")/repo` (e.g. stale `repos/mobaxterm`), so global skills were missing from completion.
+- **Fix:** Mirror `cmd_list` — project manifests → project cache; otherwise `_ai-rizz.global`.
+- **Tests:** `test_get_repo_dir_outside_git_uses_global_cache`, `test_get_repo_dir_with_project_manifest_uses_project_cache`, `test_get_repo_dir_git_without_project_manifest_uses_global_cache`

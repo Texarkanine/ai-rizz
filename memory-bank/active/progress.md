@@ -27,3 +27,13 @@ Diagnose and fix `ai-rizz sync` so consumers correctly pick up upstream rule→s
     - No arbitrary slug renames (`foo`→`bar`); no ruleset-entry slug remapping
 * Insights
     - Reproducing case lives in `~/ai-rizz.skbd` (`rules/github-open-a-pull-request-gh.mdc`, `rules/pr-feedback-judge.md`) against global cache already containing skill dirs
+
+## 2026-07-25 - PREFLIGHT - COMPLETE
+
+* Work completed
+    - Validated TDD ordering, conventions, dependencies, completeness
+    - Amended plan: share resolver with `cmd_add_rule`; docs target `sync.md`
+* Decisions made
+    - Preflight PASS (no blocking findings)
+* Insights
+    - `cmd_add_rule` already encodes the desired priority for bare names; extracting it is the cheapest correctness guarantee

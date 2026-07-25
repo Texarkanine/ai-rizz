@@ -1,12 +1,11 @@
 # Active Context
 
 ## Current Task: fix-sync-standalone-entry-relocates
-**Phase:** PLAN - COMPLETE
+**Phase:** PREFLIGHT - COMPLETE
 
 ## What Was Done
-- Diagnosed root cause: global/local/commit manifests store exact paths (`rules/foo.mdc`, `rules/foo.md`); after upstream slug-preserving form change, `copy_entry_to_target` looks up only that path → “Entry not found”. Ruleset walks already pick up embedded skill moves (visual-planning).
-- Operator clarification: all identical name-slug relocates across rule/command/skill (including reverse), not only rule→skill.
-- Level 2 plan written: resolve helper + sync-time remap/manifest rewrite; TDD suites mapped.
+- Preflight PASS; plan amended so `resolve_standalone_entry` is shared with `cmd_add_rule`.
+- Ready for build: unit resolve helper + integration sync remaps + sync-loop wiring + docs.
 
 ## Next Step
-- Preflight validation, then build.
+- Build phase per Level 2 workflow.

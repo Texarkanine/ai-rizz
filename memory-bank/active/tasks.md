@@ -40,20 +40,20 @@ When a standalone manifest entry’s exact path is missing after upstream pull, 
    - Files: `tests/unit/test_resolve_standalone_entry.test.sh`
    - Changes: given repo dir + manifest entry path, assert resolved path for each form (skill / mdc / md), exact-hit, miss, and priority skill > mdc > md.
 
-3. **Implement `resolve_standalone_entry` to pass unit tests**
-   - Files: `ai-rizz` (near `is_skill` / entity helpers)
-   - Changes: extract slug from `rules/<slug>(.mdc|.md|)` only; if exact path exists return it; else probe skill dir → `.mdc` → `.md` under `RULES_PATH`; ignore `rulesets/*`; stdout canonical relative entry path or empty.
+3. **Implement `resolve_standalone_entry` to pass unit tests; reuse from `cmd_add_rule`**
+   - Files: `ai-rizz` (near `is_skill` / entity helpers; `cmd_add_rule`)
+   - Changes: extract slug from `rules/<slug>(.mdc|.md|)` only; if exact path exists return it; else probe skill dir → `.mdc` → `.md` under `RULES_PATH` (same order as today’s bare-name add); ignore `rulesets/*`; stdout canonical relative entry path or empty. Refactor `cmd_add_rule` bare-name branch to call this helper so add/sync cannot drift.
 
 4. **Implement integration tests for sync remaps — expect fail**
    - Files: `tests/integration/functions/test_sync_entry_relocates.test.sh`
    - Changes: seed manifest with old path, mutate source repo to new form, `cmd_sync`, assert deploy target + rewritten manifest + warning absence/presence.
 
-5. **Wire remap into `sync_manifest_to_directory` (+ optional copy path)**
-   - Files: `ai-rizz` (`sync_manifest_to_directory`, possibly thin use inside loop before `copy_entry_to_target`)
-   - Changes: for each standalone entry, if missing, call resolve; if remapped, replace manifest line (remove old / add new or rewrite file), then `copy_entry_to_target` with new path; emit a clear stderr notice of the relocate; keep “Entry not found” only when resolve fails.
+5. **Wire remap into `sync_manifest_to_directory`**
+   - Files: `ai-rizz` (`sync_manifest_to_directory` loop before `copy_entry_to_target`)
+   - Changes: for each standalone `rules/*` entry, resolve; if path differs from manifest line, `remove_manifest_entry_from_file` + `add_manifest_entry_to_file` (or equivalent), emit relocate notice on stderr, then `copy_entry_to_target` with resolved path; keep “Entry not found” only when resolve returns empty.
 
-6. **Docs touch if user-facing behavior is documented**
-   - Files: `docs/developer-guide/manifest.md` and/or sync docs if they claim exact-path-only
+6. **Docs touch**
+   - Files: `docs/user-guide/commands/sync.md` (and `docs/developer-guide/manifest.md` if needed)
    - Changes: note that sync rewrites standalone entries when the slug relocates across rule/command/skill forms.
 
 7. **Full verification**
@@ -89,6 +89,10 @@ No new technology - validation not required
 - [x] Implementation plan complete
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
-- [ ] Preflight
+- [x] Preflight
 - [ ] Build
 - [ ] QA
+
+## Preflight Amendments
+
+- Shared resolver: `resolve_standalone_entry` is the single source of truth for slug→form resolution; `cmd_add_rule` bare-name path must call it (avoids add/sync priority drift).

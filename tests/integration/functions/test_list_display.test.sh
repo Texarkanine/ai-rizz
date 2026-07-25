@@ -82,6 +82,99 @@ test_list_commands_alignment_correct() {
 	echo "$output" | grep -A 5 "commands" | grep -q "file.md" || fail "Should show file.md in commands expansion"
 }
 
+# Test that nested children under a last-sibling commands/ use a blank stem
+# (spaces), not a dangling │. Fixture: sibling sorts before "commands" so
+# commands/ is └── and its children must not continue with │.
+test_list_commands_last_sibling_uses_blank_stem() {
+	mkdir -p "$REPO_DIR/rulesets/test-cmd-last/commands"
+	echo "cmd" > "$REPO_DIR/rulesets/test-cmd-last/commands/nested.md"
+	# "aaa.mdc" sorts before "commands" → commands is last sibling (└──)
+	echo "rule" > "$REPO_DIR/rulesets/test-cmd-last/aaa.mdc"
+
+	cd "$REPO_DIR" || fail "Failed to change to repo directory"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add test-cmd-last ruleset" >/dev/null 2>&1
+	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
+
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+	output=$(cmd_list)
+
+	echo "$output" | grep -q "└── commands" || \
+		fail "commands/ should be last sibling (└──): $output"
+	echo "$output" | grep -q "^        └── nested.md$" || \
+		fail "child under last-sibling commands/ should use blank stem (spaces), not │: $output"
+	if echo "$output" | grep -q "^    │   .*nested.md"; then
+		fail "child under last-sibling commands/ must not use │ stem: $output"
+	fi
+}
+
+# Test that nested children under a non-last commands/ keep the │ stem.
+# Fixture: sibling sorts after "commands" so commands/ is ├──.
+test_list_commands_middle_sibling_keeps_pipe_stem() {
+	mkdir -p "$REPO_DIR/rulesets/test-cmd-mid/commands"
+	echo "cmd" > "$REPO_DIR/rulesets/test-cmd-mid/commands/nested.md"
+	# "zzz.mdc" sorts after "commands" → commands is middle sibling (├──)
+	echo "rule" > "$REPO_DIR/rulesets/test-cmd-mid/zzz.mdc"
+
+	cd "$REPO_DIR" || fail "Failed to change to repo directory"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add test-cmd-mid ruleset" >/dev/null 2>&1
+	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
+
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+	output=$(cmd_list)
+
+	echo "$output" | grep -q "├── commands" || \
+		fail "commands/ should be non-last sibling (├──): $output"
+	echo "$output" | grep -q "^    │   └── nested.md$" || \
+		fail "child under non-last commands/ should keep │ stem: $output"
+}
+
+# Test that nested children under a last-sibling skills/ use a blank stem.
+# Fixture: sibling sorts before "skills" so skills/ is └──.
+test_list_skills_last_sibling_uses_blank_stem() {
+	mkdir -p "$REPO_DIR/rulesets/test-skl-last/skills/nested-skill"
+	echo "# Nested" > "$REPO_DIR/rulesets/test-skl-last/skills/nested-skill/SKILL.md"
+	echo "rule" > "$REPO_DIR/rulesets/test-skl-last/aaa.mdc"
+
+	cd "$REPO_DIR" || fail "Failed to change to repo directory"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add test-skl-last ruleset" >/dev/null 2>&1
+	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
+
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+	output=$(cmd_list)
+
+	echo "$output" | grep -A 20 "test-skl-last" | grep -q "└── skills" || \
+		fail "skills/ should be last sibling (└──): $output"
+	echo "$output" | grep -q "^        └── nested-skill$" || \
+		fail "child under last-sibling skills/ should use blank stem (spaces), not │: $output"
+	if echo "$output" | grep -q "^    │   .*nested-skill"; then
+		fail "child under last-sibling skills/ must not use │ stem: $output"
+	fi
+}
+
+# Test that nested children under a non-last skills/ keep the │ stem.
+# Fixture: sibling sorts after "skills" so skills/ is ├──.
+test_list_skills_middle_sibling_keeps_pipe_stem() {
+	mkdir -p "$REPO_DIR/rulesets/test-skl-mid/skills/nested-skill"
+	echo "# Nested" > "$REPO_DIR/rulesets/test-skl-mid/skills/nested-skill/SKILL.md"
+	echo "rule" > "$REPO_DIR/rulesets/test-skl-mid/zzz.mdc"
+
+	cd "$REPO_DIR" || fail "Failed to change to repo directory"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Add test-skl-mid ruleset" >/dev/null 2>&1
+	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
+
+	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
+	output=$(cmd_list)
+
+	echo "$output" | grep -A 20 "test-skl-mid" | grep -q "├── skills" || \
+		fail "skills/ should be non-last sibling (├──): $output"
+	echo "$output" | grep -q "^    │   └── nested-skill$" || \
+		fail "child under non-last skills/ should keep │ stem: $output"
+}
+
 # Test that empty commands/ directory is handled correctly
 # Expected: commands/ shown but no expansion (empty directory)
 test_list_handles_empty_commands_directory() {

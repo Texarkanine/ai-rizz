@@ -3665,8 +3665,11 @@ cmd_list() {
 					# Determine tree character based on position
 					if [ "${cl_current}" -eq "${cl_item_count}" ]; then
 						cl_tree_char="└──"
+						# Last sibling: nested children use a blank stem (no dangling │)
+						cl_nest_stem="    "
 					else
 						cl_tree_char="├──"
+						cl_nest_stem="│   "
 					fi
 					
 					# Check if this is the commands/ directory (special treatment)
@@ -3695,7 +3698,7 @@ cmd_list() {
 							fi
 							
 							# Show command item (file, symlink, or subdir - but not subdir contents)
-							printf "    │   %s %s\n" "${cl_cmd_tree_char}" "${cl_cmd_basename}"
+							printf "    %s%s %s\n" "${cl_nest_stem}" "${cl_cmd_tree_char}" "${cl_cmd_basename}"
 						done < "${cl_temp_cmd_items}"
 						rm -f "${cl_temp_cmd_items}"
 					elif [ "${cl_basename}" = "skills" ] && [ -d "${cl_item}" ]; then
@@ -3748,7 +3751,7 @@ cmd_list() {
 								cl_skl_tree_char="├──"
 							fi
 
-							printf "    │   %s %s\n" "${cl_skl_tree_char}" "${cl_skl_basename}"
+							printf "    %s%s %s\n" "${cl_nest_stem}" "${cl_skl_tree_char}" "${cl_skl_basename}"
 						done < "${cl_temp_skl_items}"
 						rm -f "${cl_temp_skl_items}"
 					else

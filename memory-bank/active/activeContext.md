@@ -1,11 +1,13 @@
 # Active Context
 
 ## Current Task: fix-list-ruleset-tree-stem
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** BUILD - COMPLETE
 
 ## What Was Done
-- Intent clarified: fix dangling `│` under last-sibling `└──` parents in `ai-rizz list` ruleset trees
-- Complexity determined: Level 1 (bug fix, single component — `cmd_list` tree printing)
+- Added four stem-prefix tests in `test_list_display.test.sh` (last/middle × commands/skills)
+- Confirmed last-sibling cases failed on hardcoded `│`
+- Fixed `cmd_list` to set `cl_nest_stem` from sibling position
+- Full suite green: 3 unit + 34 integration
 
 ## Next Step
-- Load Level 1 workflow and execute Build phase
+- QA phase (`/niko-qa`)

@@ -45,4 +45,7 @@ rulesets/ruleset1
 	4. rulesets directory in source repository (where rulesets are pulled from)
 - Subsequent lines: installed rules/rulesets (one per line)
 - Rule entries: `<rules_dir>/` prefix + filename
+- Skill entries: `<rules_dir>/` prefix + skill directory name (no extension)
 - Ruleset entries: `<rulesets_dir>/` prefix + name
+
+Standalone `rules/*` lines are exact paths. After an upstream slug-preserving relocate across rule/command/skill forms, `ai-rizz sync` rewrites the affected line to the new canonical path (see [sync](../user-guide/commands/sync.md)).

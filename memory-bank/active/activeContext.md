@@ -1,10 +1,11 @@
 # Active Context
 
 ## Current Task: fix-sync-standalone-entry-relocates
-**Phase:** QA - COMPLETE
+**Phase:** REFLECT - COMPLETE
 
 ## What Was Done
-- QA PASS: implementation matches plan; shared resolver + sync rewrite; docs updated; full suite green.
+- Reflection written; systemPatterns updated for sync remaps.
+- Ready for archive.
 
 ## Next Step
-- Reflect phase.
+- Run `/niko-archive` to archive and clear ephemeral memory bank.

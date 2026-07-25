@@ -59,3 +59,12 @@ Diagnose and fix `ai-rizz sync` so consumers correctly pick up upstream rule→s
     - QA PASS — no substantive issues; no trivial fixes required
 * Insights
     - Shared resolver keeps add/sync priority aligned without extra abstraction layers
+
+## 2026-07-25 - REFLECT - COMPLETE
+
+* Work completed
+    - Wrote reflection; reconciled systemPatterns (sync remap note)
+* Decisions made
+    - Elegant long-term shape (slug-primary identity) recorded as insight, not in-scope follow-up
+* Insights
+    - See reflection doc

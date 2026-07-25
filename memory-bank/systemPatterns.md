@@ -41,7 +41,7 @@ All functions use a function-specific prefix for local variables to avoid subshe
 
 ## Dual Manifest + Sync Architecture
 
-Adding an item writes to a manifest file only. `sync_all_modes()` then reads manifests and calls `copy_entry_to_target()` for each entry, rebuilding the target directories. This means sync is the single source of truth for what ends up deployed.
+Adding an item writes to a manifest file only. `sync_all_modes()` then reads manifests and calls `copy_entry_to_target()` for each entry, rebuilding the target directories. This means sync is the single source of truth for what ends up deployed. Standalone `rules/*` entries whose exact path is gone but whose name-slug still exists as another form (rule `.mdc` / command `.md` / skill dir) are remapped by `resolve_standalone_entry()` during sync — the manifest line is rewritten and the current form is deployed (priority matches bare-name add: skill → `.mdc` → `.md`).
 
 Before deploying, `cmd_sync` refreshes source repo caches: the project cache always, and `sync_global_repo()` when global mode is initialized (same as `list`/`add`). `ai-rizz sync --global` syncs only global mode — pull + redeploy global manifest, skipping local/commit. Target directories (rules, commands, skills) for the mode being synced are cleared and rebuilt from scratch.
 

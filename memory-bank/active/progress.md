@@ -50,3 +50,12 @@ Diagnose and fix `ai-rizz sync` so consumers correctly pick up upstream rule→s
     - Truly missing entries keep warning + stay in manifest
 * Insights
     - Integration assertion `grep && fail` under `set -e` fails the test when grep misses; use `if grep; then fail; fi`
+
+## 2026-07-25 - QA - COMPLETE
+
+* Work completed
+    - Semantic review against plan: KISS/DRY/YAGNI/completeness/regression/integrity/docs
+* Decisions made
+    - QA PASS — no substantive issues; no trivial fixes required
+* Insights
+    - Shared resolver keeps add/sync priority aligned without extra abstraction layers

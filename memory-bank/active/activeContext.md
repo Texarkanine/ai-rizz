@@ -1,11 +1,12 @@
 # Active Context
 
-## Current Task: fix-sync-rule-to-skill-moves
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+## Current Task: fix-sync-standalone-entry-relocates
+**Phase:** PLAN - COMPLETE
 
 ## What Was Done
-- Intent clarified and approved: diagnose/fix `ai-rizz sync` for upstream rule→skill moves (Texarkanine/.cursor-rules#87 symptoms).
-- Complexity determined: Level 2 (bug fix affecting multiple sync/entry-handling components; contained enhancement within existing skill-support architecture).
+- Diagnosed root cause: global/local/commit manifests store exact paths (`rules/foo.mdc`, `rules/foo.md`); after upstream slug-preserving form change, `copy_entry_to_target` looks up only that path → “Entry not found”. Ruleset walks already pick up embedded skill moves (visual-planning).
+- Operator clarification: all identical name-slug relocates across rule/command/skill (including reverse), not only rule→skill.
+- Level 2 plan written: resolve helper + sync-time remap/manifest rewrite; TDD suites mapped.
 
 ## Next Step
-- Load Level 2 workflow and execute plan phase.
+- Preflight validation, then build.

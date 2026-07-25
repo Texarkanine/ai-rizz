@@ -284,6 +284,92 @@ is_skill() {
 	return 0
 }
 
+# Resolve a standalone rules/ manifest entry to its current canonical path
+#
+# Given a repository and a manifest entry under rules/, returns the path that
+# should be used for deploy/manifest purposes:
+#   1. If the exact entry still exists (file or skill dir), return it unchanged
+#   2. Otherwise extract the name-slug and probe alternate forms in the same
+#      order as bare-name add: skill dir → .mdc rule → .md command
+#   3. If nothing matches, print an empty string
+#
+# Does not remap rulesets/* or nested paths (rules/a/b). Those return empty
+# when the exact path is missing.
+#
+# Globals:
+#   RULES_PATH - Path prefix for rules entries (e.g., "rules")
+#
+# Arguments:
+#   $1 - Repository directory (path to repo root)
+#   $2 - Manifest entry relative to repository (e.g., "rules/foo.mdc")
+#
+# Outputs:
+#   Stdout: Canonical relative entry path, or empty if unresolvable
+#
+# Returns:
+#   0 always
+#
+resolve_standalone_entry() {
+	rse_repo_dir="${1}"
+	rse_entry="${2}"
+
+	# Exact hit: regular file (rule or command)
+	if [ -f "${rse_repo_dir}/${rse_entry}" ]; then
+		echo "${rse_entry}"
+		return 0
+	fi
+
+	# Exact hit: standalone skill directory
+	if [ "$(is_skill "${rse_repo_dir}" "${rse_entry}")" = "true" ]; then
+		echo "${rse_entry}"
+		return 0
+	fi
+
+	# Only slug-remap one-level standalone rules/* entries
+	case "${rse_entry}" in
+		"${RULES_PATH}"/*/*)
+			echo ""
+			return 0
+			;;
+		"${RULES_PATH}"/*)
+			;;
+		*)
+			echo ""
+			return 0
+			;;
+	esac
+
+	rse_base=$(basename "${rse_entry}")
+	case "${rse_base}" in
+		*.mdc)
+			rse_slug="${rse_base%.mdc}"
+			;;
+		*.md)
+			rse_slug="${rse_base%.md}"
+			;;
+		*)
+			rse_slug="${rse_base}"
+			;;
+	esac
+
+	rse_skill_entry="${RULES_PATH}/${rse_slug}"
+	if [ "$(is_skill "${rse_repo_dir}" "${rse_skill_entry}")" = "true" ]; then
+		echo "${rse_skill_entry}"
+		return 0
+	fi
+	if [ -f "${rse_repo_dir}/${RULES_PATH}/${rse_slug}.mdc" ]; then
+		echo "${RULES_PATH}/${rse_slug}.mdc"
+		return 0
+	fi
+	if [ -f "${rse_repo_dir}/${RULES_PATH}/${rse_slug}.md" ]; then
+		echo "${RULES_PATH}/${rse_slug}.md"
+		return 0
+	fi
+
+	echo ""
+	return 0
+}
+
 # Get the commands target directory for a given mode
 #
 # Returns the appropriate .cursor/commands/ subdirectory based on mode.
@@ -3833,36 +3919,33 @@ cmd_add_rule() {
 		# Reset per-iteration flags
 		car_is_skill=false
 
-		# Handle extension: .mdc for rules, .md for commands
-		# If no extension, check for skill directory first, then try .mdc/.md
-		case "${car_rule}" in
-			*".mdc"|*".md")
-				car_item="${car_rule}"
-				;;
-			*)
-				# Check if it's a skill directory (rules/<name>/ with SKILL.md)
-				if [ "$(is_skill "${car_repo_dir}" "${RULES_PATH}/${car_rule}")" = "true" ]; then
-					car_item="${car_rule}"
-					car_is_skill=true
-					# Warn when a same-named .mdc rule also exists — the skill wins
-					# by convention but the ambiguity may surprise the caller.
-					if [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.mdc" ]; then
-						warn "Both a skill directory and a rule file exist for '${car_rule}'; adding as skill. Use '${car_rule}.mdc' to add the rule instead."
-					fi
-				# Try .mdc (rule) next
-				elif [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.mdc" ]; then
-					car_item="${car_rule}.mdc"
-				# Fall back to .md (command)
-				elif [ -f "${car_repo_dir}/${RULES_PATH}/${car_rule}.md" ]; then
-					car_item="${car_rule}.md"
-				else
-					# Neither exists - default to .mdc for error message
-					car_item="${car_rule}.mdc"
+		# Resolve bare names and stale extensions via shared slug resolver
+		# (skill → .mdc → .md). Explicit paths still prefer an exact hit when present.
+		car_candidate="${RULES_PATH}/${car_rule}"
+		car_resolved=$(resolve_standalone_entry "${car_repo_dir}" "${car_candidate}")
+		if [ -n "${car_resolved}" ]; then
+			car_rule_path="${car_resolved}"
+			car_item=$(basename "${car_rule_path}")
+			if [ "$(is_skill "${car_repo_dir}" "${car_rule_path}")" = "true" ]; then
+				car_is_skill=true
+				# Warn when a same-named .mdc rule also exists — the skill wins
+				# by convention but the ambiguity may surprise the caller.
+				if [ -f "${car_repo_dir}/${RULES_PATH}/${car_item}.mdc" ]; then
+					warn "Both a skill directory and a rule file exist for '${car_item}'; adding as skill. Use '${car_item}.mdc' to add the rule instead."
 				fi
-				;;
-		esac
-
-		car_rule_path="${RULES_PATH}/${car_item}"
+			fi
+		else
+			# Unresolvable — keep a concrete path for the error message
+			case "${car_rule}" in
+				*".mdc"|*".md")
+					car_item="${car_rule}"
+					;;
+				*)
+					car_item="${car_rule}.mdc"
+					;;
+			esac
+			car_rule_path="${RULES_PATH}/${car_item}"
+		fi
 
 		# Check if rule/command/skill exists in the correct source repo for this mode
 		if [ "${car_is_skill}" = "true" ]; then
@@ -4499,20 +4582,25 @@ sync_all_modes() {
 
 # Sync a single manifest to its target directory
 #
-# Clears target directory of .mdc files and repopulates from manifest entries.
+# Clears managed target trees (rules/commands/skills) and repopulates from
+# manifest entries. For standalone rules/* entries whose exact path is gone but
+# whose name-slug exists as another form (rule/command/skill), rewrites the
+# manifest line via resolve_standalone_entry() and deploys the current form.
 # Uses safety checks to only operate in managed directories. Handles external
 # manifest corruption gracefully.
 #
 # Globals:
 #   LOCAL_DIR - Local directory name (for safety check)
 #   SHARED_DIR - Shared directory name (for safety check)
+#   RULES_PATH - Rules path prefix (for relocate detection)
 #
 # Arguments:
 #   $1 - Manifest file path
 #   $2 - Target directory path
+#   $3 - Mode (optional: local, commit, or global)
 #
 # Outputs:
-#   Stderr: Warning messages for failures
+#   Stderr: Warning messages for failures and relocates
 #
 # Returns:
 #   0 on success
@@ -4657,11 +4745,27 @@ sync_manifest_to_directory() {
 		# Use a temporary file to avoid subshell issues with pipes
 		smtd_temp_file=$(mktemp)
 		echo "${smtd_entries}" > "${smtd_temp_file}"
+		smtd_repo_dir=$(get_repo_dir_for_mode "${smtd_mode}")
 		
 		while IFS= read -r smtd_entry; do
 			if [ -n "${smtd_entry}" ]; then
+				smtd_deploy_entry="${smtd_entry}"
+				# Slug-preserving relocate: if a standalone rules/* entry moved
+				# across rule/command/skill forms, rewrite the manifest and deploy
+				# the current form (same priority as bare-name add).
+				case "${smtd_entry}" in
+					"${RULES_PATH}"/*)
+						smtd_resolved=$(resolve_standalone_entry "${smtd_repo_dir}" "${smtd_entry}")
+						if [ -n "${smtd_resolved}" ] && [ "${smtd_resolved}" != "${smtd_entry}" ]; then
+							warn "Relocated ${smtd_entry} → ${smtd_resolved}"
+							remove_manifest_entry_from_file "${smtd_manifest_file}" "${smtd_entry}"
+							add_manifest_entry_to_file "${smtd_manifest_file}" "${smtd_resolved}"
+							smtd_deploy_entry="${smtd_resolved}"
+						fi
+						;;
+				esac
 				# Continue with other entries even if one fails (resilient to external modifications)
-				copy_entry_to_target "${smtd_entry}" "${smtd_target_directory}" "${smtd_mode}" || true
+				copy_entry_to_target "${smtd_deploy_entry}" "${smtd_target_directory}" "${smtd_mode}" || true
 			fi
 		done < "${smtd_temp_file}"
 		

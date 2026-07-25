@@ -90,8 +90,17 @@ No new technology - validation not required
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
 - [x] Preflight
-- [ ] Build
+- [x] Build
 - [ ] QA
+
+## Build checklist
+
+- [x] Stub tests + `resolve_standalone_entry` interface
+- [x] Unit tests for resolver (12) — green
+- [x] Implement `resolve_standalone_entry`; refactor `cmd_add_rule`
+- [x] Integration sync relocate tests (7) — green
+- [x] Wire remap into `sync_manifest_to_directory`
+- [x] Docs: `sync.md`, `manifest.md`
 
 ## Preflight Amendments
 

@@ -37,3 +37,16 @@ Diagnose and fix `ai-rizz sync` so consumers correctly pick up upstream rule→s
     - Preflight PASS (no blocking findings)
 * Insights
     - `cmd_add_rule` already encodes the desired priority for bare names; extracting it is the cheapest correctness guarantee
+
+## 2026-07-25 - BUILD - COMPLETE
+
+* Work completed
+    - Implemented `resolve_standalone_entry` + sync-time manifest rewrite
+    - Refactored `cmd_add_rule` onto shared resolver
+    - Added 19 new tests; full suite 37/37 PASS
+    - Documented relocate behavior in sync/manifest docs
+* Decisions made
+    - Relocate notice uses `warn "Relocated old → new"`
+    - Truly missing entries keep warning + stay in manifest
+* Insights
+    - Integration assertion `grep && fail` under `set -e` fails the test when grep misses; use `if grep; then fail; fi`

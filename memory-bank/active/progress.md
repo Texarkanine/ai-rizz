@@ -24,3 +24,14 @@ Fix `ai-rizz list` ruleset tree drawing so nested children under a last-sibling 
     - Minimal fix only — no refactor of tree rendering beyond stem selection
 * Insights
     - Existing alignment test used non-last `commands/` so it never caught the dangling `│`
+
+## 2026-07-25 - QA - COMPLETE
+
+* Work completed
+    - Semantic review against project brief: all acceptance criteria met
+    - Confirmed `docs/rule-authoring/rulesets.md` already documents blank stem under `└──`
+    - Wrote `.qa-validation-status` = PASS
+* Decisions made
+    - No code or doc changes required from QA
+* Insights
+    - Docs were correct ahead of the implementation; this was a pure display regression vs documented intent

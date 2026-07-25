@@ -15,3 +15,4 @@
 - [x] Passing regression for middle-sibling `│` stem (commands + skills)
 - [x] Minimal fix in `cmd_list`
 - [x] Full test suite (`make test`) — 3/3 unit, 34/34 integration
+- [x] QA PASS — KISS/DRY/YAGNI/completeness/regression/integrity/docs

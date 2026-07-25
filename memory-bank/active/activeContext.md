@@ -1,13 +1,11 @@
 # Active Context
 
 ## Current Task: fix-list-ruleset-tree-stem
-**Phase:** BUILD - COMPLETE
+**Phase:** QA - COMPLETE
 
 ## What Was Done
-- Added four stem-prefix tests in `test_list_display.test.sh` (last/middle × commands/skills)
-- Confirmed last-sibling cases failed on hardcoded `│`
-- Fixed `cmd_list` to set `cl_nest_stem` from sibling position
-- Full suite green: 3 unit + 34 integration
+- Build: stem fix + four tests; full suite green
+- QA: semantic review PASS (no substantive issues; docs already showed correct blank stem)
 
 ## Next Step
-- QA phase (`/niko-qa`)
+- Level 1 wrap-up commit; operator may clean `memory-bank/active/`

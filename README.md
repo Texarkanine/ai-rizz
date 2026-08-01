@@ -1,5 +1,7 @@
 # ai-rizz
 
+[![REUSE status](https://api.reuse.software/badge/github.com/Texarkanine/ai-rizz)](https://api.reuse.software/info/github.com/Texarkanine/ai-rizz)
+
 A command-line tool for managing AI rules and rulesets. Pull rules from a source repository and use them:
 
 * Locally only (git-ignored, for personal use)

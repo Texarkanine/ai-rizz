@@ -121,5 +121,9 @@ No new technology - validation not required
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
 - [ ] Preflight
+
+## Preflight Findings
+
+1. **TDD Plan Encoding (Severity: Blocking)**: Step 5 (Bash completion for list flags) modifies `completion.bash`, which is executable code, not a "prose & policy artifact". The plan incorrectly exempts it from TDD and incorrectly claims that testing it would be a "change-detector". A test that executes the completion function and asserts it offers `-a` and `--all` for the `list` command is a valid behavioral test. You must either add test-before-code ordering for this executable behavior (e.g., by adding a test case to `tests/unit/test_bash_completion.test.sh` or a new suite) or remove the bash completion feature from the plan.
 - [ ] Build
 - [ ] QA

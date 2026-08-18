@@ -28,3 +28,13 @@ Make `ai-rizz list` default to installed inventory, with `-a`/`--all` restoring 
     - No new test files; no new dependencies
 * Insights
     - Retargeted `--all` tests stay green on current code (extra args ignored); the red bar is the new default-inventory tests
+
+## 2026-08-18 - PREFLIGHT - COMPLETE
+
+* Work completed
+    - Validated implementation plan against codebase and TDD rules
+    - Generated preflight report with FAIL status
+* Decisions made
+    - Blocked build due to TDD Plan Encoding violation in Step 5 (Bash completion)
+* Insights
+    - Bash completion is executable code and tests for it are behavioral tests, not change-detectors. The plan must either include test-before-code ordering for bash completion or remove the feature.

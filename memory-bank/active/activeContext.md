@@ -1,15 +1,13 @@
 # Active Context
 
 ## Current Task: list-installed-default
-**Phase:** PLAN - COMPLETE
+**Phase:** PREFLIGHT - COMPLETE (FAIL)
 
 ## What Was Done
 
-- Level 2 plan written: default `cmd_list` is inventory; `-a`/`--all` is today's catalog; one footer `N available, not shown`; omit section headers with no installed members.
-- Footer `N` is the count of omitted top-level glyph-bearing rows, oracle'd from `○` rows in `--all` output (not ruleset tree children).
-- Section titles stay `Available X:` (header rename out of scope).
-- Tests live in existing list suites; catalog/`○` assertions retarget to `--all` before implementation.
+- Preflight validation completed.
+- Plan failed TDD Plan Encoding check: Step 5 (Bash completion) modifies executable code but is incorrectly exempted from TDD as a "prose & policy artifact".
 
 ## Next Step
 
-- Preflight validation (subagent).
+- Operator decision required. Run `/niko-plan` to revise the approach (either add test-before-code ordering for bash completion or remove the feature).

@@ -1,13 +1,13 @@
 # Active Context
 
 ## Current Task: list-installed-default
-**Phase:** QA - COMPLETE (PASS)
+**Phase:** REFLECT - COMPLETE
 
 ## What Was Done
 
-- Addressed QA FAIL: footer example 6→5; default inventory assertions for installed standalone skills; empty-catalog prints nothing; unknown-arg tests assert nonzero exit.
-- `make test` passed. `make docs-build` after the list.md fix.
+- Wrote `memory-bank/active/reflection/reflection-list-installed-default.md`
+- Reconciled persistent files: productContext listing use case; systemPatterns list views; techContext completion stub contract
 
 ## Next Step
 
-- Proceed to `/niko-reflect`
+- `/niko-archive` (operator) — standalone L2, no milestones.md

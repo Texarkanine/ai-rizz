@@ -191,5 +191,5 @@ No new technology - validation not required
 - [x] Pre-Mortem complete
 - [x] Preflight (PASS WITH ADVISORY)
 - [x] Build
-- [x] Build
 - [x] QA
+- [x] Reflect

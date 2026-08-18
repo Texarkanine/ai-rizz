@@ -30,6 +30,7 @@ The documentation site is built with [properdocs](https://github.com/ProperDocs/
 - Run single suite (examples): `./tests/unit/test_skill_detection.test.sh`, `./tests/integration/functions/test_sync_operations.test.sh`
 - Run single suite verbose: `VERBOSE_TESTS=true ./tests/integration/functions/test_sync_operations.test.sh`
 - Test naming: `test_<description>()` functions; files named `test_<feature>.test.sh`
+- Bash completion (`completion.bash`) is tested by sourcing it with `AI_RIZZ_COMPLETION_TEST=1` and stubbing `_init_completion` to assign the dynamically scoped `cur`/`prev` locals (via `COMP_TEST_PREV`/`COMP_TEST_CUR`). `_init_completion` is called with no arguments — do not `local` those names in the stub, and do not grep `completion.bash` as the assertion. Helper: `_complete_with_prev` in [`tests/unit/test_bash_completion.test.sh`](../tests/unit/test_bash_completion.test.sh)
 
 ## Design System
 

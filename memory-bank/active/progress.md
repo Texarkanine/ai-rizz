@@ -139,3 +139,16 @@ Make `ai-rizz list` default to installed inventory, with `-a`/`--all` restoring 
     - Passed QA
 * Insights
     - The rework successfully addressed the missing assertions and documentation error without introducing new complexity
+
+## 2026-08-18 - REFLECT - COMPLETE
+
+* Work completed
+    - Wrote `memory-bank/active/reflection/reflection-list-installed-default.md`
+    - Reconciled persistent files (listing use case, list-view contract, completion stub)
+* Decisions made
+    - Footer hint advisory remains unapplied (brief pins exact string)
+* Insights
+    - Mixed catalog/inventory tests must keep a default `cmd_list` half
+    - Completion stub: env vars, not stub argv; no `local cur prev`
+    - Inspection is not a TDD carve-out for executable completion
+

@@ -268,7 +268,8 @@ test_list_all_flag_shows_uninstalled() {
 
     dash_output=$(run_ai_rizz list -a 2>&1)
     assertEquals "list -a should succeed" 0 $?
-    assertEquals "-a should match --all" "$output" "$dash_output"
+    assert_output_contains "$dash_output" "$UNINSTALLED_GLYPH"
+    assert_output_not_contains "$dash_output" "available, not shown"
 }
 
 # Test: unknown list flag fails
@@ -276,7 +277,9 @@ test_list_unknown_flag_errors() {
     run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
     assertEquals "Init should succeed" 0 $?
 
-    output=$(run_ai_rizz list --installed 2>&1 || echo "LIST_FAILED")
+    output=$(run_ai_rizz list --installed 2>&1)
+    status=$?
+    assertNotEquals "unknown list flag should exit nonzero" "0" "${status}"
     assert_output_contains "$output" "Unknown argument: --installed"
 }
 

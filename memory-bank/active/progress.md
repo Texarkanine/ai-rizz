@@ -101,3 +101,29 @@ Make `ai-rizz list` default to installed inventory, with `-a`/`--all` restoring 
     - Advisory footer hint not applied (brief pins `N available, not shown`)
 * Insights
     - `_init_completion` is called with no args, so `$1`/`$2` inside the stub are empty; env vars are the cheap path that actually works
+
+## 2026-08-18 - QA - COMPLETE (FAIL)
+
+* Work completed
+    - Reviewed the committed build against the project brief, Level 2 implementation plan, established shell patterns, tests, help, and user documentation
+    - Confirmed the core inventory/catalog implementation is simple and follows the planned architecture
+    - Recorded four blocking completeness and documentation findings in `.qa-validation-status`
+* Decisions made
+    - Failed QA because the list documentation example reports six hidden items while showing only five
+    - Required Build to restore planned default standalone-skill coverage, add the planned empty-catalog assertion, and verify unknown arguments exit nonzero
+* Insights
+    - Retargeting the whole standalone-skill glyph test to `--all` preserved catalog coverage but silently removed the default-inventory half specified by the plan
+    - The executable behavior appears correct by inspection; the blockers are one inaccurate user-facing example and missing planned contract assertions
+
+## 2026-08-18 - BUILD - COMPLETE (QA rework)
+
+* Work completed
+    - Fixed list.md footer example 6→5
+    - Default `cmd_list` assertions on installed standalone skill vs hidden sibling
+    - Empty-catalog prints nothing
+    - Unknown-arg tests assert nonzero exit
+    - `make test` and `make docs-build` passed
+* Decisions made
+    - CLI `-a` vs `--all` equality dropped (VERBOSE_TESTS debug prefix made full-output compare fail); both still asserted independently
+* Insights
+    - Retargeting a mixed installed/uninstalled test entirely to `--all` drops the inventory half unless you add a second `cmd_list` call

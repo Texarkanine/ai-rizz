@@ -23,7 +23,7 @@ ai-rizz list -a|--all
 	Available commands:
 	  ★ /pr-feedback-judge
 
-	6 available, not shown
+	5 available, not shown
 	```
 
 === "Catalog"

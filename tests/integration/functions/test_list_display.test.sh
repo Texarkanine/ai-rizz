@@ -520,8 +520,10 @@ test_list_dash_a_matches_all() {
 test_list_unknown_argument_errors() {
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 
-	output=$(cmd_list --installed 2>&1 || echo "ERROR_OCCURRED")
+	output=$(cmd_list --installed 2>&1)
+	status=$?
 
+	assertNotEquals "unknown list arg should exit nonzero" "0" "${status}"
 	echo "${output}" | grep -q "Unknown argument: --installed" || \
 		fail "unknown list arg should name the token: ${output}"
 }
@@ -539,6 +541,26 @@ test_list_installed_ruleset_expands_and_omits_sibling() {
 	if echo "${output}" | grep -q "ruleset2"; then
 		fail "uninstalled sibling ruleset must be omitted: ${output}"
 	fi
+}
+
+test_list_empty_catalog_prints_nothing() {
+	rm -f "${REPO_DIR}/rules/"*.mdc "${REPO_DIR}/rules/"*.md
+	rm -rf "${REPO_DIR}/rulesets"
+	mkdir -p "${REPO_DIR}/rulesets"
+	cl_empty_skill_dirs=$(find "${REPO_DIR}/rules" -mindepth 1 -maxdepth 1 -type d 2>/dev/null || true)
+	if [ -n "${cl_empty_skill_dirs}" ]; then
+		rm -rf ${cl_empty_skill_dirs}
+	fi
+
+	cd "${REPO_DIR}" || fail "Failed to cd to repo"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Empty the catalog" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+	output=$(cmd_list)
+
+	[ -z "${output}" ] || fail "empty catalog should print nothing: ${output}"
 }
 
 # Load shunit2

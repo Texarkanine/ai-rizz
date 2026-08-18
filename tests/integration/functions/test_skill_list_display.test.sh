@@ -101,14 +101,23 @@ test_standalone_skill_installed_glyph() {
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 	cmd_add_rule "installed-skill" --commit
 
-	output=$(cmd_list --all)
+	all_output=$(cmd_list --all)
 
 	# installed-skill should show committed glyph (●)
-	echo "${output}" | grep -q "● installed-skill/" || \
-		fail "Installed skill should show committed glyph (●): ${output}"
+	echo "${all_output}" | grep -q "● installed-skill/" || \
+		fail "Installed skill should show committed glyph (●): ${all_output}"
 	# uninstalled-skill should show uninstalled glyph (○)
-	echo "${output}" | grep -q "○ uninstalled-skill/" || \
-		fail "Uninstalled skill should show uninstalled glyph (○): ${output}"
+	echo "${all_output}" | grep -q "○ uninstalled-skill/" || \
+		fail "Uninstalled skill should show uninstalled glyph (○): ${all_output}"
+
+	output=$(cmd_list)
+	echo "${output}" | grep -q "Available skills:" || \
+		fail "default list should keep the skills header when one is installed: ${output}"
+	echo "${output}" | grep -q "● installed-skill/" || \
+		fail "default list should show the installed skill: ${output}"
+	if echo "${output}" | grep -q "uninstalled-skill/"; then
+		fail "default list must hide the uninstalled sibling skill: ${output}"
+	fi
 }
 
 # ============================================================================

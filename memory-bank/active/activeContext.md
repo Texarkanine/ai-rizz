@@ -1,13 +1,15 @@
 # Active Context
 
 ## Current Task: list-installed-default
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** PLAN - COMPLETE
 
 ## What Was Done
 
-- Intent confirmed: default `list` is inventory; `-a`/`--all` is catalog; one cumulative `N available, not shown` footer; omit section headers with no installed members.
-- Classified as Level 2 (Simple Enhancement): self-contained `cmd_list` default flip plus flag, footer, tests, and docs. No architectural change.
+- Level 2 plan written: default `cmd_list` is inventory; `-a`/`--all` is today's catalog; one footer `N available, not shown`; omit section headers with no installed members.
+- Footer `N` is the count of omitted top-level glyph-bearing rows, oracle'd from `○` rows in `--all` output (not ruleset tree children).
+- Section titles stay `Available X:` (header rename out of scope).
+- Tests live in existing list suites; catalog/`○` assertions retarget to `--all` before implementation.
 
 ## Next Step
 
-- Load the Level 2 workflow and execute the plan phase.
+- Preflight validation (subagent).

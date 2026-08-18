@@ -36,7 +36,7 @@ test_list_local_mode_only_glyphs() {
     cmd_add_rule "rule1.mdc" --local
     
     # Test: List should show local and uninstalled glyphs only
-    output=$(cmd_list)
+    output=$(cmd_list --all)
     
     # Expected: Shows ◐ for installed local rule, ○ for others
     echo "$output" | grep -q "$LOCAL_GLYPH.*rule1" || fail "Should show local glyph for rule1"
@@ -51,7 +51,7 @@ test_list_commit_mode_only_glyphs() {
     cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
     cmd_add_rule "rule1.mdc" --commit
     
-    output=$(cmd_list)
+    output=$(cmd_list --all)
     
     # Expected: Shows ● for committed rule, ○ for others  
     echo "$output" | grep -q "$COMMITTED_GLYPH.*rule1" || fail "Should show committed glyph for rule1"
@@ -67,7 +67,7 @@ test_list_dual_mode_all_glyphs() {
     cmd_add_rule "rule1.mdc" --local
     cmd_add_rule "rule2.mdc" --commit  # Lazy init commit mode
     
-    output=$(cmd_list)
+    output=$(cmd_list --all)
     
     # Expected: Shows all three glyphs
     echo "$output" | grep -q "$LOCAL_GLYPH.*rule1" || fail "Should show local glyph for rule1"

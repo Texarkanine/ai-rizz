@@ -89,3 +89,15 @@ Make `ai-rizz list` default to installed inventory, with `-a`/`--all` restoring 
     - Flag parse stays after `ensure_initialized_and_valid` (uninitialized `--bogus` reports no config, not the bad token)
 * Insights
     - Empty-section tests must move to `--all` or they pass vacuously after the inventory flip
+
+## 2026-08-18 - BUILD - COMPLETE
+
+* Work completed
+    - Implemented inventory default, `-a`/`--all`, footer, omitted empty-of-installed headers
+    - Added cheap `_ai_rizz_completion` test and `list)` completion arm
+    - Updated help and docs; `make test` passed; `make docs-build` passed
+* Decisions made
+    - Completion stub feeds `cur`/`prev` through environment variables, not the stub's positional params
+    - Advisory footer hint not applied (brief pins `N available, not shown`)
+* Insights
+    - `_init_completion` is called with no args, so `$1`/`$2` inside the stub are empty; env vars are the cheap path that actually works

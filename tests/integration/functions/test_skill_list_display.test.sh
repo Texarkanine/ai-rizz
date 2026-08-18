@@ -42,7 +42,7 @@ test_standalone_skill_appears_in_skills_section() {
 
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	echo "${output}" | grep -q "Available skills:" || \
 		fail "Output should have 'Available skills:' section"
@@ -69,7 +69,7 @@ test_embedded_skill_not_in_skills_section() {
 
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	# Must NOT appear in "Available skills:" — the trailing "/" is the marker
 	# used exclusively in the skills section (tree entries have no trailing /)
@@ -101,7 +101,7 @@ test_standalone_skill_installed_glyph() {
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 	cmd_add_rule "installed-skill" --commit
 
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	# installed-skill should show committed glyph (●)
 	echo "${output}" | grep -q "● installed-skill/" || \
@@ -130,7 +130,7 @@ test_skill_deduplicated_when_in_both_paths() {
 
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	# Count occurrences of "shared-skill/" in the output — should be exactly 1
 	count=$(echo "${output}" | grep -c "shared-skill/")
@@ -142,7 +142,7 @@ test_skill_deduplicated_when_in_both_paths() {
 # ============================================================================
 
 test_ruleset_tree_expands_skills_subdir() {
-	# When a ruleset has a skills/ subdir, cmd_list shows it in the ruleset tree
+	# When a ruleset has a skills/ subdir, cmd_list --all shows it in the ruleset tree
 	# with its contents expanded one level (mirroring commands/ treatment).
 	mkdir -p "${REPO_DIR}/rulesets/my-ruleset/skills/skill-one"
 	echo "# Skill One" > "${REPO_DIR}/rulesets/my-ruleset/skills/skill-one/SKILL.md"
@@ -156,7 +156,7 @@ test_ruleset_tree_expands_skills_subdir() {
 
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	# The ruleset tree should show the skills/ directory as a tree entry
 	# (filter "Available skills:" header so we only match the tree line)
@@ -192,7 +192,7 @@ test_ruleset_tree_skills_subdir_shows_only_valid_skills() {
 
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	# real-skill (has SKILL.md) should appear in the tree
 	echo "${output}" | grep "real-skill" | grep -qv "/" || \
@@ -224,7 +224,7 @@ test_ruleset_tree_shows_in_repo_symlinked_embedded_skill() {
 
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	echo "${output}" | grep "linked-skill" | grep -qv "/" || \
 		fail "linked-skill should appear in ruleset tree expansion (without trailing /): ${output}"
@@ -252,7 +252,7 @@ test_ruleset_tree_skips_out_of_repo_symlinked_embedded_skill() {
 
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	assertFalse "external-skill should be excluded from ruleset tree output" \
 		"echo '${output}' | grep -q 'external-skill'"
@@ -269,7 +269,7 @@ test_rulesets_section_comes_after_skills_section() {
 	# commands, and skills — listing them last keeps the atomic items first.
 	# Section headers are only printed when content exists, so this test adds
 	# one standalone skill (to trigger "Available skills:") and one ruleset
-	# (to trigger "Available rulesets:") before calling cmd_list.
+	# (to trigger "Available rulesets:") before calling cmd_list --all.
 	mkdir -p "${REPO_DIR}/rules/ordering-skill"
 	echo "# Ordering Skill" > "${REPO_DIR}/rules/ordering-skill/SKILL.md"
 	mkdir -p "${REPO_DIR}/rulesets/ordering-ruleset"
@@ -282,7 +282,7 @@ test_rulesets_section_comes_after_skills_section() {
 
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	# Extract line numbers of each section header
 	skills_line=$(echo "${output}" | grep -n "Available skills:" | cut -d: -f1)

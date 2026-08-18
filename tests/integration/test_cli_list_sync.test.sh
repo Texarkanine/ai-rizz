@@ -39,7 +39,7 @@ test_list_shows_correct_glyphs_local_only() {
     assertEquals "Setup should succeed" 0 $?
     
     # Run list command
-    output=$(run_ai_rizz list 2>&1)
+    output=$(run_ai_rizz list --all 2>&1)
     assertEquals "List should succeed" 0 $?
     
     # Should show local glyph for installed items
@@ -64,7 +64,7 @@ test_list_shows_correct_glyphs_commit_only() {
     assertEquals "Setup should succeed" 0 $?
     
     # Run list command
-    output=$(run_ai_rizz list 2>&1)
+    output=$(run_ai_rizz list --all 2>&1)
     assertEquals "List should succeed" 0 $?
     
     # Should show committed glyph for installed items
@@ -96,7 +96,7 @@ test_list_shows_correct_glyphs_dual_mode() {
     assertEquals "Setup should succeed" 0 $?
     
     # Run list command
-    output=$(run_ai_rizz list 2>&1)
+    output=$(run_ai_rizz list --all 2>&1)
     assertEquals "List should succeed" 0 $?
     
     # Should show all three glyph types
@@ -239,6 +239,45 @@ test_sync_partial_ruleset_conflicts() {
     # rule1 should remain in local directory (no conflict)
     assert_rule_deployed ".cursor/rules/local" "rule1"
     assert_rule_not_deployed ".cursor/rules/shared" "rule1"
+}
+
+# Test: default list is inventory (installed only + footer)
+test_list_default_hides_uninstalled() {
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    run_ai_rizz add rule rule1 --local
+    assertEquals "Setup should succeed" 0 $?
+
+    output=$(run_ai_rizz list 2>&1)
+    assertEquals "List should succeed" 0 $?
+
+    assert_output_contains "$output" "$LOCAL_GLYPH.*rule1.mdc\|rule1.mdc.*$LOCAL_GLYPH"
+    assert_output_not_contains "$output" "$UNINSTALLED_GLYPH"
+    assert_output_contains "$output" "available, not shown"
+}
+
+# Test: -a and --all restore the catalog (including uninstalled glyphs, no footer)
+test_list_all_flag_shows_uninstalled() {
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    run_ai_rizz add rule rule1 --local
+    assertEquals "Setup should succeed" 0 $?
+
+    output=$(run_ai_rizz list --all 2>&1)
+    assertEquals "list --all should succeed" 0 $?
+    assert_output_contains "$output" "$UNINSTALLED_GLYPH"
+    assert_output_not_contains "$output" "available, not shown"
+
+    dash_output=$(run_ai_rizz list -a 2>&1)
+    assertEquals "list -a should succeed" 0 $?
+    assertEquals "-a should match --all" "$output" "$dash_output"
+}
+
+# Test: unknown list flag fails
+test_list_unknown_flag_errors() {
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    assertEquals "Init should succeed" 0 $?
+
+    output=$(run_ai_rizz list --installed 2>&1 || echo "LIST_FAILED")
+    assert_output_contains "$output" "Unknown argument: --installed"
 }
 
 # Load and run shunit2

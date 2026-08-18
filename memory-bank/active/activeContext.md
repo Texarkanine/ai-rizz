@@ -1,14 +1,15 @@
 # Active Context
 
 ## Current Task: list-installed-default
-**Phase:** PREFLIGHT - COMPLETE (PASS WITH ADVISORY)
+**Phase:** BUILD - COMPLETE
 
 ## What Was Done
 
-- Preflight PASS WITH ADVISORY. Cheap completion test empirically red today, green once the `list)` arm exists.
-- Retarget enumeration added to `tasks.md`. `make docs-build` stays in verification.
-- Advisory not applied: footer hint `(ai-rizz list --all)` would change the brief's exact string.
+- Default `cmd_list` is inventory; `-a`/`--all` is catalog; footer `N available, not shown`; empty-of-installed section headers omitted.
+- Cheap completion test: stub `_init_completion` via `COMP_TEST_PREV`/`COMP_TEST_CUR` env (the stub's `$1`/`$2` are empty because `_ai_rizz_completion` calls it with no args).
+- Help, docs, getting-started discovery uses `list --all`. `make test` 37/37. `make docs-build` passed.
+- Did not apply the advisory footer hint `(ai-rizz list --all)` — brief pins the exact string.
 
 ## Next Step
 
-- Build phase.
+- QA review (subagent).

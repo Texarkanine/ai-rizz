@@ -19,6 +19,9 @@
 #   - Git repo with project manifest(s) → project cache (repos/<basename>/repo)
 #   - Git repo without project manifests → global cache (global-only context)
 #
+# Capability coverage (_ai_rizz_completion — list flags):
+#   - prev=list, empty cur → COMPREPLY contains -a and --all
+#
 # Dependencies: shunit2, common test utilities, bash (completion.bash is bash)
 # Usage: sh test_bash_completion.test.sh
 
@@ -75,6 +78,34 @@ _call_get_repo_dir() {
 		. "$1"
 		_get_repo_dir
 	' bash "${_COMPLETION_BASH}" "$2" "$1"
+}
+
+# Invoke _ai_rizz_completion with stubbed _init_completion.
+#
+# _ai_rizz_completion declares `local cur prev`. Bash dynamic scope means a
+# stub that assigns those names (without its own local) fills the caller's
+# locals. Do not declare local cur/prev in the stub.
+#
+# Arguments:
+#   $1 - prev word (e.g. list)
+#   $2 - cur word (may be empty)
+#
+# Outputs:
+#   Stdout: COMPREPLY entries, one per line
+#
+_complete_with_prev() {
+	COMP_TEST_PREV="$1" COMP_TEST_CUR="$2" bash -c '
+		AI_RIZZ_COMPLETION_TEST=1
+		# shellcheck disable=SC1090
+		. "$1"
+		_init_completion() {
+			prev="${COMP_TEST_PREV}"
+			cur="${COMP_TEST_CUR}"
+			return 0
+		}
+		_ai_rizz_completion
+		printf "%s\n" "${COMPREPLY[@]}"
+	' bash "${_COMPLETION_BASH}"
 }
 
 # ============================================================================
@@ -219,6 +250,16 @@ test_get_repo_dir_git_without_project_manifest_uses_global_cache() {
 	got="$(_call_get_repo_dir "${bare_git}" "${fake_home}")"
 	expected="${fake_home}/.config/ai-rizz/repos/_ai-rizz.global/repo"
 	assertEquals "Git without project manifests should use global cache" "${expected}" "${got}"
+}
+
+# list completes -a and --all
+test_list_completes_all_flags() {
+	names="$(_complete_with_prev list "")"
+	echo "${names}" | grep -qx -- "-a" || \
+		fail "list should complete -a: ${names}"
+	echo "${names}" | grep -qx -- "--all" || \
+		fail "list should complete --all: ${names}"
+	return 0
 }
 
 # Load and run shunit2

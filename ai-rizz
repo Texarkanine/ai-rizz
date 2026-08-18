@@ -3325,11 +3325,16 @@ cmd_deinit() {
 	return 0
 }
 
-# List available rules and rulesets (multi-mode aware)
+# List installed rules and rulesets (multi-mode aware)
 #
-# Shows rules and rulesets with glyphs indicating installation status.
+# Default: installed inventory only, with a footer counting hidden catalog
+# items. --all/-a restores the full catalog including uninstalled glyphs.
 # Handles dual-mode conflict resolution (commit overrides local) & expands
-# rulesets to show contents. Syncs repository before listing.
+# installed (or, with --all, all) rulesets to show contents. Syncs repository
+# before listing.
+#
+# Flags:
+#   -a, --all  Show the full catalog (uninstalled items included)
 #
 # Globals:
 #   SOURCE_REPO - Source repository URL
@@ -3339,7 +3344,7 @@ cmd_deinit() {
 #   UNINSTALLED_GLYPH - Glyph for uninstalled items
 #
 # Arguments:
-#   None
+#   Optional -a / --all. Unknown arguments error.
 #
 # Outputs:
 #   Stdout: Formatted list of rules and rulesets
@@ -3362,6 +3367,20 @@ cmd_list() {
 	if [ "$(is_mode_active global)" = "true" ]; then
 		validate_manifest_format "${GLOBAL_MANIFEST_FILE}" || error "Corrupted global manifest file"
 	fi
+
+	cl_show_all="false"
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			-a|--all)
+				cl_show_all="true"
+				shift
+				;;
+			*)
+				error "Unknown argument: $1"
+				;;
+		esac
+	done
+	cl_hidden_count=0
 	
 	# Determine which repo dir to use for listing available items
 	# When only global mode is active, use GLOBAL_REPO_DIR
@@ -3477,61 +3496,93 @@ cmd_list() {
 		
 		echo "${cl_is_installed_status}"
 	}
+
+	# Return 0 if this item should be printed. Uninstalled items increment
+	# cl_hidden_count and return 1 unless --all is set.
+	cl_note_item() {
+		cl_ni_status="${1}"
+		case "${cl_ni_status}" in
+			committed|local|global)
+				return 0
+				;;
+			*)
+				if [ "${cl_show_all}" = "true" ]; then
+					return 0
+				fi
+				cl_hidden_count=$(expr "${cl_hidden_count}" + 1)
+				return 1
+				;;
+		esac
+	}
 	
-	# Display rules (*.mdc files) — section omitted entirely when empty
+	# Display rules (*.mdc files) — section omitted when nothing to print
 	cl_rules=$(find "${cl_repo_dir}/${RULES_PATH}" -maxdepth 1 -name "*.mdc" -type f 2>/dev/null | sort)
-	if [ -n "${cl_rules}" ]; then
-		echo "Available rules:"
-		for cl_rule in ${cl_rules}; do
-			cl_rule_name=$(basename "${cl_rule}")
-			cl_rule_path="${RULES_PATH}/${cl_rule_name}"
-			cl_status=$(is_installed "${cl_rule_path}")
-			
-			case "${cl_status}" in
-				committed)
-					printf "  %s %s\n" "${COMMITTED_GLYPH}" "${cl_rule_name}"
-					;;
-				local)
-					printf "  %s %s\n" "${LOCAL_GLYPH}" "${cl_rule_name}"
-					;;
-				global)
-					printf "  %s %s\n" "${GLOBAL_GLYPH}" "${cl_rule_name}"
-					;;
-				*)
-					printf "  %s %s\n" "${UNINSTALLED_GLYPH}" "${cl_rule_name}"
-					;;
-			esac
-		done
+	cl_rules_printed="false"
+	for cl_rule in ${cl_rules}; do
+		cl_rule_name=$(basename "${cl_rule}")
+		cl_rule_path="${RULES_PATH}/${cl_rule_name}"
+		cl_status=$(is_installed "${cl_rule_path}")
+		if ! cl_note_item "${cl_status}"; then
+			continue
+		fi
+		if [ "${cl_rules_printed}" != "true" ]; then
+			echo "Available rules:"
+			cl_rules_printed="true"
+		fi
+
+		case "${cl_status}" in
+			committed)
+				printf "  %s %s\n" "${COMMITTED_GLYPH}" "${cl_rule_name}"
+				;;
+			local)
+				printf "  %s %s\n" "${LOCAL_GLYPH}" "${cl_rule_name}"
+				;;
+			global)
+				printf "  %s %s\n" "${GLOBAL_GLYPH}" "${cl_rule_name}"
+				;;
+			*)
+				printf "  %s %s\n" "${UNINSTALLED_GLYPH}" "${cl_rule_name}"
+				;;
+		esac
+	done
+	if [ "${cl_rules_printed}" = "true" ]; then
 		echo ""
 	fi
 	
-	# Display commands (*.md files) with / prefix — section omitted entirely when empty
+	# Display commands (*.md files) with / prefix — section omitted when empty
 	cl_commands=$(find "${cl_repo_dir}/${RULES_PATH}" -maxdepth 1 -name "*.md" ! -name "*.mdc" -type f 2>/dev/null | sort)
-	if [ -n "${cl_commands}" ]; then
-		echo "Available commands:"
-		for cl_command in ${cl_commands}; do
-			cl_command_name=$(basename "${cl_command}")
-			cl_command_path="${RULES_PATH}/${cl_command_name}"
-			cl_status=$(is_installed "${cl_command_path}")
-			
-			# Strip .md extension for display (matches Cursor invocation)
-			cl_command_display=$(echo "${cl_command_name}" | sed 's/\.md$//')
-			
-			case "${cl_status}" in
-				committed)
-					printf "  %s /%s\n" "${COMMITTED_GLYPH}" "${cl_command_display}"
-					;;
-				local)
-					printf "  %s /%s\n" "${LOCAL_GLYPH}" "${cl_command_display}"
-					;;
-				global)
-					printf "  %s /%s\n" "${GLOBAL_GLYPH}" "${cl_command_display}"
-					;;
-				*)
-					printf "  %s /%s\n" "${UNINSTALLED_GLYPH}" "${cl_command_display}"
-					;;
-			esac
-		done
+	cl_commands_printed="false"
+	for cl_command in ${cl_commands}; do
+		cl_command_name=$(basename "${cl_command}")
+		cl_command_path="${RULES_PATH}/${cl_command_name}"
+		cl_status=$(is_installed "${cl_command_path}")
+		if ! cl_note_item "${cl_status}"; then
+			continue
+		fi
+		if [ "${cl_commands_printed}" != "true" ]; then
+			echo "Available commands:"
+			cl_commands_printed="true"
+		fi
+
+		# Strip .md extension for display (matches Cursor invocation)
+		cl_command_display=$(echo "${cl_command_name}" | sed 's/\.md$//')
+
+		case "${cl_status}" in
+			committed)
+				printf "  %s /%s\n" "${COMMITTED_GLYPH}" "${cl_command_display}"
+				;;
+			local)
+				printf "  %s /%s\n" "${LOCAL_GLYPH}" "${cl_command_display}"
+				;;
+			global)
+				printf "  %s /%s\n" "${GLOBAL_GLYPH}" "${cl_command_display}"
+				;;
+			*)
+				printf "  %s /%s\n" "${UNINSTALLED_GLYPH}" "${cl_command_display}"
+				;;
+		esac
+	done
+	if [ "${cl_commands_printed}" = "true" ]; then
 		echo ""
 	fi
 	
@@ -3558,12 +3609,19 @@ cmd_list() {
 	printf '%s' "${cl_skill_names}" | sort -u | grep -v '^$' > "${cl_skl_names_tmp}" 2>/dev/null || true
 
 	if [ -s "${cl_skl_names_tmp}" ]; then
-		echo "Available skills:"
+		cl_skills_printed="false"
 		while IFS= read -r cl_skill_name; do
 			if [ -z "${cl_skill_name}" ]; then
 				continue
 			fi
 			cl_skill_status=$(is_installed "${RULES_PATH}/${cl_skill_name}")
+			if ! cl_note_item "${cl_skill_status}"; then
+				continue
+			fi
+			if [ "${cl_skills_printed}" != "true" ]; then
+				echo "Available skills:"
+				cl_skills_printed="true"
+			fi
 			case "${cl_skill_status}" in
 				committed)
 					printf "  %s %s/\n" "${COMMITTED_GLYPH}" "${cl_skill_name}"
@@ -3579,18 +3637,26 @@ cmd_list() {
 					;;
 			esac
 		done < "${cl_skl_names_tmp}"
-		echo ""
+		if [ "${cl_skills_printed}" = "true" ]; then
+			echo ""
+		fi
 	fi
 	rm -f "${cl_skl_names_tmp}"
 
-	# Display rulesets — section omitted entirely when empty
+	# Display rulesets — section omitted when nothing to print
 	cl_rulesets=$(find "${cl_repo_dir}/${RULESETS_PATH}" -mindepth 1 -maxdepth 1 -type d | sort 2>/dev/null)
-	if [ -n "${cl_rulesets}" ]; then
-		echo "Available rulesets:"
-		for cl_ruleset in ${cl_rulesets}; do
+	cl_rulesets_printed="false"
+	for cl_ruleset in ${cl_rulesets}; do
 			cl_ruleset_name=$(basename "${cl_ruleset}")
 			cl_ruleset_path="${RULESETS_PATH}/${cl_ruleset_name}"
 			cl_status=$(is_installed "${cl_ruleset_path}")
+			if ! cl_note_item "${cl_status}"; then
+				continue
+			fi
+			if [ "${cl_rulesets_printed}" != "true" ]; then
+				echo "Available rulesets:"
+				cl_rulesets_printed="true"
+			fi
 			
 			# Display ruleset with installation status
 			case "${cl_status}" in
@@ -3762,7 +3828,12 @@ cmd_list() {
 				rm -f "${cl_temp_items}"
 			fi
 		done
+	if [ "${cl_rulesets_printed}" = "true" ]; then
 		echo ""
+	fi
+
+	if [ "${cl_show_all}" != "true" ] && [ "${cl_hidden_count}" -gt 0 ]; then
+		printf '%s available, not shown\n' "${cl_hidden_count}"
 	fi
 
 	return 0
@@ -5317,7 +5388,7 @@ Usage: ai-rizz <command> [command-specific options]
 Available commands:
   init [<source_repo>]     Initialize the repository
   deinit                   Deinitialize the repository
-  list                     List available rules and rulesets
+  list                     List installed rules and rulesets
   add rule <rule>...       Add rule(s) to the repository
   add ruleset <ruleset>... Add ruleset(s) to the repository
   remove rule <rule>...    Remove rule(s) from the repository
@@ -5344,6 +5415,9 @@ Command-specific options:
 
   sync options:
     -g, --global           Sync only global mode (skip local/commit)
+
+  list options:
+    -a, --all              Show the full catalog, including uninstalled items
 
   deinit options:
     -b, --both             Remove local and commit modes only (not global)

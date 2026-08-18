@@ -22,7 +22,7 @@ make install
 
 After installation, pick exactly one mode to start with. You can add the other modes later.
 
-All examples below use the public reference repo at `Texarkanine/.cursor-rules`. If you use a different source repo, replace the URL and item names with entries from your `ai-rizz list` output.
+All examples below use the public reference repo at `Texarkanine/.cursor-rules`. If you use a different source repo, replace the URL and item names with entries from your `ai-rizz list --all` output.
 
 ### Personal Project Rules
 
@@ -30,7 +30,7 @@ If you just want to customize your own workflows, in this one repository, and do
 
 ```bash
 ai-rizz init https://github.com/Texarkanine/.cursor-rules.git --local
-ai-rizz list
+ai-rizz list --all
 ai-rizz add rule git-safety
 ai-rizz list
 ```
@@ -41,7 +41,7 @@ If you want to customize the workflows for everyone who works with this reposito
 
 ```bash
 ai-rizz init https://github.com/Texarkanine/.cursor-rules.git --commit
-ai-rizz list
+ai-rizz list --all
 ai-rizz add ruleset shell --commit
 ai-rizz list
 ```
@@ -52,7 +52,7 @@ If you want to customize the way AI agents behave on your machine, regardless of
 
 ```bash
 ai-rizz init https://github.com/Texarkanine/.cursor-rules.git --global
-ai-rizz list
+ai-rizz list --all
 ai-rizz add ruleset script-it --global
 ai-rizz list
 ```

@@ -124,6 +124,9 @@ _ai_rizz_completion() {
 		deinit)
 			COMPREPLY=( $(compgen -W "--local -l --commit -c --global -g --both -b -y" -- "${cur}") )
 			;;
+		list)
+			COMPREPLY=( $(compgen -W "-a --all" -- "${cur}") )
+			;;
 		-d|-f|--manifest|-s|--skibidi)
 			# These options take a value, no completion needed
 			COMPREPLY=()

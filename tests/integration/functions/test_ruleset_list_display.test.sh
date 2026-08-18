@@ -231,7 +231,7 @@ test_list_hides_unsupported_root_level_skill_like_directory() {
 
 	# Initialize and list
 	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	# Ruleset still appears
 	echo "$output" | grep -q "test-root-skill-dir" || fail "Ruleset should appear in list output"
@@ -256,7 +256,7 @@ test_list_keeps_magic_skills_directory_visible() {
 
 	# Initialize and list
 	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --commit
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	# Magic skills path remains visible
 	echo "$output" | grep -A 12 "test-skills-magic-dir" | grep -q "skills" || \

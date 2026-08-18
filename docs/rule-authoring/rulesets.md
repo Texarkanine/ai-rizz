@@ -32,11 +32,11 @@ rulesets
 
 Cursor Rules with the `.mdc` extension can be placed anywhere in a Ruleset's directory.
 
-* If they are in the root of the ruleset directory, they will show up in `ai-rizz list`.
+* If they are in the root of the ruleset directory, they will show up in `ai-rizz list` (and `ai-rizz list --all`).
 * If they are in a subdirectory, they will
 	1. be installed to that subdirectory within the target installation directory
 	2. not show up in `ai-rizz list` - only the directory that contains them will.
-* In `ai-rizz list`, top-level ruleset directories are shown only when they are:
+* In `ai-rizz list --all`, top-level ruleset directories are shown only when they are:
 	1. `commands/`
 	2. `skills/`
 	3. directories containing one or more deployable `.mdc` rules
@@ -61,7 +61,7 @@ Directories that do not match those rules are ignored in list output.
 	       └── extra.mdc -> ../../../rules/extra.mdc
 	```
 
-=== "ai-rizz list"
+=== "ai-rizz list --all"
 
 	```
 	Available rulesets:
@@ -85,7 +85,7 @@ This allows you to have many "helper" rules that the end-user doesn't see. You'd
 
 Skills **must** be placed in the `skills/` subdirectory of the ruleset. Skills may not nest.
 
-Direct child symlinks under `rulesets/<ruleset>/skills/` are supported. If a symlink resolves to an in-repository skill directory containing `SKILL.md`, `ai-rizz list` shows it in the ruleset tree and install/sync deploys it into `.cursor/skills/<mode>/`.
+Direct child symlinks under `rulesets/<ruleset>/skills/` are supported. If a symlink resolves to an in-repository skill directory containing `SKILL.md`, `ai-rizz list --all` shows it in the ruleset tree and install/sync deploys it into `.cursor/skills/<mode>/`.
 
 For safety, symlinks resolving outside the source repository are skipped.
 
@@ -106,7 +106,7 @@ For safety, symlinks resolving outside the source repository are skipped.
 	        └── magic-skill -> ../../../rules/magic-skill
 	```
 
-=== "ai-rizz list"
+=== "ai-rizz list --all"
 
 	```
 	Available rulesets:
@@ -151,7 +151,7 @@ Commands **must** be placed in the `commands/` subdirectory of the ruleset. Only
 			└── magic-command.md -> ../../../rules/magic-command.md
 	```
 
-=== "ai-rizz list"
+=== "ai-rizz list --all"
 
 	```
 	Available rulesets:

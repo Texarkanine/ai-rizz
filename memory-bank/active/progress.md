@@ -51,3 +51,16 @@ Make `ai-rizz list` default to installed inventory, with `-a`/`--all` restoring 
     - Name-listing tests stay because missed rule bodies are the failure mode that earned them
 * Insights
     - Preflight's tests-or-remove fork was real; the operator's third path is inspect-by-looking for flags. If TDD encoding cannot represent that, the friction belongs in the preflight skill, not a harness in this task
+
+## 2026-08-18 - PREFLIGHT - COMPLETE (FAIL, rework)
+
+* Work completed
+    - Revalidated the revised implementation plan against codebase conventions, consumers, documentation tooling, and mandatory TDD rules
+    - Recorded the FAIL gate and a concrete completion-test route that does not require bash-completion or a `COMP_WORDS` dispatcher harness
+    - Added `make docs-build` to full verification for the planned documentation changes
+* Decisions made
+    - Kept the build blocked because Step 5 still schedules executable completion behavior without a test-first step
+    - Preserved the operator's no-test decision as the unresolved conflict rather than silently overriding it during preflight
+* Insights
+    - `_ai_rizz_completion` can be unit-tested by sourcing `completion.bash` and stubbing `_init_completion` to set Bash's dynamically scoped `cur` and `prev` locals
+    - Inspection can review a static flag list but cannot satisfy the repository's mandatory TDD gate for executable behavior

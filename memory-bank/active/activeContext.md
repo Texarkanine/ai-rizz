@@ -1,13 +1,15 @@
 # Active Context
 
 ## Current Task: list-installed-default
-**Phase:** PLAN - COMPLETE
+**Phase:** PREFLIGHT - COMPLETE (FAIL)
 
 ## What Was Done
 
-- Replanned after preflight FAIL. Operator decision: keep `completion.bash` `list)` offers (`-a`/`--all`); do not add a dispatcher harness; do not use the prose/policy TDD exemption; inspect the flag word list.
-- Rest of the plan unchanged: default `cmd_list` is inventory; `-a`/`--all` is catalog; one footer `N available, not shown`; omit empty-of-installed headers; keep `Available X:` titles.
+- Revalidated the revised plan against codebase reality and mandatory TDD rules.
+- Build remains blocked: Step 5 adds executable Bash completion behavior with inspection only, which conflicts with `.cursor/rules/shared/always-tdd.mdc`.
+- Confirmed a lightweight behavioral test is possible without bash-completion or a `COMP_WORDS` harness by sourcing `completion.bash`, stubbing `_init_completion`, invoking `_ai_rizz_completion`, and asserting `COMPREPLY`.
+- Added `make docs-build` to full verification because the plan changes the strict ProperDocs site.
 
 ## Next Step
 
-- Preflight validation (subagent).
+- Run `/niko-plan` when ready to resolve the completion/TDD conflict.

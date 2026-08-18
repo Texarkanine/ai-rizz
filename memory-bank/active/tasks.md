@@ -87,7 +87,7 @@
 
 7. Full verification
    - Files: none new
-   - Tests first: `make test` (entire suite; read full output)
+   - Verification: `make test` (entire suite; read full output), then `make docs-build` (strict CI-parity documentation build)
    - Changes: fix any remaining `cmd_list` callers that still expect catalog on the default.
 
 ## Technology Validation
@@ -119,6 +119,20 @@ No new technology - validation not required
 - Plan fails because getting-started still says `list` then `add`, so first-run docs show only a footer: already covered by Challenge 5 / step 6
 - Plan fails because preflight TDD encoding still has only “write tests” or “remove the unit” and rejects the operator carve-out: already covered by Challenge 6. Do not invent `_init_completion` stubs, do not grep `completion.bash`, do not relabel it prose. Surface that as workflow friction.
 
+## Preflight Report
+
+**Result:** FAIL
+
+### Findings
+
+1. **BLOCKING — Step 5 violates mandatory TDD encoding.** `completion.bash` is executable behavior, but the plan explicitly schedules no test before adding the `list)` completion branch. Inspection is not a test-first process and the operator carve-out conflicts with `.cursor/rules/shared/always-tdd.mdc`. This does not require installing bash-completion or building a `COMP_WORDS` dispatcher harness: `tests/unit/test_bash_completion.test.sh` can source `completion.bash`, stub `_init_completion` to set the dynamically scoped `cur`/`prev` locals, invoke `_ai_rizz_completion`, and assert `COMPREPLY`. Because the current operator decision forbids any such test, the plan has no compliant build path. Re-run `/niko-plan` after deciding whether to test the completion behavior, remove it from scope, or change the governing TDD policy.
+2. **RESOLVED — Strict docs verification was missing.** Step 6 changes the ProperDocs site, while the original Step 7 ran only `make test`. Step 7 now also runs `make docs-build`, the documented CI-parity strict documentation gate.
+3. **PASS — Convention, dependency, conflict, and requirement coverage.** The plan keeps changes in the established single-file command and completion dispatcher, preserves the `cl_` variable prefix, uses existing integration suites, accounts for direct-function and public-CLI consumers, and maps all Project Brief requirements to concrete files and behavior.
+
+### Advisory
+
+- A normalized internal record stream could make the catalog rows, installed view, and hidden count derive from one source of truth: emit one record per top-level item with type/status/label and render either all records or installed records while expanding trees only for selected rulesets. This would eliminate four parallel filtering/counting branches, but it broadens this Level 2 enhancement into a renderer refactor, so it is not incorporated into the current plan.
+
 ## Status
 
 - [x] Initialization complete
@@ -126,6 +140,6 @@ No new technology - validation not required
 - [x] Implementation plan complete
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
-- [ ] Preflight
+- [x] Preflight (FAIL — build blocked)
 - [ ] Build
 - [ ] QA

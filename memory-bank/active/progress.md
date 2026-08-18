@@ -64,3 +64,16 @@ Make `ai-rizz list` default to installed inventory, with `-a`/`--all` restoring 
 * Insights
     - `_ai_rizz_completion` can be unit-tested by sourcing `completion.bash` and stubbing `_init_completion` to set Bash's dynamically scoped `cur` and `prev` locals
     - Inspection can review a static flag list but cannot satisfy the repository's mandatory TDD gate for executable behavior
+
+## 2026-08-18 - PLAN - COMPLETE (rework 2)
+
+* Work completed
+    - Re-entered plan via `/niko-plan`; operator accepted the cheap `_init_completion` stub test
+    - Step 5 is now test-first: `test_bash_completion.test.sh` then `list)` arm in `completion.bash`
+    - Kept `make docs-build` in step 7
+* Decisions made
+    - Cheap test is in: source `completion.bash`, stub `_init_completion` to set dynamically scoped `cur`/`prev`, assert `COMPREPLY` has `-a` and `--all`
+    - Still no bash-completion package, no `COMP_WORDS` tty harness, no grep change-detector
+    - Do not expand this task into testing every completion surface
+* Insights
+    - Operator: we have been burned on completion before; the stub is worth it for the flag offers too

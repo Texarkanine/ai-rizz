@@ -152,3 +152,9 @@ Make `ai-rizz list` default to installed inventory, with `-a`/`--all` restoring 
     - Completion stub: env vars, not stub argv; no `local cur prev`
     - Inspection is not a TDD carve-out for executable completion
 
+## 2026-08-18 - ARCHIVE - STARTING
+
+* Work completed
+    - Operator invoked `/niko-archive` after reflect (draft PR #51 already open)
+
+

@@ -55,6 +55,58 @@
 - `tests/integration/functions/test_ruleset_management.test.sh` / `test_ruleset_removal_and_structure.test.sh` / `test_custom_path_operations.test.sh` — retarget only if they assert uninstalled rows or section headers for items not in a manifest.
 - `tests/unit/test_bash_completion.test.sh` — new case `test_list_completes_all_flags` (name may vary): `prev=list`, empty `cur` → output contains `-a` and `--all`. Watch it fail (today there is no `list)` arm). Then implement the arm. Do not expand this task into testing every completion surface.
 
+### Retarget Enumeration (from preflight)
+
+Every existing test that calls bare `cmd_list` / `run_ai_rizz list` and asserts on catalog content for an item that was never added. Retarget these to `--all` in step 1; the mapping above named only a subset.
+
+`tests/integration/functions/test_list_display.test.sh`
+- `test_list_shows_uninstalled_glyph_for_new_command`
+- `test_list_shows_commands_with_slash_prefix`
+- `test_list_strips_md_extension_from_commands`
+- `test_list_commands_alignment_correct`
+- `test_list_expands_commands_directory`
+- `test_list_handles_empty_commands_directory`
+- `test_list_commands_last_sibling_uses_blank_stem`
+- `test_list_commands_middle_sibling_keeps_pipe_stem`
+- `test_list_skills_last_sibling_uses_blank_stem`
+- `test_list_skills_middle_sibling_keeps_pipe_stem`
+- `test_list_empty_rules_section_omitted`, `test_list_empty_commands_section_omitted`, `test_list_empty_skills_section_omitted`, `test_list_empty_rulesets_section_omitted` — these pass vacuously after the flip (empty-of-installed also yields no header), which silently drops the catalog-empty contract they exist for. Move them to `--all` so they keep testing it.
+
+`tests/integration/functions/test_skill_list_display.test.sh`
+- `test_standalone_skill_appears_in_skills_section`
+- `test_standalone_skill_installed_glyph` (uninstalled half only)
+- `test_embedded_skill_not_in_skills_section`
+- `test_skill_deduplicated_when_in_both_paths`
+- `test_ruleset_tree_expands_skills_subdir`
+- `test_ruleset_tree_shows_in_repo_symlinked_embedded_skill`
+- `test_ruleset_tree_skills_subdir_shows_only_valid_skills`
+- `test_ruleset_tree_skips_out_of_repo_symlinked_embedded_skill`
+- `test_rulesets_section_comes_after_skills_section`
+
+`tests/integration/functions/test_ruleset_list_display.test.sh`
+- `test_list_keeps_magic_skills_directory_visible`
+- `test_list_hides_unsupported_root_level_skill_like_directory`
+- Tests that call `cmd_add_ruleset` first stay on default `cmd_list`: `test_list_shows_subdirs_as_entries_but_hides_their_contents`, `test_list_shows_tree_for_all_rulesets`, `test_mdc_files_visible_in_list`, `test_complex_ruleset_display`
+
+`tests/integration/functions/test_rule_management.test.sh`
+- `test_list_local_mode_only_glyphs`, `test_list_commit_mode_only_glyphs`, `test_list_dual_mode_all_glyphs` (catalog half)
+
+`tests/integration/functions/test_global_only_context.test.sh`
+- `test_global_list_shows_available_commands_outside_git_repo` — confirmed: it asserts on `cmd1.md`, which setUp creates but never adds. Must use `--all`.
+
+`tests/integration/test_cli_list_sync.test.sh`
+- `○` assertions in the three `test_list_shows_correct_glyphs_*` cases move to `list --all`; add the new default/footer/`-a`/unknown-flag CLI cases.
+
+Confirmed **not** affected — do not touch:
+- `tests/integration/functions/test_error_handling.test.sh` — all six `cmd_list` callers either error before listing or assert on an installed rule; `test_graceful_empty_repository` asserts exit 0 with no `error:`/`fatal:`, which the empty catalog still satisfies (no footer, no sections)
+- `test_list_progressive_display_no_modes` — errors before listing
+- `test_list_without_initialization` — errors before listing
+- `tests/integration/functions/test_ruleset_management.test.sh` — every assertion is on an added rule/ruleset
+- `test_ruleset_removal_and_structure.test.sh` — `●` positive plus a negative `○` assertion, both still true
+- `tests/integration/functions/test_custom_path_operations.test.sh` — `test_list_shows_custom_paths` adds first
+- `tests/integration/test_ruleset_commands.test.sh` — only *defines* `UNINSTALLED_GLYPH` in setUp; never asserts on it
+- `tests/integration/test_help_and_usage.test.sh` — help assertions are loose substrings (`list`, `init`, …), so the step 4 help edit cannot break them
+
 ## Implementation Plan
 
 1. Write failing inventory/footer/flag tests (and retarget catalog assertions to `--all`)
@@ -83,7 +135,8 @@
    - Changes: helper stubs `_init_completion` as above. Add `case "${prev}"` branch `list)` offering `-a --all`. Do not grep `completion.bash` as the assertion.
 
 6. User and author docs
-   - Files: `docs/user-guide/commands/list.md`, `docs/user-guide/commands/index.md`, `docs/user-guide/getting-started.md`, `docs/user-guide/advanced/constraints.md`, `docs/rule-authoring/rulesets.md`, `docs/developer-guide/architecture.md` (only if it claims `list` shows the catalog by default)
+   - Files: `docs/user-guide/commands/list.md`, `docs/user-guide/commands/index.md`, `docs/user-guide/getting-started.md`, `docs/user-guide/advanced/constraints.md`, `docs/rule-authoring/rulesets.md`. Preflight checked `docs/developer-guide/architecture.md`: it makes no `list` catalog claim, so it needs no edit.
+   - `docs/user-guide/commands/index.md` embeds `ai-rizz help` output verbatim; the step 4 help edit must be mirrored into that block or `make docs-build` ships a stale help transcript. `docs/user-guide/commands/list.md` shows a full example listing with `○` rows — it becomes the `--all` example, plus a new default-inventory example with the footer.
    - Tests first: `N/A for prose & policy artifacts`
    - Changes: document default inventory, footer, and `--all`. Getting-started discovery `ai-rizz list` after init becomes `ai-rizz list --all`; the post-`add` `ai-rizz list` stays bare (inventory). Ruleset authoring examples that show uninstalled trees use `--all`.
 
@@ -121,6 +174,14 @@ No new technology - validation not required
 - Plan fails because getting-started still says `list` then `add`, so first-run docs show only a footer: already covered by Challenge 5 / step 6
 - Plan fails because the completion test stubs `_init_completion` with new locals and never actually feeds `prev=list` into `_ai_rizz_completion`: already covered by Challenge 6; assert on `COMPREPLY` contents, not on a grep of `completion.bash`
 
+## Preflight Notes
+
+- Completion test route verified empirically against `completion.bash`: stubbing `_init_completion() { cur=""; prev="list"; }` after sourcing yields `COMPREPLY` count 0 today (the red bar) and `-a --all` once the `list)` arm exists. `compgen -W "-a --all" -- ""` returns both words, and `-- "--"` narrows to `--all`.
+- Step 2 places the flag parse after `ensure_initialized_and_valid`, so `ai-rizz list --bogus` in an uninitialized repo reports "no configuration found" rather than the bad token. `cmd_deinit` parses first. Both are defensible; this is a deliberate choice, not an oversight. The parse still lands before `git_sync`, so a bad flag costs no network fetch.
+- `-a`/`--all` collides with nothing: the tool's only other `-a` is `cmd_deinit`'s rejection arm steering users to `--both`. Note the vocabulary asymmetry (`-a` means "all" for `list`, "not a thing" for `deinit`).
+- `cmd_list` has exactly one caller (the dispatcher), which already forwards `"$@"`. No `ai-rizz list --global` / `list -g` usage exists in the tool, tests, or docs.
+- `cl_hidden_count` is safe to increment inside every `cmd_list` display loop: the rules/commands/rulesets loops are plain `for`, and the skills loop reads from a temp file rather than a pipe, so none of them run in a subshell.
+
 ## Status
 
 - [x] Initialization complete
@@ -128,6 +189,6 @@ No new technology - validation not required
 - [x] Implementation plan complete
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
-- [ ] Preflight
+- [x] Preflight (PASS WITH ADVISORY)
 - [ ] Build
 - [ ] QA

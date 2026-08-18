@@ -77,3 +77,15 @@ Make `ai-rizz list` default to installed inventory, with `-a`/`--all` restoring 
     - Do not expand this task into testing every completion surface
 * Insights
     - Operator: we have been burned on completion before; the stub is worth it for the flag offers too
+
+## 2026-08-18 - PREFLIGHT - COMPLETE (PASS WITH ADVISORY)
+
+* Work completed
+    - TDD encoding PASS: step 5 is test-first via the `_init_completion` stub
+    - Wrote a full `cmd_list` retarget enumeration into `tasks.md`
+    - Added `make docs-build` dependency note: `docs/user-guide/commands/index.md` embeds help verbatim
+* Decisions made
+    - Advisory (not applied): footer could read `N available, not shown (ai-rizz list --all)` — Requirement 4 pins the exact string, so that stays an operator call
+    - Flag parse stays after `ensure_initialized_and_valid` (uninitialized `--bogus` reports no config, not the bad token)
+* Insights
+    - Empty-section tests must move to `--all` or they pass vacuously after the inventory flip

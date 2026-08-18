@@ -127,3 +127,15 @@ Make `ai-rizz list` default to installed inventory, with `-a`/`--all` restoring 
     - CLI `-a` vs `--all` equality dropped (VERBOSE_TESTS debug prefix made full-output compare fail); both still asserted independently
 * Insights
     - Retargeting a mixed installed/uninstalled test entirely to `--all` drops the inventory half unless you add a second `cmd_list` call
+
+## 2026-08-18 - QA - COMPLETE
+
+* Work completed
+    - Reviewed the reworked build against the project brief, Level 2 implementation plan, and QA rules
+    - Verified that all blocking findings from the previous QA failure were addressed
+    - Confirmed tests for empty catalog, unknown arguments, and default inventory standalone skills are present and correct
+    - Confirmed the documentation example was corrected
+* Decisions made
+    - Passed QA
+* Insights
+    - The rework successfully addressed the missing assertions and documentation error without introducing new complexity

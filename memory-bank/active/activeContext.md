@@ -1,7 +1,7 @@
 # Active Context
 
 ## Current Task: list-installed-default
-**Phase:** BUILD - COMPLETE
+**Phase:** QA - COMPLETE (PASS)
 
 ## What Was Done
 
@@ -10,4 +10,4 @@
 
 ## Next Step
 
-- QA review (subagent).
+- Proceed to `/niko-reflect`

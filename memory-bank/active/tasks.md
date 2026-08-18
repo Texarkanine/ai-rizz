@@ -6,6 +6,8 @@
 
 `ai-rizz list` defaults to installed inventory. `-a`/`--all` restores today's catalog. Default view omits empty-of-installed section headers and ends with one footer `N available, not shown` when any top-level catalog item was hidden.
 
+**Rework (after preflight FAIL):** keep the `completion.bash` `list)` flag offers. Do not add dispatcher tests. Do not call that step prose/policy. Operator TDD carve-out: static flag word lists are verified by inspection. Existing name-listing tests stay; they exist because missed rule bodies are not inspectable the same way.
+
 ## Test Plan (TDD)
 
 ### Behaviors to Verify
@@ -38,6 +40,7 @@
 - Test location: `tests/integration/functions/` (direct `cmd_*`) and `tests/integration/` (public CLI)
 - Conventions: `test_<behavior>()` in `test_<feature>.test.sh`; temp git repos; `git commit --no-gpg-sign`; never run against this project directory
 - New test files: none — extend existing suites
+- Completion: `tests/unit/test_bash_completion.test.sh` already tests `_ai_rizz_list_rule_names` and `_get_repo_dir` by sourcing `completion.bash` and calling those helpers. It does not drive `_ai_rizz_completion` (that function calls `_init_completion` from bash-completion). No new completion tests in this task.
 
 ### Test File Mapping
 
@@ -48,7 +51,7 @@
 - `tests/integration/functions/test_global_only_context.test.sh` — if `test_global_list_shows_available_commands_outside_git_repo` lists an uninstalled command, switch that call to `--all`.
 - `tests/integration/test_cli_list_sync.test.sh` — `○` assertions move to `run_ai_rizz list --all`; add CLI cases for default inventory, footer, `-a`, and unknown flag.
 - `tests/integration/functions/test_ruleset_management.test.sh` / `test_ruleset_removal_and_structure.test.sh` / `test_custom_path_operations.test.sh` — retarget only if they assert uninstalled rows or section headers for items not in a manifest.
-- `tests/unit/test_bash_completion.test.sh` — no new tests (no existing flag-completion suite; do not add a change-detector). Completion.bash still gets `--all` in implementation.
+- `tests/unit/test_bash_completion.test.sh` — no new cases. Name-listing coverage is already there. Flag offers on `list` are an operator TDD carve-out (inspection), not a change-detector and not a new `_init_completion` harness.
 
 ## Implementation Plan
 
@@ -74,7 +77,7 @@
 
 5. Bash completion for list flags
    - Files: `completion.bash`
-   - Tests first: `N/A for prose & policy artifacts` (no flag-completion tests exist)
+   - Tests first: Operator TDD carve-out (rework after preflight FAIL). Not prose/policy. Do not add tests. Do not grep `completion.bash` as a change-detector. Existing `test_bash_completion.test.sh` stays unchanged (name-listing helpers only). `_ai_rizz_completion` starts with `_init_completion`; a COMP_WORDS dispatcher harness for a static `compgen -W "-a --all"` line is out of scope. Inspect the new `list)` case arm.
    - Changes: `case "${prev}"` branch for `list` offering `-a --all`.
 
 6. User and author docs
@@ -97,6 +100,7 @@ No new technology - validation not required
 - Existing section omission when a type is absent from the source catalog (extend to “absent from installed set” for default view)
 - `cmd_deinit`-style POSIX flag parse
 - shunit2 integration fixtures / mock source repos
+- Existing completion name-listing tests (unchanged); no bash-completion package / `_init_completion` in this task
 
 ## Challenges & Mitigations
 
@@ -105,6 +109,7 @@ No new technology - validation not required
 - Tests that `grep -v` or assert exact output may trip on the new footer: prefer `grep` for installed rows; do not snapshot whole `cmd_list` output
 - `cmd_list` currently ignores extra args, so retargeted `--all` tests stay green on old code; that is intended. New tests (no `○` on default, footer present, unknown arg errors) are the red bar
 - Default empty-after-init looks “broken” without docs: getting-started must switch the discovery invocation to `--all` in the same change
+- Preflight previously FAILed step 5 as TDD encoding (tests or remove the feature). Operator chose a third path: keep the `list)` offers, no dispatcher tests, inspect-by-looking. Encode that as an operator carve-out, not as prose/policy and not as a change-detector. If TDD encoding still has no room for that carve-out, that is workflow friction for the preflight skill — do not add a harness and do not drop the completion line to appease the check
 
 ## Pre-Mortem
 
@@ -112,6 +117,7 @@ No new technology - validation not required
 - Plan fails because `N` counts tree children or section headers and the footer disagrees with what users can `--all` to see: already covered by Challenge 2; if an implementation PR shows a mismatch, cut scope to “count `○` rows from the `--all` listing” and do not invent a second enumerator
 - Plan fails because we rename section headers to `Installed X:` and churn every grep on `Available rules:`: keep existing titles (called out in step 3). Header rename is out of scope
 - Plan fails because getting-started still says `list` then `add`, so first-run docs show only a footer: already covered by Challenge 5 / step 6
+- Plan fails because preflight TDD encoding still has only “write tests” or “remove the unit” and rejects the operator carve-out: already covered by Challenge 6. Do not invent `_init_completion` stubs, do not grep `completion.bash`, do not relabel it prose. Surface that as workflow friction.
 
 ## Status
 
@@ -121,9 +127,5 @@ No new technology - validation not required
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
 - [ ] Preflight
-
-## Preflight Findings
-
-1. **TDD Plan Encoding (Severity: Blocking)**: Step 5 (Bash completion for list flags) modifies `completion.bash`, which is executable code, not a "prose & policy artifact". The plan incorrectly exempts it from TDD and incorrectly claims that testing it would be a "change-detector". A test that executes the completion function and asserts it offers `-a` and `--all` for the `list` command is a valid behavioral test. You must either add test-before-code ordering for this executable behavior (e.g., by adding a test case to `tests/unit/test_bash_completion.test.sh` or a new suite) or remove the bash completion feature from the plan.
 - [ ] Build
 - [ ] QA

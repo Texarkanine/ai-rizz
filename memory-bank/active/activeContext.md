@@ -1,13 +1,13 @@
 # Active Context
 
 ## Current Task: list-installed-default
-**Phase:** PREFLIGHT - COMPLETE (FAIL)
+**Phase:** PLAN - COMPLETE
 
 ## What Was Done
 
-- Preflight validation completed.
-- Plan failed TDD Plan Encoding check: Step 5 (Bash completion) modifies executable code but is incorrectly exempted from TDD as a "prose & policy artifact".
+- Replanned after preflight FAIL. Operator decision: keep `completion.bash` `list)` offers (`-a`/`--all`); do not add a dispatcher harness; do not use the prose/policy TDD exemption; inspect the flag word list.
+- Rest of the plan unchanged: default `cmd_list` is inventory; `-a`/`--all` is catalog; one footer `N available, not shown`; omit empty-of-installed headers; keep `Available X:` titles.
 
 ## Next Step
 
-- Operator decision required. Run `/niko-plan` to revise the approach (either add test-before-code ordering for bash completion or remove the feature).
+- Preflight validation (subagent).

@@ -38,3 +38,16 @@ Make `ai-rizz list` default to installed inventory, with `-a`/`--all` restoring 
     - Blocked build due to TDD Plan Encoding violation in Step 5 (Bash completion)
 * Insights
     - Bash completion is executable code and tests for it are behavioral tests, not change-detectors. The plan must either include test-before-code ordering for bash completion or remove the feature.
+
+## 2026-08-18 - PLAN - COMPLETE (rework)
+
+* Work completed
+    - Re-entered plan via `/niko-plan` after preflight FAIL
+    - Revised step 5: keep `completion.bash` `list)` flags; operator TDD carve-out (inspection); existing name-listing tests unchanged
+* Decisions made
+    - Not prose/policy: `completion.bash` stays executable
+    - Not a new harness: `_ai_rizz_completion` depends on `_init_completion`; COMP_WORDS dispatcher tests are out of scope for a static flag list
+    - Not a change-detector: do not grep `completion.bash`
+    - Name-listing tests stay because missed rule bodies are the failure mode that earned them
+* Insights
+    - Preflight's tests-or-remove fork was real; the operator's third path is inspect-by-looking for flags. If TDD encoding cannot represent that, the friction belongs in the preflight skill, not a harness in this task

@@ -11,7 +11,7 @@ Developers who use AI assistants (primarily Cursor) and want to manage shared or
 - **Global rules**: Add AI rules across all projects (global mode), for universal behaviors
 - **Ruleset management**: Bundle related rules into rulesets for one-command installation
 - **Skills**: Install reusable AI skill directories (e.g., multi-step workflow guides) to `.cursor/skills/`
-- **Listing**: View all available rules/commands/skills with their installation status
+- **Listing**: View what is installed here (mode glyphs); `list --all` shows the source catalog, including uninstalled items
 
 ## Key Benefits
 

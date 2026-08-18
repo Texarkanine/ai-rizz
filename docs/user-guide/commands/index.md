@@ -6,7 +6,7 @@
 | [deinit](init-deinit.md#deinit)  |                   | Remove `ai-rizz` from a repository           |
 | [add](add-remove.md#adding)      | `rule`, `ruleset` | Add rule(s) to the repository                |
 | [remove](add-remove.md#removing) | `rule`, `ruleset` | Remove rule(s) from the repository           |
-| [list](list.md)                  |                   | List the available rules and rulesets        |
+| [list](list.md)                  |                   | List installed rules and rulesets            |
 | [sync](sync.md)                  |                   | Pull updates to the rules and rulesets       |
 
 ## Usage
@@ -17,7 +17,7 @@ Usage: ai-rizz <command> [command-specific options]
 Available commands:
   init [<source_repo>]     Initialize the repository
   deinit                   Deinitialize the repository
-  list                     List available rules and rulesets
+  list                     List installed rules and rulesets
   add rule <rule>...       Add rule(s) to the repository
   add ruleset <ruleset>... Add ruleset(s) to the repository
   remove rule <rule>...    Remove rule(s) from the repository
@@ -41,6 +41,12 @@ Command-specific options:
                            Default is pre-commit hook (recommended for Cursor)
     --rule-path <path>     Source repository rules path
     --ruleset-path <path>  Source repository rulesets path
+
+  sync options:
+    -g, --global           Sync only global mode (skip local/commit)
+
+  list options:
+    -a, --all              Show the full catalog, including uninstalled items
 
   deinit options:
     -b, --both             Remove local and commit modes only (not global)

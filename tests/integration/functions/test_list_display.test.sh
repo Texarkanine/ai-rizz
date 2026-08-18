@@ -43,8 +43,8 @@ test_list_expands_commands_directory() {
 	# Initialize (mode doesn't matter for list display)
 	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
 	
-	# Action: Run cmd_list
-	output=$(cmd_list)
+	# Action: Run cmd_list --all
+	output=$(cmd_list --all)
 	
 	# Expected: commands/ directory expanded showing its contents
 	# Check that commands/ appears
@@ -72,8 +72,8 @@ test_list_commands_alignment_correct() {
 	# Initialize
 	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
 	
-	# Action: Run cmd_list and check output formatting
-	output=$(cmd_list)
+	# Action: Run cmd_list --all and check output formatting
+	output=$(cmd_list --all)
 	
 	# Expected: Correct indentation (4 spaces + tree character for commands)
 	# Check that commands/ line has proper indentation (4 spaces + tree character)
@@ -97,7 +97,7 @@ test_list_commands_last_sibling_uses_blank_stem() {
 	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
 
 	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	echo "$output" | grep -q "└── commands" || \
 		fail "commands/ should be last sibling (└──): $output"
@@ -122,7 +122,7 @@ test_list_commands_middle_sibling_keeps_pipe_stem() {
 	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
 
 	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	echo "$output" | grep -q "├── commands" || \
 		fail "commands/ should be non-last sibling (├──): $output"
@@ -143,7 +143,7 @@ test_list_skills_last_sibling_uses_blank_stem() {
 	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
 
 	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	echo "$output" | grep -A 20 "test-skl-last" | grep -q "└── skills" || \
 		fail "skills/ should be last sibling (└──): $output"
@@ -167,7 +167,7 @@ test_list_skills_middle_sibling_keeps_pipe_stem() {
 	cd "$TEST_DIR/app" || fail "Failed to change to app directory"
 
 	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
-	output=$(cmd_list)
+	output=$(cmd_list --all)
 
 	echo "$output" | grep -A 20 "test-skl-mid" | grep -q "├── skills" || \
 		fail "skills/ should be non-last sibling (├──): $output"
@@ -192,16 +192,16 @@ test_list_handles_empty_commands_directory() {
 	# Initialize
 	cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR" --local
 	
-	# Action: Run cmd_list
-	output=$(cmd_list)
+	# Action: Run cmd_list --all
+	output=$(cmd_list --all)
 	
-	# Expected: commands/ shown but no command files listed beneath it (SLOBAC: oracle on cmd_list output)
+	# Expected: commands/ shown but no command files listed beneath it (SLOBAC: oracle on cmd_list --all output)
 	echo "$output" | grep -q "commands" || fail "Should show commands/ directory"
 	echo "$output" | grep -q "test-empty" || fail "Should show test-empty ruleset"
 	# Slice: test-empty ruleset subtree; under the commands/ line there must be no *.md command entries
 	# (use /\.md$ so rule1.mdc does not match as "contains .md")
 	if echo "$output" | grep -A 50 "test-empty" | grep -A 15 "commands" | grep -qE '\.md$'; then
-		fail "cmd_list should not list .md command files under empty commands/; output was: $output"
+		fail "cmd_list --all should not list .md command files under empty commands/; output was: $output"
 	fi
 }
 
@@ -240,7 +240,7 @@ test_list_shows_commands_with_slash_prefix() {
     
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
     
-    output=$(cmd_list)
+    output=$(cmd_list --all)
     
     # Should have "Available commands:" section
     echo "$output" | grep -q "Available commands:" || fail "Should have 'Available commands:' section: $output"
@@ -261,7 +261,7 @@ test_list_strips_md_extension_from_commands() {
     
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
     
-    output=$(cmd_list)
+    output=$(cmd_list --all)
     
     # Should show /do-thing NOT /do-thing.md
     echo "$output" | grep -q "/do-thing" || fail "Should show /do-thing: $output"
@@ -335,7 +335,7 @@ test_list_shows_uninstalled_glyph_for_new_command() {
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
     # Don't add the command
     
-    output=$(cmd_list)
+    output=$(cmd_list --all)
     
     # Should show uninstalled glyph (○) for the command
     echo "$output" | grep -E "○.*unused-cmd|○.*\/unused-cmd" || \
@@ -356,7 +356,7 @@ test_list_empty_commands_section_omitted() {
 
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
 
-    output=$(cmd_list)
+    output=$(cmd_list --all)
 
     # When no commands exist, the section header and "No commands found" must be absent
     assertFalse "Available commands: section must not appear when empty" \
@@ -377,7 +377,7 @@ test_list_empty_rules_section_omitted() {
 
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
 
-    output=$(cmd_list)
+    output=$(cmd_list --all)
 
     assertFalse "Available rules: section must not appear when empty" \
         "echo '${output}' | grep -q 'Available rules:'"
@@ -388,10 +388,10 @@ test_list_empty_rules_section_omitted() {
 # Test that the skills section is omitted entirely when no standalone skills exist
 test_list_empty_skills_section_omitted() {
     # The base test repo (setUp) has rules but no skill directories, so the
-    # "Available skills:" section must be absent from cmd_list output.
+    # "Available skills:" section must be absent from cmd_list --all output.
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
 
-    output=$(cmd_list)
+    output=$(cmd_list --all)
 
     assertFalse "Available skills: section must not appear when empty" \
         "echo '${output}' | grep -q 'Available skills:'"
@@ -412,12 +412,155 @@ test_list_empty_rulesets_section_omitted() {
 
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --commit
 
-    output=$(cmd_list)
+    output=$(cmd_list --all)
 
     assertFalse "Available rulesets: section must not appear when empty" \
         "echo '${output}' | grep -q 'Available rulesets:'"
     assertFalse "No rulesets found message must not appear" \
         "echo '${output}' | grep -q 'No rulesets found'"
+}
+
+# Count uninstalled glyph rows in list output (top-level ○ lines).
+#
+# Arguments:
+#   $1 - list output
+#
+# Outputs:
+#   Stdout: integer count with no leading spaces
+_count_uninstalled_rows() {
+	printf '%s\n' "${1}" | grep -F "${UNINSTALLED_GLYPH}" | wc -l | tr -d ' \t'
+}
+
+# ============================================================================
+# DEFAULT INVENTORY / --all CATALOG
+# ============================================================================
+
+test_list_default_hides_uninstalled_and_prints_footer() {
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+	cmd_add_rule "rule1.mdc" --commit
+
+	all_output=$(cmd_list --all)
+	output=$(cmd_list)
+
+	echo "${output}" | grep -q "${COMMITTED_GLYPH}.*rule1" || \
+		fail "default list should show installed rule1: ${output}"
+	if echo "${output}" | grep -q "${UNINSTALLED_GLYPH}"; then
+		fail "default list must not show uninstalled rows: ${output}"
+	fi
+	hidden=$(_count_uninstalled_rows "${all_output}")
+	echo "${output}" | grep -qx "${hidden} available, not shown" || \
+		fail "expected footer '${hidden} available, not shown': ${output}"
+}
+
+test_list_omits_header_when_section_has_no_installed_members() {
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+	cmd_add_rule "rule1.mdc" --commit
+
+	output=$(cmd_list)
+
+	echo "${output}" | grep -q "Available rules:" || \
+		fail "installed rule should keep the rules header: ${output}"
+	if echo "${output}" | grep -q "Available commands:"; then
+		fail "commands header must be omitted when none are installed: ${output}"
+	fi
+}
+
+test_list_nothing_installed_is_footer_only() {
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+
+	all_output=$(cmd_list --all)
+	output=$(cmd_list)
+
+	if echo "${output}" | grep -q "Available "; then
+		fail "no section headers when nothing is installed: ${output}"
+	fi
+	hidden=$(_count_uninstalled_rows "${all_output}")
+	echo "${output}" | grep -qx "${hidden} available, not shown" || \
+		fail "expected footer-only output '${hidden} available, not shown': ${output}"
+}
+
+test_list_no_footer_when_everything_installed() {
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+	cmd_add_rule "rule1.mdc" --commit
+	cmd_add_rule "rule2.mdc" --commit
+	cmd_add_rule "rule3.mdc" --commit
+	cmd_add_rule "command1.md" --commit
+	cmd_add_rule "command2.md" --commit
+	cmd_add_ruleset "ruleset1" --commit
+	cmd_add_ruleset "ruleset2" --commit
+
+	output=$(cmd_list)
+
+	if echo "${output}" | grep -q "available, not shown"; then
+		fail "no footer when every catalog item is installed: ${output}"
+	fi
+}
+
+test_list_all_has_uninstalled_rows_and_no_footer() {
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+
+	output=$(cmd_list --all)
+
+	echo "${output}" | grep -q "${UNINSTALLED_GLYPH}" || \
+		fail "--all should show uninstalled glyphs: ${output}"
+	if echo "${output}" | grep -q "available, not shown"; then
+		fail "--all must not print the hidden footer: ${output}"
+	fi
+}
+
+test_list_dash_a_matches_all() {
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+
+	all_output=$(cmd_list --all)
+	dash_output=$(cmd_list -a)
+
+	assertEquals "-a should match --all" "${all_output}" "${dash_output}"
+}
+
+test_list_unknown_argument_errors() {
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+
+	output=$(cmd_list --installed 2>&1)
+	status=$?
+
+	assertNotEquals "unknown list arg should exit nonzero" "0" "${status}"
+	echo "${output}" | grep -q "Unknown argument: --installed" || \
+		fail "unknown list arg should name the token: ${output}"
+}
+
+test_list_installed_ruleset_expands_and_omits_sibling() {
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+	cmd_add_ruleset "ruleset1" --commit
+
+	output=$(cmd_list)
+
+	echo "${output}" | grep -q "ruleset1" || \
+		fail "installed ruleset should appear: ${output}"
+	echo "${output}" | grep -q "rule1.mdc" || \
+		fail "installed ruleset should still expand its tree: ${output}"
+	if echo "${output}" | grep -q "ruleset2"; then
+		fail "uninstalled sibling ruleset must be omitted: ${output}"
+	fi
+}
+
+test_list_empty_catalog_prints_nothing() {
+	rm -f "${REPO_DIR}/rules/"*.mdc "${REPO_DIR}/rules/"*.md
+	rm -rf "${REPO_DIR}/rulesets"
+	mkdir -p "${REPO_DIR}/rulesets"
+	cl_empty_skill_dirs=$(find "${REPO_DIR}/rules" -mindepth 1 -maxdepth 1 -type d 2>/dev/null || true)
+	if [ -n "${cl_empty_skill_dirs}" ]; then
+		rm -rf ${cl_empty_skill_dirs}
+	fi
+
+	cd "${REPO_DIR}" || fail "Failed to cd to repo"
+	git add . >/dev/null 2>&1
+	git commit --no-gpg-sign -m "Empty the catalog" >/dev/null 2>&1
+	cd "${TEST_DIR}/app" || fail "Failed to cd to app"
+
+	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
+	output=$(cmd_list)
+
+	[ -z "${output}" ] || fail "empty catalog should print nothing: ${output}"
 }
 
 # Load shunit2

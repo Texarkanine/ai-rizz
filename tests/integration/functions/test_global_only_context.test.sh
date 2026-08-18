@@ -222,7 +222,7 @@ test_global_list_shows_available_commands_outside_git_repo() {
     cmd_init "$TEST_SOURCE_REPO" -d ".cursor/rules" --global
     
     # Capture list output
-    output=$(cmd_list 2>&1)
+    output=$(cmd_list --all 2>&1)
     
     # Should show the command (cmd1.md created in setUp)
     # Commands are displayed with / prefix and without .md extension

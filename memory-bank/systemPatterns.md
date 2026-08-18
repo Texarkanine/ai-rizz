@@ -8,6 +8,10 @@ Three buckets, driven by [`tests/run_tests.sh`](./tests/run_tests.sh):
 2. **`tests/integration/*.test.sh`** — Top-level files exercise the **public CLI** (`ai-rizz` as a subprocess).
 3. **`tests/integration/functions/*.test.sh`** — **Direct function** tests: source `ai-rizz` and call `cmd_*` / sync paths against real temp repos, git, symlinks, and on-disk deploy results. Discovery is recursive (`find` on `tests/integration`), so nested `functions/` is included in integration runs without extra wiring.
 
+## List views
+
+`ai-rizz list` / `cmd_list` is **inventory** (installed items, existing mode glyphs). The source catalog — uninstalled `○` rows and uninstalled ruleset trees — is `list --all` / `-a`. Tests that assert catalog content must call `--all`; default `cmd_list` hides those rows and may print `N available, not shown` (`N` = omitted top-level glyph-bearing rows, not ruleset tree children).
+
 ## Entity Type Routing
 
 Each entity has a detection function and a target directory getter:

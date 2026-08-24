@@ -1,12 +1,13 @@
 # Active Context
 
 ## Current Task: interactive-prompt-backspace
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** PLAN - COMPLETE
 
 ## What Was Done
-- Fresh `/niko` with operator input: Backspace at `ai-rizz init` mode prompt prints `^H` instead of deleting.
-- Intent confirmed. Operator added: remain POSIX-compliant (`shell-posix-style`).
-- Classified Level 2: bug across all interactive `read -r` prompts; one shared POSIX helper; design choice required (no bash readline).
+- Classified Level 2. Operator constraint: POSIX `shell-posix-style` (no bash `read -e`).
+- Inventory: four interactive `read -r` sites (`cmd_init` source-repo/mode, `cmd_deinit` mode/confirm).
+- Plan: `edit_prompt_line` (byte editor, BS+DEL) + `read_prompt_line` (tty `stty` cbreak + `/dev/tty` echo; pipe skips `stty`). Callers use `rpl_line`, not `$()`.
+- Tests: new `tests/unit/test_prompt_line_edits.test.sh`; one init-mode BS case in `test_initialization.test.sh`.
 
 ## Next Step
-- Load Level 2 workflow and enter Plan.
+- Preflight validation (spawn `/niko-preflight`).

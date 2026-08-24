@@ -160,6 +160,82 @@ warn() {
   printf '%b' "Warning: ${1}\n" >&2
 }
 
+# Read one interactive prompt line into rpl_line
+#
+# Reads one byte at a time. Other bytes append. BS (010) and DEL (177)
+# erase the last byte. Erase on an empty buffer is a no-op. A 0-byte
+# read (EOF) ends the line. On a tty, uses cbreak/noecho, echoes edits
+# to /dev/tty, and restores stty. Callers must invoke this in the
+# current shell (not via $()) so a tty stty trap can restore the terminal.
+#
+# Globals:
+#   rpl_line - set to the edited line
+# Arguments:
+#   None
+# Outputs:
+#   None
+# Returns:
+#   0
+read_prompt_line() {
+	rpl_line=""
+	# $(printf '\n') would be empty — command subst strips trailing newlines
+	rpl_nl=$(printf '\n'; printf x)
+	rpl_nl="${rpl_nl%x}"
+	rpl_cr=$(printf '\r')
+	rpl_bs=$(printf '\010')
+	rpl_del=$(printf '\177')
+	rpl_echo=false
+	rpl_saved_stty=""
+
+	if [ -t 0 ]; then
+		rpl_saved_stty=$(stty -g)
+		trap 'stty "${rpl_saved_stty}"; trap - INT TERM EXIT' INT TERM EXIT
+		stty -icanon -echo min 1 time 0
+		if [ -w /dev/tty ]; then
+			rpl_echo=true
+		fi
+	fi
+
+	while :; do
+		rpl_byte=$(dd bs=1 count=1 2>/dev/null; printf x)
+		rpl_byte="${rpl_byte%x}"
+
+		if [ -z "${rpl_byte}" ]; then
+			if [ "${rpl_echo}" = "true" ]; then
+				printf '\n' >/dev/tty || true
+			fi
+			break
+		fi
+
+		if [ "${rpl_byte}" = "${rpl_nl}" ] || [ "${rpl_byte}" = "${rpl_cr}" ]; then
+			if [ "${rpl_echo}" = "true" ]; then
+				printf '\n' >/dev/tty || true
+			fi
+			break
+		fi
+
+		if [ "${rpl_byte}" = "${rpl_bs}" ] || [ "${rpl_byte}" = "${rpl_del}" ]; then
+			if [ -n "${rpl_line}" ]; then
+				rpl_line="${rpl_line%?}"
+				if [ "${rpl_echo}" = "true" ]; then
+					printf '\b \b' >/dev/tty || true
+				fi
+			fi
+			continue
+		fi
+
+		rpl_line="${rpl_line}${rpl_byte}"
+		if [ "${rpl_echo}" = "true" ]; then
+			printf '%s' "${rpl_byte}" >/dev/tty || true
+		fi
+	done
+
+	if [ -n "${rpl_saved_stty}" ]; then
+		stty "${rpl_saved_stty}"
+		trap - INT TERM EXIT
+	fi
+}
+
 # Entity Type Detection Utilities
 # ================================
 
@@ -2859,7 +2935,8 @@ cmd_init() {
 	# Prompt for source repo if not provided
 	if [ -z "${ci_source_repo}" ]; then
 		printf "Source repository URL: "
-		read -r ci_source_repo
+		read_prompt_line
+		ci_source_repo="${rpl_line}"
 		if [ -z "${ci_source_repo}" ]; then
 			error "Source repository URL is required"
 		fi
@@ -2873,7 +2950,8 @@ cmd_init() {
 	# Prompt for mode if not provided
 	if [ -z "${ci_mode}" ]; then
 		printf "Mode [local/commit/global]: "
-		read -r ci_mode
+		read_prompt_line
+		ci_mode="${rpl_line}"
 		if [ -z "${ci_mode}" ]; then
 			ci_mode="local"
 		fi
@@ -3179,7 +3257,8 @@ cmd_deinit() {
 		if [ ${cd_active_count} -gt 1 ]; then
 			# Multiple modes active - prompt user
 			printf "Which mode to remove [local/commit/global/both]: "
-			read -r cd_mode
+			read_prompt_line
+			cd_mode="${rpl_line}"
 		elif [ ${cd_active_count} -eq 1 ]; then
 			cd_mode="${cd_last_active}"
 		else
@@ -3240,7 +3319,8 @@ cmd_deinit() {
 	if ! ${cd_force} && [ -n "${cd_items_to_remove}" ]; then
 		echo "This will delete:${cd_items_to_remove}"
 		printf "Are you sure? [y/N] "
-		read -r cd_confirm
+		read_prompt_line
+		cd_confirm="${rpl_line}"
 		if [ "${cd_confirm}" != "y" ] && [ "${cd_confirm}" != "Y" ]; then
 			echo "Canceled"
 			return 0

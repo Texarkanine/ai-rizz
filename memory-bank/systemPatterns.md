@@ -49,6 +49,10 @@ Adding an item writes to a manifest file only. `sync_all_modes()` then reads man
 
 Before deploying, `cmd_sync` refreshes source repo caches: the project cache always, and `sync_global_repo()` when global mode is initialized (same as `list`/`add`). `ai-rizz sync --global` syncs only global mode — pull + redeploy global manifest, skipping local/commit. Target directories (rules, commands, skills) for the mode being synced are cleared and rebuilt from scratch.
 
+## Interactive prompts
+
+Interactive stdin prompts use `read_prompt_line`, not cooked `read -r`. The helper treats both BS (`^H`) and DEL (`^?`) as erase. Callers assign `rpl_line` in the current shell. File and pipe `read -r` loops are unchanged.
+
 ## C Locale Enforcement
 
 `ai-rizz` sets `LC_ALL=C` at script top to ensure POSIX character class ranges (`[A-Z]`, `[a-z]`, etc.) use byte-value ordering rather than locale-dependent dictionary collation. Without this, ranges like `[A-Z]` match lowercase letters under UTF-8 locales (e.g. macOS `en_US.UTF-8`), silently breaking entity-type routing for `.md` commands.

@@ -41,6 +41,18 @@ Fix interactive prompts so Backspace deletes typed characters instead of inserti
 * Insights
     - Pipe regressions already exist for empty init and `n` deinit confirm
 
+## 2026-08-24 - BUILD - COMPLETE
+
+* Work completed
+    - Implemented `edit_prompt_line` (BS/DEL/CR/NL/EOF) and `read_prompt_line` (tty `stty` cbreak)
+    - Replaced four interactive `read -r` sites
+    - `make test` 38/38 suites passed
+* Decisions made
+    - `read_prompt_line` assigns `rpl_line` only; no stdout reprint
+    - Visual echo is inside `edit_prompt_line` when `[ -t 0 ]`
+* Insights
+    - Piped `echo "" | cmd_init` and `echo n | cmd_deinit` stay green without a pty
+
 ## 2026-08-24 - PREFLIGHT - COMPLETE (PASS WITH ADVISORY)
 
 * Work completed

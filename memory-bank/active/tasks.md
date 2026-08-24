@@ -30,7 +30,7 @@ At interactive prompts, Backspace inserts `^H` instead of deleting. Inventory is
 
 ## Implementation Plan
 
-### 1. Prompt-line editor — executable
+### 1. Prompt-line editor — executable — [x]
 
 - Files: `tests/unit/test_prompt_line_edits.test.sh`, `ai-rizz` (Utilities section)
 
@@ -39,7 +39,7 @@ At interactive prompts, Backspace inserts `^H` instead of deleting. Inventory is
 3. Write tests and run red: `printf` pipes of printable / `\010` / `\177` / empty / CR into `edit_prompt_line`; assert stdout. `read_prompt_line` on a pipe asserts `rpl_line`
 4. Write code and run green: `edit_prompt_line` reads one byte at a time with `dd bs=1 count=1` (POSIX `$(dd; echo x)` / `%x` so newline is not stripped), appends printables, treats `\010` and `\177` as erase via `${buf%?}`, stops on `\n` or `\r`, writes the line to stdout. `read_prompt_line` calls `edit_prompt_line`, sets `rpl_line` to that line. If `[ -t 0 ]`, save `stty -g`, `stty -icanon -echo min 1 time 0`, echo typed chars and `\b \b` on erase to `/dev/tty`, restore `stty` on return and via `trap` on INT/TERM/EXIT (clear the trap after restore). If not a tty, no `stty` and no visual echo. No bash `read -e`, no `local`, no arrays. `shellcheck --shell=sh` clean on the new functions
 
-### 2. Wire the four prompts — executable
+### 2. Wire the four prompts — executable — [x]
 
 - Files: `ai-rizz` (`cmd_init`, `cmd_deinit`), `tests/integration/functions/test_initialization.test.sh`
 
@@ -79,5 +79,5 @@ No new technology - validation not required
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
 - [x] Preflight
-- [ ] Build
+- [x] Build
 - [ ] QA

@@ -80,4 +80,15 @@ No new technology - validation not required
 - [x] Pre-Mortem complete
 - [x] Preflight
 - [x] Build
-- [ ] QA
+- [x] QA
+
+## QA Results
+
+PASS. Implementation matches the plan; advisories do not block.
+
+- KISS / DRY / YAGNI: two helpers plus four call-site swaps as planned; file/pipe `read` loops left alone; no bash readline.
+- Completeness: unit cases cover printable, BS, DEL, empty-buffer erase, empty line, CR, and non-tty `rpl_line`; init mode prompt is wired; empty-mode → `local` and confirm `y`/`Y` kept.
+- Regression: no leftover interactive `read -r` in `cmd_init` / `cmd_deinit`. Process-group SIGINT still exits 130 after the `stty` trap (dash and bash 5).
+- Integrity: no TODOs, placeholders, or debug leftovers in the new code.
+- Documentation: CLI contract unchanged (no user-doc update required). `systemPatterns.md` does not record the new prompt helper; advisory only.
+- Advisories: trap does not explicitly `exit`; comment says “printable” but any non-special byte is appended; cbreak Ctrl+D is EOT not EOF.

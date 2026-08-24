@@ -162,7 +162,7 @@ warn() {
 
 # Edit a prompt line from stdin bytes until newline, CR, or EOF
 #
-# Reads one byte at a time. Printable bytes append. BS (010) and DEL (177)
+# Reads one byte at a time. Other bytes append. BS (010) and DEL (177)
 # erase the last byte. Erase on an empty buffer is a no-op. A 0-byte read
 # (EOF / Ctrl+D) ends the line. Does not change terminal settings.
 #

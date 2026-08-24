@@ -53,15 +53,24 @@ Fix interactive prompts so Backspace deletes typed characters instead of inserti
 * Insights
     - Piped `echo "" | cmd_init` and `echo n | cmd_deinit` stay green without a pty
 
-## 2026-08-24 - PREFLIGHT - COMPLETE (PASS WITH ADVISORY)
+## 2026-08-24 - QA - PASS
 
 * Work completed
-    - Validated the Level 2 plan against `ai-rizz` and the existing init/deinit tests
-    - Confirmed TDD order on both executable units; no change-detector strikes or step swaps
-    - Wrote `memory-bank/active/.preflight-status` with first line `PASS WITH ADVISORY`
+    - QA PASS ([qa](0bf6e0b0-5bce-413d-8eab-310e7b1a1f54)); implementation accepted
+    - Wrote `memory-bank/active/.qa-validation-status`
 * Decisions made
-    - Plan is acceptable as-is; advisories are implementer cautions, not a re-plan
-    - Four stdin `read -r` sites is still the complete interactive inventory
+    - Advisories (trap without `exit`, header “printable” vs any byte, cbreak Ctrl+D) do not block
+    - Ctrl+C: dash and bash 5 exit 130 after the `stty` trap on process-group SIGINT, so empty-mode → local does not run
 * Insights
-    - `set -e` plus a `dd` loop needs the planned `$(dd; echo x)` idiom and an EOF stop so Ctrl+D cannot spin
-    - Existing pipe tests (`test_init_requires_mode_flag`, `echo "n" | cmd_deinit --local`) are the regression net for non-tty `read` replacement
+    - No interactive `read -r` remains in `cmd_init` / `cmd_deinit`
+    - Tty visual echo and `stty` remain untested in-suite (pre-mortem rejected a pty harness)
+
+## 2026-08-24 - REFLECT - COMPLETE
+
+* Work completed
+    - Wrote `memory-bank/active/reflection/reflection-interactive-prompt-backspace.md`
+    - Reconciled persistent files: `systemPatterns.md` gained the interactive-prompt contract
+* Decisions made
+    - productContext and techContext unchanged
+* Insights
+    - Cooked `read -r` is not portable when tty erase ≠ Backspace; handle both `^H` and `^?` in-process

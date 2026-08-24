@@ -160,74 +160,13 @@ warn() {
   printf '%b' "Warning: ${1}\n" >&2
 }
 
-# Edit a prompt line from stdin bytes until newline, CR, or EOF
-#
-# Reads one byte at a time. Other bytes append. BS (010) and DEL (177)
-# erase the last byte. Erase on an empty buffer is a no-op. A 0-byte read
-# (EOF / Ctrl+D) ends the line. Does not change terminal settings.
-#
-# Globals:
-#   None
-# Arguments:
-#   None
-# Outputs:
-#   Stdout: the edited line
-# Returns:
-#   0
-edit_prompt_line() {
-	epl_buf=""
-	epl_nl=$(printf '\n')
-	epl_cr=$(printf '\r')
-	epl_bs=$(printf '\010')
-	epl_del=$(printf '\177')
-	epl_echo=false
-	if [ -t 0 ] && [ -w /dev/tty ]; then
-		epl_echo=true
-	fi
-
-	while :; do
-		epl_byte=$(dd bs=1 count=1 2>/dev/null; printf x)
-		epl_byte="${epl_byte%x}"
-
-		if [ -z "${epl_byte}" ]; then
-			if [ "${epl_echo}" = "true" ]; then
-				printf '\n' >/dev/tty || true
-			fi
-			break
-		fi
-
-		if [ "${epl_byte}" = "${epl_nl}" ] || [ "${epl_byte}" = "${epl_cr}" ]; then
-			if [ "${epl_echo}" = "true" ]; then
-				printf '\n' >/dev/tty || true
-			fi
-			break
-		fi
-
-		if [ "${epl_byte}" = "${epl_bs}" ] || [ "${epl_byte}" = "${epl_del}" ]; then
-			if [ -n "${epl_buf}" ]; then
-				epl_buf="${epl_buf%?}"
-				if [ "${epl_echo}" = "true" ]; then
-					printf '\b \b' >/dev/tty || true
-				fi
-			fi
-			continue
-		fi
-
-		epl_buf="${epl_buf}${epl_byte}"
-		if [ "${epl_echo}" = "true" ]; then
-			printf '%s' "${epl_byte}" >/dev/tty || true
-		fi
-	done
-
-	printf '%s\n' "${epl_buf}"
-}
-
 # Read one interactive prompt line into rpl_line
 #
-# On a tty, puts the terminal in cbreak/noecho, echoes edits to /dev/tty,
-# and restores stty. On a pipe or file, only runs the byte editor.
-# Callers must invoke this in the current shell (not via $()) so a tty
-# stty trap can restore the terminal.
+# Reads one byte at a time. Other bytes append. BS (010) and DEL (177)
+# erase the last byte. Erase on an empty buffer is a no-op. A 0-byte
+# read (EOF) ends the line. On a tty, uses cbreak/noecho, echoes edits
+# to /dev/tty, and restores stty. Callers must invoke this in the
+# current shell (not via $()) so a tty stty trap can restore the terminal.
 #
 # Globals:
 #   rpl_line - set to the edited line
@@ -239,15 +178,61 @@ edit_prompt_line() {
 #   0
 read_prompt_line() {
 	rpl_line=""
+	# $(printf '\n') would be empty — command subst strips trailing newlines
+	rpl_nl=$(printf '\n'; printf x)
+	rpl_nl="${rpl_nl%x}"
+	rpl_cr=$(printf '\r')
+	rpl_bs=$(printf '\010')
+	rpl_del=$(printf '\177')
+	rpl_echo=false
+	rpl_saved_stty=""
+
 	if [ -t 0 ]; then
 		rpl_saved_stty=$(stty -g)
 		trap 'stty "${rpl_saved_stty}"; trap - INT TERM EXIT' INT TERM EXIT
 		stty -icanon -echo min 1 time 0
-		rpl_line=$(edit_prompt_line)
+		if [ -w /dev/tty ]; then
+			rpl_echo=true
+		fi
+	fi
+
+	while :; do
+		rpl_byte=$(dd bs=1 count=1 2>/dev/null; printf x)
+		rpl_byte="${rpl_byte%x}"
+
+		if [ -z "${rpl_byte}" ]; then
+			if [ "${rpl_echo}" = "true" ]; then
+				printf '\n' >/dev/tty || true
+			fi
+			break
+		fi
+
+		if [ "${rpl_byte}" = "${rpl_nl}" ] || [ "${rpl_byte}" = "${rpl_cr}" ]; then
+			if [ "${rpl_echo}" = "true" ]; then
+				printf '\n' >/dev/tty || true
+			fi
+			break
+		fi
+
+		if [ "${rpl_byte}" = "${rpl_bs}" ] || [ "${rpl_byte}" = "${rpl_del}" ]; then
+			if [ -n "${rpl_line}" ]; then
+				rpl_line="${rpl_line%?}"
+				if [ "${rpl_echo}" = "true" ]; then
+					printf '\b \b' >/dev/tty || true
+				fi
+			fi
+			continue
+		fi
+
+		rpl_line="${rpl_line}${rpl_byte}"
+		if [ "${rpl_echo}" = "true" ]; then
+			printf '%s' "${rpl_byte}" >/dev/tty || true
+		fi
+	done
+
+	if [ -n "${rpl_saved_stty}" ]; then
 		stty "${rpl_saved_stty}"
 		trap - INT TERM EXIT
-	else
-		rpl_line=$(edit_prompt_line)
 	fi
 }
 

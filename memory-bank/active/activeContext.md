@@ -1,11 +1,12 @@
 # Active Context
 
 ## Current Task: interactive-prompt-backspace (rework)
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** BUILD - COMPLETE
 
 ## What Was Done
-- Rework: drop `edit_prompt_line`. One function, `read_prompt_line` → `rpl_line`.
-- Classified Level 1 (single helper, no new behavior).
+- Collapsed to `read_prompt_line` only. Tests assert `rpl_line`.
+- Fixed newline detection (`$(printf '\n')` was empty; old `$()` hid it).
+- `make test`: 4/4 unit, 34/34 integration.
 
 ## Next Step
-- Build: retarget unit tests to `rpl_line`, then inline the editor.
+- QA.

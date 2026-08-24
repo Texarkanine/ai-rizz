@@ -94,3 +94,16 @@ Fix interactive prompts so Backspace deletes typed characters instead of inserti
 * Insights
     - Original work stays L2 in the history above; this rework is L1
 
+## 2026-08-24 - BUILD (rework) - COMPLETE
+
+* Work completed
+    - Removed `edit_prompt_line`; `read_prompt_line` is the only helper
+    - Unit tests assert `rpl_line` via file redirect
+    - `make test` 4/4 unit, 34/34 integration
+* Decisions made
+    - No stdout editor API; no `$()` around the helper
+    - Newline byte via `$(printf '\n'; printf x)` / `%x` — same sentinel as `dd`
+* Insights
+    - `$(printf '\n')` is empty; the old `rpl_line=$(edit_prompt_line)` stripped an accidentally appended NL and hid the bug
+
+

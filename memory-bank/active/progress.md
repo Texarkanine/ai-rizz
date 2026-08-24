@@ -2,7 +2,7 @@
 
 Fix interactive prompts so Backspace deletes typed characters instead of inserting `^H`, using a POSIX-compliant input helper shared by every tty prompt.
 
-**Complexity:** Level 2
+**Complexity:** Level 1
 
 ## 2026-08-24 - COMPLEXITY-ANALYSIS - COMPLETE
 
@@ -83,3 +83,14 @@ Fix interactive prompts so Backspace deletes typed characters instead of inserti
     - Apply preflight's radical innovation: one function, `read_prompt_line`, result in `rpl_line`
 * Insights
     - `edit_prompt_line` existed to make the editor testable via stdout; unit tests of `read_prompt_line` already cover that path, so the extra API was unused scaffolding
+
+## 2026-08-24 - COMPLEXITY-ANALYSIS (rework) - COMPLETE
+
+* Work completed
+    - Classified the rework as Level 1: one helper, no new user behavior
+* Decisions made
+    - L1: skip plan/preflight/reflect; build then QA
+    - Tests assert `rpl_line` via file redirect; do not keep a stdout API for `$()`
+* Insights
+    - Original work stays L2 in the history above; this rework is L1
+

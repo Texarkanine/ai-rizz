@@ -30,3 +30,26 @@ Fix interactive prompts so Backspace deletes typed characters instead of inserti
 * Insights
     - Existing `echo "" | cmd_init` / `echo n | cmd_deinit` tests cover the pipe path
     - No user-doc change: CLI contract is unchanged
+
+## 2026-08-24 - PREFLIGHT - PASS WITH ADVISORY
+
+* Work completed
+    - Preflight PASS WITH ADVISORY ([preflight](6cf08a40-6733-42a7-a609-99e3514946f8)); plan unchanged
+* Decisions made
+    - Build will apply advisories: stop `dd` on 0-byte EOF, newline to `/dev/tty` on submit, `stty`/trap only in `read_prompt_line`, prefixed `epl_`/`rpl_` names
+    - Radical innovation (single function) not applied
+* Insights
+    - Pipe regressions already exist for empty init and `n` deinit confirm
+
+## 2026-08-24 - PREFLIGHT - COMPLETE (PASS WITH ADVISORY)
+
+* Work completed
+    - Validated the Level 2 plan against `ai-rizz` and the existing init/deinit tests
+    - Confirmed TDD order on both executable units; no change-detector strikes or step swaps
+    - Wrote `memory-bank/active/.preflight-status` with first line `PASS WITH ADVISORY`
+* Decisions made
+    - Plan is acceptable as-is; advisories are implementer cautions, not a re-plan
+    - Four stdin `read -r` sites is still the complete interactive inventory
+* Insights
+    - `set -e` plus a `dd` loop needs the planned `$(dd; echo x)` idiom and an EOF stop so Ctrl+D cannot spin
+    - Existing pipe tests (`test_init_requires_mode_flag`, `echo "n" | cmd_deinit --local`) are the regression net for non-tty `read` replacement

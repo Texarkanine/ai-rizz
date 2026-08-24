@@ -33,3 +33,9 @@ The same editing behavior applies at every other interactive prompt that current
 2. Every other interactive tty prompt in `ai-rizz` has the same editing behavior.
 3. Piped or non-tty input still works (scripts, tests, `printf | ai-rizz init ...`).
 4. `shellcheck --shell=sh` remains clean for the changed code.
+
+## Rework
+
+Operator: extra code written only to make the editor testable is unacceptable, especially when the tests do not use that API.
+
+Collapse `edit_prompt_line` into `read_prompt_line`. One function, assign `rpl_line`. Unit tests assert `rpl_line` (file redirect, not `$()`). No stdout editor helper.

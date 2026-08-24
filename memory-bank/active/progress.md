@@ -74,3 +74,12 @@ Fix interactive prompts so Backspace deletes typed characters instead of inserti
     - productContext and techContext unchanged
 * Insights
     - Cooked `read -r` is not portable when tty erase ≠ Backspace; handle both `^H` and `^?` in-process
+
+## 2026-08-24 - REWORK INITIATED
+
+* Work completed
+    - Operator requested rework after Reflect: collapse the unused `edit_prompt_line` stdout API
+* Decisions made
+    - Apply preflight's radical innovation: one function, `read_prompt_line`, result in `rpl_line`
+* Insights
+    - `edit_prompt_line` existed to make the editor testable via stdout; unit tests of `read_prompt_line` already cover that path, so the extra API was unused scaffolding

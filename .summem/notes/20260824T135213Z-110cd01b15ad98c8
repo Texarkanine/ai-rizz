@@ -1,0 +1,1 @@
+Interactive stdin prompts are only cmd_init source-repo + mode and cmd_deinit mode + confirm; all other read -r calls are file/pipe loops.

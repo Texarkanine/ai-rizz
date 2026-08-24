@@ -1,0 +1,1 @@
+Interactive prompts use read_prompt_line: dd byte editor treats BS (010) and DEL (177) as erase; tty cbreak via stty; callers assign rpl_line in-shell.

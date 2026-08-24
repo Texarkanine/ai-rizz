@@ -1,0 +1,1 @@
+read_prompt_line is the only interactive prompt helper; rpl_line in-shell. No stdout editor. $(printf '\n') is empty — newline byte uses sentinel x.

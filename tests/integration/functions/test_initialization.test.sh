@@ -82,8 +82,8 @@ test_init_requires_mode_flag() {
 
 test_init_mode_prompt_backspace_accepts_local() {
     # Test: mode prompt treats BS as erase so "ai<BS><BS>local" is local
-    epl_bs=$(printf '\010')
-    printf 'ai%s%slocal\n' "${epl_bs}" "${epl_bs}" | cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR"
+    rpl_bs=$(printf '\010')
+    printf 'ai%s%slocal\n' "${rpl_bs}" "${rpl_bs}" | cmd_init "$TEST_SOURCE_REPO" -d "$TEST_TARGET_DIR"
 
     assertTrue "Should detect local mode after BS edits" "[ \"$(is_mode_active local)\" = \"true\" ]"
     assertFalse "Should not detect commit mode" "[ \"$(is_mode_active commit)\" = \"true\" ]"

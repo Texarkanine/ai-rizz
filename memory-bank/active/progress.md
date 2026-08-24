@@ -106,4 +106,24 @@ Fix interactive prompts so Backspace deletes typed characters instead of inserti
 * Insights
     - `$(printf '\n')` is empty; the old `rpl_line=$(edit_prompt_line)` stripped an accidentally appended NL and hid the bug
 
+## 2026-08-24 - QA (rework) - PASS
+
+* Work completed
+    - QA PASS ([qa](f0a664f4-0e51-47d4-82f6-d09ca240671c))
+    - Renamed leftover `epl_bs` in the init backspace test
+* Decisions made
+    - Advisories (trap without `exit`, tty untested) inherited, not blocking
+* Insights
+    - `systemPatterns.md` already names `read_prompt_line` only; no persistent-file edit
+
+
+## 2026-08-24 - QA (rework) - PASS
+
+* Work completed
+    - QA PASS on rework: single `read_prompt_line`, tests on `rpl_line`, newline sentinel fix
+    - Wrote `memory-bank/active/.qa-validation-status`
+* Decisions made
+    - Advisories from original QA (trap without exit, tty untested, stale `epl_bs` test var name) do not block
+* Insights
+    - Collapsing removed ~15 lines and eliminated the hidden newline bug from `$()` around the editor
 

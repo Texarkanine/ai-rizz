@@ -1,5 +1,4 @@
 #compdef ai-rizz
-# shellcheck shell=zsh
 
 # Zsh completion for ai-rizz CLI tool
 # Provides tab completion for commands, rules, and rulesets

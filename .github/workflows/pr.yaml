@@ -17,6 +17,8 @@ jobs:
         with:
           scandir: '.'
           severity: error
+          # completion.zsh is zsh; ShellCheck 0.11 does not accept shell=zsh
+          ignore_names: '*.zsh'
 
   tests:
     name: Unit Tests

@@ -101,4 +101,14 @@ No new technology — validation not required. Zsh completion uses built-in `com
 - [x] Pre-Mortem complete
 - [x] Preflight
 - [x] Build
-- [ ] QA
+- [x] QA (PASS)
+- [x] Reflect
+
+### QA Results
+
+- **Status**: PASS
+- **Blocking findings**: None
+- **Advisory findings**:
+  - `completion.zsh` array expansion with double-quoted `"${(@f)...}"` produces single-element `("")` on empty output; unquoted `(${(f)"..."})` is cleaner for zero matches.
+  - `completion.zsh:57` `local aic_cur="${words[CURRENT]}"` declared but not directly referenced in case statement.
+  - Unit tests require `zsh` on PATH (fails if absent).

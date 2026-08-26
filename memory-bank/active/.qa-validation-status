@@ -1,0 +1,7 @@
+PASS
+
+# Semantic QA Findings
+
+1. **Advisory (Zsh empty array expansion)**: In `completion.zsh`, `aic_rules_list=("${(@f)...}")` and `aic_rulesets=("${(@f)...}")` evaluate to `("")` (array with 1 empty element) when command output is empty. While repository caches contain rules/rulesets in practice, unquoted `(${(f)"..."})` or explicit non-empty output checks are cleaner zsh syntax for zero-match cases.
+2. **Advisory (Unused local variable)**: In `completion.zsh:57`, `local aic_cur="${words[CURRENT]}"` is declared but not referenced because `compadd` performs prefix matching automatically. Harmless standard completion pattern.
+3. **Advisory (CI Runner dependency)**: `test_zsh_completion.test.sh` strictly requires `zsh` on `PATH` and fails if missing. Verify CI test environments have `zsh` installed.

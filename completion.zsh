@@ -54,7 +54,6 @@ _ai_rizz_list_rule_names() {
 }
 
 _ai_rizz() {
-	local aic_cur="${words[CURRENT]}"
 	local aic_prev="${words[CURRENT - 1]}"
 
 	# Dispatch mirrors completion.bash _ai_rizz_completion (prev-word cases).
@@ -77,19 +76,19 @@ _ai_rizz() {
 		-d|-f|--manifest|-s|--skibidi)
 			;;
 		rule)
-			local aic_repo_dir aic_rules_list
+			local aic_repo_dir aic_rules_output
 			aic_repo_dir="$(_get_repo_dir)"
 			if [[ -d "${aic_repo_dir}/rules" ]]; then
-				aic_rules_list=("${(@f)$(_ai_rizz_list_rule_names "${aic_repo_dir}")}")
-				(( ${#aic_rules_list[@]} )) && compadd -- "${aic_rules_list[@]}"
+				aic_rules_output="$(_ai_rizz_list_rule_names "${aic_repo_dir}")"
+				[[ -n "${aic_rules_output}" ]] && compadd -- ${(f)aic_rules_output}
 			fi
 			;;
 		ruleset)
-			local aic_repo_dir aic_rulesets
+			local aic_repo_dir aic_rulesets_output
 			aic_repo_dir="$(_get_repo_dir)"
 			if [[ -d "${aic_repo_dir}/rulesets" ]]; then
-				aic_rulesets=("${(@f)$(find "${aic_repo_dir}/rulesets" -mindepth 1 -maxdepth 1 -type d | sed 's|.*/||')}")
-				(( ${#aic_rulesets[@]} )) && compadd -- "${aic_rulesets[@]}"
+				aic_rulesets_output="$(find "${aic_repo_dir}/rulesets" -mindepth 1 -maxdepth 1 -type d | sed 's|.*/||')"
+				[[ -n "${aic_rulesets_output}" ]] && compadd -- ${(f)aic_rulesets_output}
 			fi
 			;;
 	esac

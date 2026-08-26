@@ -24,7 +24,24 @@ Retroactive backfill and completion of Niko workflow for empty-inventory list ca
 * Decisions made
     - Preflight not re-run live; plan validated against shipped diff during backfill
 
-## 2026-08-26 - QA - IN-PROGRESS
+## 2026-08-26 - QA - COMPLETE (PASS)
 
+* Work completed
+    - Semantic review of shipped `cmd_list` empty-inventory auto-catalog against backfilled plan
+    - Validation status written to `memory-bank/active/.qa-validation-status`
+    - `test_list_display.test.sh` 25/25 pass; task-specific CLI list tests pass
+* Decisions made
+    - PASS: implementation acceptable as-is; advisories only (DRY repetition mirrors existing pattern; optional doc example tab; no dual-mode empty test)
+* Insights
+    - Empty-inventory signal correctly uses manifest entry scan, not footer heuristic — aligns with pre-mortem mitigation
 * Next step
-    - Run `/niko-qa` semantic review against backfilled plan
+    - Run `/niko-reflect`
+
+## 2026-08-26 - REFLECT - COMPLETE
+
+* Work completed
+    - Reflection recorded; productContext listing use case updated
+* Insights
+    - Reusing `cl_show_all` was the minimal fix; retroactive Niko backfill is workable but Step 7 after intent is cheaper
+* Next step
+    - Archive

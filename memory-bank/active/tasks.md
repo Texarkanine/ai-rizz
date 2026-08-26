@@ -71,10 +71,30 @@ No new technology - validation not required
 - [x] Pre-Mortem complete
 - [x] Preflight (retroactive — plan matched shipped work)
 - [x] Build
-- [ ] QA
-- [ ] Reflect
+- [x] QA
+- [x] Reflect
 - [ ] Archive
 
 ## Build Notes (completed 2026-08-26)
 
 All implementation steps shipped in commit on `no-empty-list` (PR #53). Function test suite `test_list_display.test.sh`: 25/25 pass. CI on PR: ShellCheck, Unit Tests, Docs strict build — success.
+
+## QA Results (completed 2026-08-26)
+
+**Result:** PASS
+
+### Findings
+
+- **Completeness (pass):** `cmd_list` empty-inventory detection matches plan — manifest scan across active modes, `cl_show_all=true` when no entries and `--all` not passed. All planned test cases present (`test_list_nothing_installed_shows_full_catalog`, `test_list_fresh_init_shows_catalog`, retained inventory/footer regression, `test_list_empty_catalog_prints_nothing`). Docs (`list.md`, `getting-started.md`) and `systemPatterns.md` updated.
+- **KISS (pass):** Minimal change — reuses existing `cl_show_all` path; no new abstractions or commands.
+- **DRY (advisory):** Three repeated manifest-scan blocks mirror the existing `validate_manifest_format` triple in the same function; acceptable consistency, not a refactor target for this task.
+- **YAGNI (pass):** No speculative parameters or unused code paths.
+- **Regression (pass):** `test_list_default_hides_uninstalled_and_prints_footer` and CLI inventory test unchanged in intent; explicit `-a`/`--all` behavior preserved.
+- **Integrity (pass):** No debug artifacts, placeholders, or magic shortcuts.
+- **Documentation (advisory):** `list.md` explains auto-catalog in prose; example output tabs still show Installed vs `--all` only — optional future polish, not blocking.
+- **Dual-mode (advisory):** No dedicated empty-inventory test with local+commit both active; implementation correctly scans all active manifests; not required by test plan.
+
+### Verification
+
+- `test_list_display.test.sh`: 25/25 OK (including new and empty-catalog cases).
+- `test_cli_list_sync.test.sh`: task-specific cases (`test_list_fresh_init_shows_catalog`, `test_list_default_hides_uninstalled`, flag tests) pass; unrelated pre-existing failures in other sync/glyph tests not attributed to this change.

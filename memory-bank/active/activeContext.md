@@ -1,16 +1,14 @@
 # Active Context
 
 ## Current Task: list-empty-inventory-catalog
-**Phase:** BUILD - COMPLETE (retroactive backfill)
+**Phase:** REFLECT - COMPLETE
 
 ## What Was Done
 
-- `cmd_list` auto-enables catalog mode when every active manifest is empty (`cl_any_installed` scan → `cl_show_all=true`).
-- Tests: `test_list_nothing_installed_shows_full_catalog`, `test_list_fresh_init_shows_catalog`; prior footer-only test replaced.
-- Docs: `list.md`, `getting-started.md` — plain `list` after init.
-- `memory-bank/systemPatterns.md` list-view contract updated.
-- Feature commit on `no-empty-list`; PR #53 open.
+- Reflection recorded in `reflection/reflection-list-empty-inventory-catalog.md`
+- `productContext.md` listing use case updated for empty-inventory auto-catalog
+- QA PASS; implementation on PR #53
 
 ## Next Step
 
-- Run `/niko-qa` → reflect → archive
+- Run `/niko-archive`

@@ -10,7 +10,7 @@ Three buckets, driven by [`tests/run_tests.sh`](./tests/run_tests.sh):
 
 ## List views
 
-`ai-rizz list` / `cmd_list` is **inventory** (installed items, existing mode glyphs). The source catalog — uninstalled `○` rows and uninstalled ruleset trees — is `list --all` / `-a`. Tests that assert catalog content must call `--all`; default `cmd_list` hides those rows and may print `N available, not shown` (`N` = omitted top-level glyph-bearing rows, not ruleset tree children).
+`ai-rizz list` / `cmd_list` is **inventory** (installed items, existing mode glyphs) once anything is installed. With an empty inventory (fresh init), default `list` auto-shows the full catalog (same as `--all`). Otherwise the source catalog — uninstalled `○` rows and uninstalled ruleset trees — is `list --all` / `-a`. Tests that assert catalog content against a non-empty inventory must call `--all`; default `cmd_list` hides those rows and may print `N available, not shown` (`N` = omitted top-level glyph-bearing rows, not ruleset tree children).
 
 ## Entity Type Routing
 

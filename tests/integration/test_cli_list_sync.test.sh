@@ -241,6 +241,24 @@ test_sync_partial_ruleset_conflicts() {
     assert_rule_not_deployed ".cursor/rules/shared" "rule1"
 }
 
+# Test: fresh init with nothing installed shows full catalog (auto --all)
+test_list_fresh_init_shows_catalog() {
+    run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local
+    assertEquals "Init should succeed" 0 $?
+
+    output=$(run_ai_rizz list 2>&1)
+    all_output=$(run_ai_rizz list --all 2>&1)
+    assertEquals "List should succeed" 0 $?
+
+    # Strip test_debug lines when captured via 2>&1 (verbose re-runs)
+    output=$(printf '%s\n' "$output" | grep -v '^DEBUG:')
+    all_output=$(printf '%s\n' "$all_output" | grep -v '^DEBUG:')
+
+    assert_output_contains "$output" "$UNINSTALLED_GLYPH"
+    assert_output_not_contains "$output" "available, not shown"
+    assertEquals "fresh init list should match --all" "$all_output" "$output"
+}
+
 # Test: default list is inventory (installed only + footer)
 test_list_default_hides_uninstalled() {
     run_ai_rizz init "file://$MOCK_REPO_DIR" -d .cursor/rules --local

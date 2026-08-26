@@ -3408,7 +3408,9 @@ cmd_deinit() {
 # List installed rules and rulesets (multi-mode aware)
 #
 # Default: installed inventory only, with a footer counting hidden catalog
-# items. --all/-a restores the full catalog including uninstalled glyphs.
+# items. When nothing is installed yet, the full catalog is shown automatically
+# (same as --all). --all/-a always shows the full catalog including uninstalled
+# glyphs.
 # Handles dual-mode conflict resolution (commit overrides local) & expands
 # installed (or, with --all, all) rulesets to show contents. Syncs repository
 # before listing.
@@ -3461,7 +3463,28 @@ cmd_list() {
 		esac
 	done
 	cl_hidden_count=0
-	
+
+	# Empty inventory: show the full catalog so a fresh install is discoverable.
+	cl_any_installed="false"
+	if [ "$(is_mode_active local)" = "true" ]; then
+		if read_manifest_entries "${LOCAL_MANIFEST_FILE}" 2>/dev/null | grep -q .; then
+			cl_any_installed="true"
+		fi
+	fi
+	if [ "$(is_mode_active commit)" = "true" ]; then
+		if read_manifest_entries "${COMMIT_MANIFEST_FILE}" 2>/dev/null | grep -q .; then
+			cl_any_installed="true"
+		fi
+	fi
+	if [ "$(is_mode_active global)" = "true" ]; then
+		if read_manifest_entries "${GLOBAL_MANIFEST_FILE}" 2>/dev/null | grep -q .; then
+			cl_any_installed="true"
+		fi
+	fi
+	if [ "${cl_any_installed}" != "true" ] && [ "${cl_show_all}" != "true" ]; then
+		cl_show_all="true"
+	fi
+
 	# Determine which repo dir to use for listing available items
 	# When only global mode is active, use GLOBAL_REPO_DIR
 	# When local/commit modes are active, use REPO_DIR (they share the same source repo)

@@ -9,7 +9,7 @@ status: completed
 
 ## SUMMARY
 
-When every active manifest is empty (fresh init, nothing installed), plain `ai-rizz list` now shows the full source catalog — same output as `--all`, with `○` glyphs and no footer. Once anything is installed, default `list` stays inventory-only with `N available, not shown`. Draft PR [#53](https://github.com/Texarkanine/ai-rizz/pull/53).
+When every active manifest is empty (fresh init, nothing installed), plain `ai-rizz list` now shows the full source catalog — same output as `--all`, with `○` glyphs and no footer. Once anything is installed, default `list` stays inventory-only with `N available, not shown`. PR [#53](https://github.com/Texarkanine/ai-rizz/pull/53).
 
 ## REQUIREMENTS
 
@@ -29,9 +29,9 @@ When every active manifest is empty (fresh init, nothing installed), plain `ai-r
 
 - `test_list_display.test.sh`: 25/25 pass (function-level).
 - PR #53 CI: ShellCheck, Unit Tests, Docs strict build — success.
-- `/niko-qa`: PASS (advisories: repeated manifest-scan blocks mirror existing style; optional fresh-init example tab in `list.md`).
+- `/niko-qa`: PASS (advisories addressed: fresh-init example tab in `list.md`; help text notes empty-inventory default).
 
-Niko workflow was retroactively backfilled after implementation shipped; QA ran against backfilled plan.
+Niko workflow was retroactively backfilled after implementation shipped. Preflight subagent was not run live; plan validated against shipped diff during backfill.
 
 ## LESSONS LEARNED
 
@@ -47,7 +47,6 @@ Inlined from ephemeral reflection:
 
 ## TECHNICAL IMPROVEMENTS
 
-- Optional: add a "Fresh init" example tab to `list.md` (QA advisory).
 - Optional: dual-mode empty-inventory test (not required by plan).
 
 ## NEXT STEPS

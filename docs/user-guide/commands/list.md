@@ -11,6 +11,24 @@ ai-rizz list -a|--all
 
 ## Example Output
 
+=== "Fresh init"
+
+	```
+	$ ai-rizz init https://github.com/Texarkanine/.cursor-rules.git --local
+	$ ai-rizz list
+	Available rules:
+	  ○ bash-style.mdc
+	  ○ git-safety.mdc
+
+	Available commands:
+	  ○ /niko
+
+	Available rulesets:
+	  ○ shell
+	    ├── bash-style.mdc
+	    └── shell-posix-style.mdc
+	```
+
 === "Installed"
 
 	```

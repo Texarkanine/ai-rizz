@@ -250,6 +250,10 @@ test_list_fresh_init_shows_catalog() {
     all_output=$(run_ai_rizz list --all 2>&1)
     assertEquals "List should succeed" 0 $?
 
+    # Strip test_debug lines when captured via 2>&1 (verbose re-runs)
+    output=$(printf '%s\n' "$output" | grep -v '^DEBUG:')
+    all_output=$(printf '%s\n' "$all_output" | grep -v '^DEBUG:')
+
     assert_output_contains "$output" "$UNINSTALLED_GLYPH"
     assert_output_not_contains "$output" "available, not shown"
     assertEquals "fresh init list should match --all" "$all_output" "$output"

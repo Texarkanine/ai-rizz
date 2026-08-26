@@ -1,6 +1,8 @@
 # Bash completion for ai-rizz CLI tool
 # Provides tab completion for commands, rules, and rulesets
 #
+# Zsh twin: completion.zsh — keep _get_repo_dir and _ai_rizz_list_rule_names in lockstep.
+#
 # This completion script supports:
 # - Command completion (init, deinit, list, add, remove, sync, help)
 # - Rule and ruleset type completion for add/remove commands
@@ -36,14 +38,17 @@
 _get_repo_dir() {
 	local config_dir="${HOME}/.config/ai-rizz"
 	local global_repo="${config_dir}/repos/_ai-rizz.global/repo"
-	local git_root project_name
+	local git_root project_name project_repo
 
 	if git_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
 		# Local/commit mode active when either project manifest exists (cmd_list)
 		if [[ -f "${git_root}/ai-rizz.skbd" || -f "${git_root}/ai-rizz.local.skbd" ]]; then
 			project_name="$(basename "${git_root}")"
-			echo "${config_dir}/repos/${project_name}/repo"
-			return 0
+			project_repo="${config_dir}/repos/${project_name}/repo"
+			if [[ -d "${project_repo}/rules" ]]; then
+				echo "${project_repo}"
+				return 0
+			fi
 		fi
 	fi
 
@@ -54,8 +59,8 @@ _get_repo_dir() {
 # List completable names after `ai-rizz add rule` / `remove rule`
 #
 # Emits one name per line for entities installable via `add rule`:
-# - `.mdc` rule files under rules/
-# - lowercase `.md` command files under rules/ (uppercase docs like README.md excluded)
+# - top-level `.mdc` rule files under rules/ (same as cmd_list)
+# - top-level lowercase `.md` command files under rules/ (uppercase docs excluded)
 # - standalone skill directories: rules/<name>/SKILL.md
 #
 # Globals:
@@ -78,9 +83,9 @@ _ai_rizz_list_rule_names() {
 		return 0
 	fi
 
-	# .mdc rules (all) and .md commands (exclude uppercase docs like README.md)
-	find "${rules_dir}" -type f -name "*.mdc" | sed -e 's|.*/||' -e 's/\.mdc$//'
-	find "${rules_dir}" -type f -name "*.md" | sed 's|.*/||' | LC_ALL=C grep -v '^[A-Z]' | sed 's/\.md$//'
+	# Top-level .mdc rules and .md commands only (cmd_list uses -maxdepth 1).
+	find "${rules_dir}" -maxdepth 1 -type f -name "*.mdc" | sed -e 's|.*/||' -e 's/\.mdc$//'
+	find "${rules_dir}" -maxdepth 1 -type f -name "*.md" | sed 's|.*/||' | LC_ALL=C grep -v '^[A-Z]' | sed 's/\.md$//'
 
 	# Standalone skills: rules/<name>/SKILL.md (exactly one level under rules/).
 	# Include symlinked SKILL.md; keep only paths that `[ -f ]` accepts (same as

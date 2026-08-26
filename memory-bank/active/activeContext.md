@@ -2,11 +2,25 @@
 
 **Current Task:** Zsh tab completion for ai-rizz (#54)
 
-**Phase:** PLAN — COMPLETE
+**Phase:** BUILD — COMPLETE (transitioning to QA)
 
-**What Was Done:**
-- Intent clarified and approved by operator.
-- Complexity classified as **Level 2** (bug fix / simple enhancement in the completion subsystem; self-contained, multiple files but no architectural redesign).
-- Implementation plan written to `memory-bank/active/tasks.md`.
+**Files created or modified:**
+- `/Users/tex/.cursor/worktrees/zsh-tabs-ef4c1ebb/ai-rizz-2073071704e9/completion.zsh` (new)
+- `/Users/tex/.cursor/worktrees/zsh-tabs-ef4c1ebb/ai-rizz-2073071704e9/install-zsh-completion.bash` (new)
+- `/Users/tex/.cursor/worktrees/zsh-tabs-ef4c1ebb/ai-rizz-2073071704e9/tests/unit/test_zsh_completion.test.sh` (new)
+- `/Users/tex/.cursor/worktrees/zsh-tabs-ef4c1ebb/ai-rizz-2073071704e9/tests/unit/test_install_zsh_completion.test.sh` (new)
+- `/Users/tex/.cursor/worktrees/zsh-tabs-ef4c1ebb/ai-rizz-2073071704e9/tests/unit/test_makefile_zsh_install.test.sh` (new)
+- `/Users/tex/.cursor/worktrees/zsh-tabs-ef4c1ebb/ai-rizz-2073071704e9/completion.bash` (maxdepth + cache fallback)
+- `/Users/tex/.cursor/worktrees/zsh-tabs-ef4c1ebb/ai-rizz-2073071704e9/tests/unit/test_bash_completion.test.sh` (fallback + nested-md tests)
+- `/Users/tex/.cursor/worktrees/zsh-tabs-ef4c1ebb/ai-rizz-2073071704e9/Makefile`
+- `/Users/tex/.cursor/worktrees/zsh-tabs-ef4c1ebb/ai-rizz-2073071704e9/docs/user-guide/advanced/installation-options.md`
+- `/Users/tex/.cursor/worktrees/zsh-tabs-ef4c1ebb/ai-rizz-2073071704e9/memory-bank/techContext.md`
 
-**Next Step:** Preflight validation, then Build phase.
+**Key decisions:**
+- Native zsh completion (not bashcompinit); discovery helpers lockstep with bash/`cmd_list`.
+- Installer runs `compinit -C` before sourcing; `completion.zsh` bootstraps if needed.
+- Operator smoke-tested: command + rule completion working after post-build fixes.
+
+**Test status:** Unit 7/7 pass. Integration 21/34 (matches `main` baseline; pre-existing macOS symlink failures).
+
+**Next Step:** QA phase (subagent), then Reflect.

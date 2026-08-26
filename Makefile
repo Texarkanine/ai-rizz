@@ -22,13 +22,16 @@ install:
 	@mkdir -p $(BINDIR)
 	ln -sf $(CURDIR)/ai-rizz $(BINDIR)/ai-rizz
 	@./install-bash-completion.bash install
-	@echo "Installation complete. Run 'source ~/.bashrc' or restart your shell to enable completion."
+	@./install-zsh-completion.bash install
+	@echo "Installation complete. Restart your shell (or source ~/.bashrc / ~/.zshrc) to enable completion."
 
 uninstall:
 	rm -f $(BINDIR)/ai-rizz
 	@./install-bash-completion.bash uninstall
+	@./install-zsh-completion.bash uninstall
 	@echo "ai-rizz has been uninstalled from $(BINDIR)"
 	@echo "Bash completion block has been removed from ~/.bash_completion"
+	@echo "Zsh completion block has been removed from ~/.zshrc"
 
 test: test-unit test-integration
 

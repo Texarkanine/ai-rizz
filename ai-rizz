@@ -5521,8 +5521,6 @@ Command-specific options:
 
   list options:
     -a, --all              Show the full catalog, including uninstalled items
-                           (default list already shows the full catalog when
-                           nothing is installed yet)
 
   deinit options:
     -b, --both             Remove local and commit modes only (not global)

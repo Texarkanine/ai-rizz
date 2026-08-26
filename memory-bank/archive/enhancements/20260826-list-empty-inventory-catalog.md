@@ -29,7 +29,7 @@ When every active manifest is empty (fresh init, nothing installed), plain `ai-r
 
 - `test_list_display.test.sh`: 25/25 pass (function-level).
 - PR #53 CI: ShellCheck, Unit Tests, Docs strict build — success.
-- `/niko-qa`: PASS (advisories addressed: fresh-init example tab in `list.md`; help text notes empty-inventory default).
+- `/niko-qa`: PASS (advisory addressed: fresh-init example tab in `list.md`). Help stays one line for `--all`.
 
 Niko workflow was retroactively backfilled after implementation shipped. Preflight subagent was not run live; plan validated against shipped diff during backfill.
 

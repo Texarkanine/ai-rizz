@@ -1,10 +1,10 @@
 #!/bin/sh
-# install-zsh-completion.bash
+# install-zsh-completion.sh
 #
 # Installs or uninstalls the ai-rizz zsh completion fenced block in ~/.zshrc.
 # Usage:
-#   ./install-zsh-completion.bash install   # Add or update fenced block
-#   ./install-zsh-completion.bash uninstall # Remove fenced block
+#   ./install-zsh-completion.sh install   # Add or update fenced block
+#   ./install-zsh-completion.sh uninstall # Remove fenced block
 #
 # - Always uses ~/.zshrc (cross-platform)
 # - Idempotent: removes any previous ai-rizz block before adding

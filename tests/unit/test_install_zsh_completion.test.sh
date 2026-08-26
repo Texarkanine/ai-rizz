@@ -2,7 +2,7 @@
 #
 # test_install_zsh_completion.test.sh - Zsh completion installer tests
 #
-# Tests install-zsh-completion.bash install/uninstall/idempotency against a temp HOME.
+# Tests install-zsh-completion.sh install/uninstall/idempotency against a temp HOME.
 
 # shellcheck disable=SC1091
 . "$(dirname "$0")/../common.sh"
@@ -19,7 +19,7 @@ else
 	exit 1
 fi
 
-_INSTALLER="${_PROJECT_ROOT}/install-zsh-completion.bash"
+_INSTALLER="${_PROJECT_ROOT}/install-zsh-completion.sh"
 _FENCE_START="# >>> ai-rizz zsh completion >>>"
 _FENCE_END="# <<< ai-rizz zsh completion <<<"
 

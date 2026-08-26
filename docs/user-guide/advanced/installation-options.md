@@ -20,10 +20,12 @@ make uninstall
 
 ## Shell Completions
 
-By default, `install` sets up tab completion for bash and zsh:
+`install` sets up tab completion for each shell that is on `PATH` (`bash` and/or `zsh`):
 
 - **Bash:** adds a fenced block to `~/.bash_completion` that sources `completion.bash`.
-- **Zsh:** adds a fenced block to `~/.zshrc` that sources `completion.zsh`. Your `.zshrc` should run `compinit` before that block (most setups already do).
+- **Zsh:** adds a fenced block to `~/.zshrc` that sources `completion.zsh`. The fence runs `compinit` before sourcing.
+
+`uninstall` removes both fences if they are present.
 
 You can control where bash-completions are installed, if the default location doesn't work for you:
 

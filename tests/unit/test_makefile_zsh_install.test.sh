@@ -20,12 +20,27 @@ else
 fi
 
 _FENCE_START="# >>> ai-rizz zsh completion >>>"
+_BASH_FENCE_START="# >>> ai-rizz bash completion >>>"
 
 _make() {
 	(
 		cd "${_PROJECT_ROOT}" || exit 1
-		HOME="${HOME}" PREFIX="${PREFIX}" BINDIR="${BINDIR}" make "$@"
+		HOME="${HOME}" PREFIX="${PREFIX}" BINDIR="${BINDIR}" \
+			PATH="${MAKE_PATH:-${PATH}}" make "$@"
 	)
+}
+
+# Closed PATH with common install tools, omitting a named command (bash or zsh).
+_path_without() {
+	omit="$1"
+	stub="${TEST_DIR}/stubbin-${omit}"
+	mkdir -p "${stub}"
+	for cmd in make sh ln mkdir touch awk mv rm echo cat sed chmod; do
+		src="$(command -v "${cmd}" 2>/dev/null)" || continue
+		ln -sf "${src}" "${stub}/${cmd}"
+	done
+	# Never copy the omitted shell into the stub bin.
+	printf '%s' "${stub}"
 }
 
 setUp() {
@@ -37,6 +52,9 @@ setUp() {
 	export HOME PREFIX BINDIR
 	mkdir -p "${HOME}" "${BINDIR}"
 	touch "${HOME}/.zshrc"
+	touch "${HOME}/.bash_completion"
+	MAKE_PATH="${PATH}"
+	export MAKE_PATH
 }
 
 tearDown() {
@@ -60,6 +78,26 @@ test_make_uninstall_removes_zsh_completion_fence() {
 
 	grep -q "${_FENCE_START}" "${HOME}/.zshrc" && \
 		fail "make uninstall should remove zsh completion fence from ~/.zshrc"
+	return 0
+}
+
+test_make_install_skips_zsh_when_zsh_missing() {
+	MAKE_PATH="$(_path_without zsh)"
+	export MAKE_PATH
+	_make install >/dev/null 2>&1
+
+	grep -q "${_FENCE_START}" "${HOME}/.zshrc" && \
+		fail "make install must not write zsh fence when zsh is not on PATH"
+	return 0
+}
+
+test_make_install_skips_bash_when_bash_missing() {
+	MAKE_PATH="$(_path_without bash)"
+	export MAKE_PATH
+	_make install >/dev/null 2>&1
+
+	grep -q "${_BASH_FENCE_START}" "${HOME}/.bash_completion" && \
+		fail "make install must not write bash fence when bash is not on PATH"
 	return 0
 }
 

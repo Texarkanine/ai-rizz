@@ -1,4 +1,5 @@
 #compdef ai-rizz
+# shellcheck shell=zsh
 
 # Zsh completion for ai-rizz CLI tool
 # Provides tab completion for commands, rules, and rulesets
@@ -7,7 +8,7 @@
 # with completion.bash — same algorithm as cmd_list catalog discovery.
 #
 # Installation:
-#   Source this file from ~/.zshrc (see install-zsh-completion.bash)
+#   Source this file from ~/.zshrc (see install-zsh-completion.sh)
 #
 # Testing:
 #   Set AI_RIZZ_COMPLETION_TEST=1 before sourcing to skip compdef registration.

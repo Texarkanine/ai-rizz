@@ -465,18 +465,21 @@ test_list_omits_header_when_section_has_no_installed_members() {
 	fi
 }
 
-test_list_nothing_installed_is_footer_only() {
+test_list_nothing_installed_shows_full_catalog() {
 	cmd_init "${TEST_SOURCE_REPO}" -d "${TEST_TARGET_DIR}" --commit
 
 	all_output=$(cmd_list --all)
 	output=$(cmd_list)
 
-	if echo "${output}" | grep -q "Available "; then
-		fail "no section headers when nothing is installed: ${output}"
+	echo "${output}" | grep -q "Available rules:" || \
+		fail "empty inventory should show catalog sections: ${output}"
+	echo "${output}" | grep -q "${UNINSTALLED_GLYPH}" || \
+		fail "empty inventory should show uninstalled glyphs: ${output}"
+	if echo "${output}" | grep -q "available, not shown"; then
+		fail "empty inventory must not print the hidden footer: ${output}"
 	fi
-	hidden=$(_count_uninstalled_rows "${all_output}")
-	echo "${output}" | grep -qx "${hidden} available, not shown" || \
-		fail "expected footer-only output '${hidden} available, not shown': ${output}"
+	assertEquals "default list should match --all when nothing is installed" \
+		"${all_output}" "${output}"
 }
 
 test_list_no_footer_when_everything_installed() {

@@ -193,6 +193,20 @@ test_list_rule_names_excludes_nested_skill_path() {
 	return 0
 }
 
+test_list_rule_names_excludes_nested_md_reference() {
+	# Skill-local markdown under rules/<skill>/... must not complete as add rule names.
+	mkdir -p "${REPO_DIR}/rules/prompt-authoring/references"
+	echo "# Skill" > "${REPO_DIR}/rules/prompt-authoring/SKILL.md"
+	echo "# Reference" > "${REPO_DIR}/rules/prompt-authoring/references/personality-prompts.md"
+
+	names="$(_list_rule_names "${REPO_DIR}")"
+	echo "${names}" | grep -qx "prompt-authoring" || \
+		fail "Standalone skill 'prompt-authoring' should be listed: ${names}"
+	echo "${names}" | grep -qx "personality-prompts" && \
+		fail "Nested reference markdown must not be listed: ${names}"
+	return 0
+}
+
 # ============================================================================
 # _get_repo_dir: outside git → global cache (not basename(pwd))
 # ============================================================================
@@ -216,15 +230,26 @@ test_get_repo_dir_outside_git_uses_global_cache() {
 
 test_get_repo_dir_with_project_manifest_uses_project_cache() {
 	# APP_DIR from common setUp is a git repo. A commit manifest means
-	# local/commit mode is active → project cache repos/<basename>/repo.
+	# local/commit mode is active → project cache repos/<basename>/repo
+	# when that cache has a rules/ directory.
 	printf 'file://dummy\t.cursor/rules\trules\trulesets\n' > "${APP_DIR}/ai-rizz.skbd"
 	fake_home="${TEST_DIR}/fake-home-project"
-	mkdir -p "${fake_home}"
+	project_name="$(basename "${APP_DIR}")"
+	mkdir -p "${fake_home}/.config/ai-rizz/repos/${project_name}/repo/rules"
 
 	got="$(_call_get_repo_dir "${APP_DIR}" "${fake_home}")"
-	project_name="$(basename "${APP_DIR}")"
 	expected="${fake_home}/.config/ai-rizz/repos/${project_name}/repo"
 	assertEquals "Project manifest should resolve to project cache" "${expected}" "${got}"
+}
+
+test_get_repo_dir_falls_back_to_global_when_project_cache_missing() {
+	printf 'file://dummy\t.cursor/rules\trules\trulesets\n' > "${APP_DIR}/ai-rizz.skbd"
+	fake_home="${TEST_DIR}/fake-home-fallback"
+	mkdir -p "${fake_home}/.config/ai-rizz/repos/_ai-rizz.global/repo/rules"
+
+	got="$(_call_get_repo_dir "${APP_DIR}" "${fake_home}")"
+	expected="${fake_home}/.config/ai-rizz/repos/_ai-rizz.global/repo"
+	assertEquals "Missing project cache should fall back to global cache" "${expected}" "${got}"
 }
 
 # ============================================================================

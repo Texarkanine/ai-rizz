@@ -17,6 +17,8 @@ jobs:
         with:
           scandir: '.'
           severity: error
+          # completion.zsh is zsh; ShellCheck 0.11 does not accept shell=zsh
+          ignore_names: '*.zsh'
 
   tests:
     name: Unit Tests
@@ -29,7 +31,10 @@ jobs:
           git config --global user.email "test@example.com"
           git config --global user.name "Test User"
           mkdir -p "$HOME/.config/ai-rizz"
-      
+
+      - name: Install zsh
+        run: sudo apt-get update && sudo apt-get install -y zsh
+
       - name: Run test suite
         run: make test
 

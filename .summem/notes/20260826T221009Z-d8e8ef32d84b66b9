@@ -1,0 +1,1 @@
+completion.bash and completion.zsh share _get_repo_dir/_ai_rizz_list_rule_names; top-level rules/*.mdc, rules/*.md, rules/<skill>/SKILL.md only (cmd_list parity); zsh needs compinit bootstrap

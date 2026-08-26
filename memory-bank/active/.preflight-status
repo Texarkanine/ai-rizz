@@ -1,8 +1,0 @@
-PASS WITH ADVISORY
-
-# Findings
-
-1. **Resolved** — Makefile hooks have test-first coverage (`test_makefile_zsh_install.test.sh`).
-2. **Resolved** — Zsh helper prefixes documented in plan.
-3. **Advisory** — Zsh unit tests fail clearly when `zsh` unavailable; verify CI has zsh.
-4. **Advisory** — Shared parity scenario matrix deferred; parallel bash/zsh unit suites enforce discovery parity.
